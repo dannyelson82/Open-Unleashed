@@ -86,5 +86,42 @@ start needs them. Why not a Swift-owned `UIApplicationMain`: winit 0.30 must cal
   iOS-only UIKit calls at runtime (status bar, orientation, multi-touch) — checked in the Simulator.
 - **Chosen: (b)**, smallest change, macOS untouched. Revisit when 0.31 is stable.
 
+## Sideloading with atvloadly (Stage 8)
+[atvloadly](https://github.com/bitxeno/atvloadly) installs and keeps refreshing sideloaded apps on an Apple TV. It
+runs in Docker on Linux — here on the Unraid server.
+
+**Build the .ipa** (on the Mac; unsigned — atvloadly signs it with its own Apple ID while installing):
+```sh
+scripts/export-ipa.sh                       # → target/tvos/OpenUnleashed.ipa (~5.5 MB, no game files)
+OU_BUNDLE_ID=com.you.openunleashed scripts/export-ipa.sh
+```
+
+**Install atvloadly on Unraid** (Docker › Add Container, or compose):
+- image `ghcr.io/bitxeno/atvloadly:latest`, port **`5533:80`** (web UI at `http://tower.local:5533`), appdata
+  `/mnt/user/appdata/atvloadly` → `/data`;
+- it needs the host's **avahi-daemon and D-Bus**: mount `/var/run/dbus:/var/run/dbus` and
+  `/var/run/avahi-daemon:/var/run/avahi-daemon` (Unraid already runs avahi); add
+  `--security-opt apparmor=unconfined` (or run privileged) if pairing can't see the Apple TV;
+- network: host or bridge as atvloadly's README says for your setup.
+
+**Pair and install:**
+1. Apple TV: Settings › Remotes and Devices › Remote App and Devices — leave it open; pair from atvloadly's web UI
+   (enter the PIN shown on the TV).
+2. Add an Apple ID in atvloadly — use a **dedicated Apple ID** and keep its 2FA device at hand (the code is asked
+   for); **app-specific passwords are not supported**.
+3. Upload `OpenUnleashed.ipa`, install, and turn on automatic refresh.
+
+**Limits and gotchas:**
+- A free Apple ID: apps are signed for **7 days** (atvloadly refreshes them); up to **10 app IDs registered**, **3
+  apps active** at once.
+- **Re-pair after every tvOS update**, and brand-new tvOS versions are often unsupported at first — **turn off
+  automatic tvOS updates** (Settings › System › Software Updates).
+- atvloadly **changes the bundle ID** when it signs, which would break CloudKit — irrelevant here: saves sync through
+  the OpenUnleashed server, never iCloud.
+
+**What survives a refresh / reinstall** (to confirm on the device): a refresh re-signs and reinstalls the same app,
+which keeps its data container — the downloaded game data in `Library/Caches/game` (unless tvOS purged it) and the
+`NSUserDefaults` save mirror + server setting. Deleting the app from the Apple TV deletes both.
+
 ## Known issues
 (see PROGRESS.md — kept current there)
