@@ -46,7 +46,7 @@ Apple TV paired `<yes/no>`, controller `<Xbox / PlayStation / other>`, bundle ID
 | 1 Baseline build | ✅ release builds; runs; without data exits with the clear "game data not found" error | — | — |
 | 1 Race starts | ✅ `NFS5_GAME_PATH=game-data open-unleashed alps 993`: 20 s headless race (car accelerates, shifts 1→4); windowed `--screenshot` race with 3 opponents renders correctly on Metal (Apple M2 Pro) | — | — |
 | 1 Engine as a library | ✅ `crates/open-unleashed` is now `lib.rs` + a 3-line `main.rs`; `run()` split into `build_app()` + event loop (desktop order unchanged) | ✅ builds as a static lib | — |
-| 2 tvOS cross-compile | ✅ unaffected | ✅ static lib builds (winit 0.30 patched, SDL3 video on for tvOS) | 🟡 device target `aarch64-apple-tvos` not built yet (needs signing team to go further) |
+| 2 tvOS cross-compile | ✅ unaffected | ✅ static lib builds (winit 0.30 patched, SDL3 video on for tvOS) | ✅ device static lib (`aarch64-apple-tvos`) builds, and the unsigned device-SDK Xcode build links; signing + install need the team ID and the Apple TV |
 | 3 App shell (Xcode/XcodeGen, `scripts/build-tvos.sh`) | — | ✅ builds, installs, launches on "Apple TV 4K (4th generation)" Simulator, tvOS 27.2 | 📺 |
 | 3 Engine runs | ✅ | ✅ **front end renders** (main menu + profile prompt) and **a race runs** (`alps 993 --opponents 3`: in-car view, HUD, mirror, race clock) from your disc's data copied into the Simulator app's Caches/game; audio output opens (CoreAudio 48 kHz stereo); SDL joystick layer starts | 📺 |
 | 3 "Game data missing" gate | — | 🟡 Stage-3 placeholder screen written (shown when Caches/game is empty); not yet screenshotted | 📺 |
