@@ -92,7 +92,7 @@ pub(crate) struct Cli {
 impl Cli {
     /// The process's own arguments, the program name skipped.
     pub(crate) fn from_env() -> Self {
-        Self::parse(&std::env::args().skip(1).collect::<Vec<_>>())
+        Self::parse(&strip_shell_defaults(std::env::args().skip(1).collect::<Vec<_>>()))
     }
 
     pub(crate) fn parse(args: &[String]) -> Self {
@@ -202,4 +202,23 @@ mod tests {
         assert_eq!((c.net.as_deref(), c.net_name.as_deref(), c.net_browse), (Some("join:127.0.0.1:9577"), Some("JOINY"), Some(2.5)));
         assert!(c.positional.is_empty() && !c.scripted);
     }
+}
+
+/// PLATFORM GLUE (tvOS, TVOS.md): the app shell's own settings can be given as UserDefaults launch
+/// arguments (`-ou.server.address tower.local`, `-ou.autoDownload YES`, …); they are the shell's, not the
+/// engine's command line — drop each `-ou.*` key and its value. Elsewhere the arguments pass unchanged.
+fn strip_shell_defaults(args: Vec<String>) -> Vec<String> {
+    if !cfg!(target_os = "tvos") {
+        return args;
+    }
+    let mut out = Vec::with_capacity(args.len());
+    let mut it = args.into_iter();
+    while let Some(a) = it.next() {
+        if a.starts_with("-ou.") {
+            it.next();
+            continue;
+        }
+        out.push(a);
+    }
+    out
 }

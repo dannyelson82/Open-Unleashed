@@ -67,7 +67,12 @@ if [ "$KIND" = sim ]; then
     rsync -a --delete "$ROOT/game-data/" "$DATA/Library/Caches/game/"
   fi
   xcrun simctl terminate "$UDID" "$OU_BUNDLE_ID" 2>/dev/null || true
-  xcrun simctl launch "$UDID" "$OU_BUNDLE_ID"
+  if [ "$COPY_DATA" = 1 ]; then
+    # development only: start from the copied data without a verified download
+    xcrun simctl launch "$UDID" "$OU_BUNDLE_ID" -ou.trustLocalData YES
+  else
+    xcrun simctl launch "$UDID" "$OU_BUNDLE_ID"
+  fi
   echo "launched on simulator $UDID"
 else
   DEV="${OU_DEVICE:-$(xcrun devicectl list devices 2>/dev/null | awk '/Apple TV/ {print $3; exit}')}"
