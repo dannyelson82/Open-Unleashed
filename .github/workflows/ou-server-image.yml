@@ -88,7 +88,7 @@ jobs:
           curl -fsS "http://127.0.0.1:8642/?token=ci-token" | grep -q '<h2>Saves</h2>'
           # runs as PUID 99, not root; saves land in /data owned by it
           docker top ou -eo pid,uid,args
-          test "$(docker top ou -eo pid,uid,args | awk '/bin\/ou-server/ {print $2; exit}')" = 99
+          test "$(docker top ou -eo pid,uid,args | awk '$3 == "ou-server" {print $2; exit}')" = 99
           test "$(stat -c %u /tmp/ou/data/saves/ci/current/SaveData/0.sav)" = 99
           docker logs ou 2>&1 | tail -n 20
           docker rm -f ou

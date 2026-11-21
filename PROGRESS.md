@@ -40,6 +40,19 @@ Left for later (as asked): `<MY_APPLE_ID_OR_TEAM>`,
 Apple TV paired `<yes/no>`, controller `<Xbox / PlayStation / other>`, bundle ID `<com.yourname.openunleashed>`
 (a stand-in `org.openunleashed.tvos` is used until then).
 
+## Decisions to review
+Choices made without asking (per your instruction); each is easy to change.
+1. **winit**: patched 0.30 (`third_party/winit`) instead of upgrading to the 0.31 beta — smallest change, macOS untouched.
+2. **SDL3 on tvOS**: video subsystem compiled in (never initialised) because SDL's UIKit code needs it to link.
+3. **Engine split** into `lib.rs` + thin `main.rs` so tvOS links the same code as a static library.
+4. **Disc**: `Porsche.exe` (SafeDisc) not copied as `nfs5.exe` → intro movies skipped.
+5. **Fork name** `dannyelson82/Open-Unleashed` (public, like every fork of a public repo); Unraid template URLs point at its `tvos-port` branch.
+6. **Image tags**: `latest` + `edge` are published from pushes to `tvos-port` (and `main`), `X.Y.Z` from `ou-server-vX.Y.Z` tags, plus the short SHA — so the Unraid template's `:latest` works without a release.
+7. **Save API paths** use `/files/`, `/versions/`, `/version/{id}/`, `/restore/{id}/` segments before the file path (the plan's shorter paths clash with file paths containing `/`).
+8. **Lobby** accepts `?via=tailnet|lan` from the client, because behind Docker NAT the server may not see the device's real address.
+9. **Stand-in bundle ID** `org.openunleashed.tvos` until `<com.yourname.openunleashed>` is given; Simulator default "Apple TV 4K (4th generation)".
+10. **Local Docker**: Colima (Homebrew, no admin rights) instead of Docker Desktop.
+
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
 |---|---|---|---|
