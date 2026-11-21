@@ -35,6 +35,25 @@ declare_class!(
     }
 
     unsafe impl WinitViewController {
+        // OpenUnleashed tvOS patch (TVOS.md): the Siri Remote's / a controller's Menu press would send the
+        // app to the Home screen; the game reads it through the GameController framework (SDL: B) and uses it
+        // as "back", so UIKit must not act on it. Every other press goes on as usual.
+        #[cfg(target_os = "tvos")]
+        #[method(pressesBegan:withEvent:)]
+        fn presses_began(&self, presses: *mut objc2::runtime::AnyObject, event: *mut objc2::runtime::AnyObject) {
+            if !has_menu_press(presses) {
+                let _: () = unsafe { objc2::msg_send![super(self), pressesBegan: presses, withEvent: event] };
+            }
+        }
+
+        #[cfg(target_os = "tvos")]
+        #[method(pressesEnded:withEvent:)]
+        fn presses_ended(&self, presses: *mut objc2::runtime::AnyObject, event: *mut objc2::runtime::AnyObject) {
+            if !has_menu_press(presses) {
+                let _: () = unsafe { objc2::msg_send![super(self), pressesEnded: presses, withEvent: event] };
+            }
+        }
+
         #[method(shouldAutorotate)]
         fn should_autorotate(&self) -> bool {
             true
@@ -68,6 +87,25 @@ declare_class!(
         }
     }
 );
+
+/// tvOS: whether a set of `UIPress`es holds the Menu button (`UIPressTypeMenu` = 5).
+#[cfg(target_os = "tvos")]
+fn has_menu_press(presses: *mut objc2::runtime::AnyObject) -> bool {
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+    if presses.is_null() {
+        return false;
+    }
+    unsafe {
+        let all: *mut AnyObject = msg_send![presses, allObjects];
+        let n: usize = msg_send![all, count];
+        (0..n).any(|i| {
+            let p: *mut AnyObject = msg_send![all, objectAtIndex: i];
+            let ty: isize = msg_send![p, type];
+            ty == 5
+        })
+    }
+}
 
 impl WinitViewController {
     pub(crate) fn set_prefers_status_bar_hidden(&self, val: bool) {

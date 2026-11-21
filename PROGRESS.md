@@ -58,6 +58,10 @@ Choices made without asking (per your instruction); each is easy to change.
 14. **Save mirror by polling** (every 15 s + on background, size/mtime stamp) instead of a hook in the engine's save code — no engine change; worst case a save made < 15 s before tvOS purges Caches *and* kills the app is lost locally (the server sync will cover it).
 15. **Default server address** `tower.local`; token must be entered once.
 16. **tvOS command line**: the engine ignores `-ou.*` UserDefaults launch arguments (they're the shell's).
+17. **B / Menu = back on tvOS only**: the original's front end reads no pad; the Mac keeps that (authentic), tvOS needs a back button.
+18. **Siri Remote Menu never leaves the app** (Apple's guideline wants Menu at the top level to go Home; for a sideloaded personal build the game's own "back"/exit question is more useful). Home (TV button) still leaves.
+19. **On-screen keyboard opens by itself** when a text field becomes active (once per field); a chat box only on Y, since it is always focused.
+20. **Pause on controller loss also on the Mac** (the shared `request_pause`; the keyboard could keep racing, but a pad vanishing mid-corner is worth a pause).
 
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
@@ -73,6 +77,14 @@ Choices made without asking (per your instruction); each is easy to change.
 | 4 Caches purge → re-download only missing files | — | ⛔ not run: deleting part of the Simulator's Caches was blocked by a safety check (variable path); the code path is the same size check as the launch check. To try: delete a few files under the app's `Library/Caches/game/GameData/Music/` and relaunch | 📺 |
 | 4 Save mirror to NSUserDefaults (`SaveMirror.swift`) | — | 🟡 written (every 15 s + on background, ≤ 400 KB, restore-missing before the engine starts); not exercised yet — no career save exists yet | 📺 |
 | 4 Save sizes | 🟡 estimate from the format: `.sav` ≈ 8 KB missions + 0.36 KB/market part + ~1.7 KB/car ≈ 20–80 KB per profile; `nfs5.trk` 17.9 KB → several profiles fit 400 KB. Exact figure: the mirror logs it on the first real save | — | — |
+
+| 5 Siri Remote | — | 🟡 SDL already exposes it as a pad (click = A, Menu = B, Play/Pause = X, touch surface = left stick); B / Menu = the front end's Esc on tvOS; Menu no longer sends the app to the Home screen (winit view controller swallows the press). Not testable without a remote | 📺 |
+| 5 Text entry (profile name, address, replay name, input dialogs, chat) | ✅ Mac unchanged (Return now goes through one shared function) | ✅ native tvOS keyboard prompt opens by itself on "create player" ("Player name", up to 8 characters); A (Y on a chat box) reopens it. Typing + OK needs a person | 📺 |
+| 5 Pointer hidden | — | ✅ parked outside the screen: no pointer, no hover tooltips | 📺 |
+| 5 Pause when the last controller disconnects mid-race | ✅ (shared `request_pause`) | 🟡 code path shared with the background pause (verified); hot-unplug not possible in the Simulator | 📺 |
+| 5 "Connect a controller" prompt | ⬜ next | ⬜ | 📺 |
+| 5 Xbox/PlayStation pads via SDL's GameController driver, rumble | — | — | 📺 (no pads in the Simulator) |
+| 6.3 Lifecycle | — | ✅ Home/other app mid-race → race pauses ("app in background"), audio stream stops; back → audio restarts, pause menu shown, no crash; saves mirrored on background | 📺 |
 
 ### tvOS fixes found in the Simulator (all in TVOS.md)
 1. tvOS 27 SDK **requires the UIScene life cycle** (crash `UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`): scene manifest + Swift `SceneDelegate`; winit's window attaches to the scene; the engine waits for `ou_scene_ready()`.

@@ -244,6 +244,18 @@ impl AudioOutput {
     /// timer (0x4AE010), `fesfx` reloaded (0x4A8B80), `MusicPlay(NULL, 0)` (0x4AE4D0(0, 0),
     /// 0x4A6B1E). The first call configures the opened output (0x4A6840's open) and answers `false`.
     /// *(Until REG-AUDIO2 a change was applied under the running mix, the voices left playing.)*
+    /// PLATFORM GLUE (TVOS.md Stage 6.3): stop / restart the device stream — the app went to the background /
+    /// came back. The mix itself is untouched (every voice keeps its place); an offline (muted) output ignores it.
+    pub fn set_stream_paused(&self, paused: bool) {
+        if let Some(s) = self._stream.as_ref() {
+            let r = if paused { s.pause() } else { s.play() };
+            match r {
+                Ok(()) => tracing::info!(paused, "audio stream"),
+                Err(e) => tracing::warn!(error = %e, paused, "audio stream pause/play failed"),
+            }
+        }
+    }
+
     pub fn set_audio_quality(&self, audio_quality: u8) -> bool {
         let budget = voice_budget(audio_quality);
         let rate = mix_rate(audio_quality);

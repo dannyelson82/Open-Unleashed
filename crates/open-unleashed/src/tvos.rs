@@ -31,6 +31,9 @@ pub struct OuShellCallbacks {
     /// The engine could not start from the data the shell reported ready (a NUL-terminated message):
     /// show the Game Data screen again with this error.
     pub engine_error: Option<extern "C" fn(*const c_char)>,
+    /// A field wants text: show the on-screen keyboard (title, current text, maximum length, secure) and
+    /// answer with [`ou_text_entered`] (NULL = cancelled).
+    pub text_prompt: Option<extern "C" fn(*const c_char, *const c_char, u32, bool)>,
 }
 
 /// The shell's entry: runs the engine's event loop (never returns on tvOS — UIKit ends the process).
@@ -39,8 +42,14 @@ pub struct OuShellCallbacks {
 /// `callbacks` must be null or point to a valid [`OuShellCallbacks`] for the duration of the call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ou_main(callbacks: *const OuShellCallbacks) -> i32 {
-    let cb = if callbacks.is_null() { OuShellCallbacks { launched: None, engine_error: None } } else { unsafe { *callbacks } };
+    let cb = if callbacks.is_null() { OuShellCallbacks { launched: None, engine_error: None, text_prompt: None } } else { unsafe { *callbacks } };
     SHELL.with(|s| s.set(Some(cb)));
+    // no mouse on tvOS: the front end's pointer is parked outside the 640×480 design, so it neither shows nor
+    // hovers (the same device a scripted capture uses, `NFS_FE_CURSOR`; TVOS.md)
+    if std::env::var_os("NFS_FE_CURSOR").is_none() {
+        // SAFETY: before any thread is started
+        unsafe { std::env::set_var("NFS_FE_CURSOR", "-1000,-1000") };
+    }
     crate::main();
     0
 }
@@ -58,6 +67,22 @@ pub extern "C" fn ou_scene_ready() {
     SCENE_READY.store(true, Ordering::Release);
 }
 
+/// App life cycle from the shell's scene delegate (scene apps don't get the app-level callbacks winit listens to).
+static BACKGROUND: AtomicBool = AtomicBool::new(false);
+static FOREGROUND: AtomicBool = AtomicBool::new(false);
+
+/// The shell: the app is leaving the foreground (Home button, another app, the screen saver).
+#[unsafe(no_mangle)]
+pub extern "C" fn ou_app_background() {
+    BACKGROUND.store(true, Ordering::Release);
+}
+
+/// The shell: the app is in front again.
+#[unsafe(no_mangle)]
+pub extern "C" fn ou_app_foreground() {
+    FOREGROUND.store(true, Ordering::Release);
+}
+
 /// The shell: end the app (from the Game Data screen).
 #[unsafe(no_mangle)]
 pub extern "C" fn ou_request_quit() {
@@ -68,8 +93,91 @@ thread_local! {
     static SHELL: std::cell::Cell<Option<OuShellCallbacks>> = const { std::cell::Cell::new(None) };
 }
 
+/// The on-screen keyboard's state (main thread only, but the C entry point needs a static).
+#[derive(Default)]
+struct TextState {
+    /// the prompt is up for this field
+    open: Option<TextTarget>,
+    /// the field the last automatic prompt was for (no second automatic prompt until it changes)
+    auto_done: Option<TextTarget>,
+    /// the shell's answer, waiting for the next frame: `Some(text)` entered, `None` cancelled
+    answer: Option<Option<String>>,
+}
+
+static TEXT: std::sync::Mutex<TextState> = std::sync::Mutex::new(TextState { open: None, auto_done: None, answer: None });
+
+/// The shell: the on-screen keyboard closed with `text` (UTF-8), or NULL when cancelled.
+///
+/// # Safety
+/// `text` must be null or a valid NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ou_text_entered(text: *const c_char) {
+    let t = (!text.is_null()).then(|| unsafe { std::ffi::CStr::from_ptr(text) }.to_string_lossy().into_owned());
+    if let Ok(mut s) = TEXT.lock() {
+        s.answer = Some(t);
+    }
+}
+
+fn open_prompt(req: &TextRequest) -> bool {
+    let Some(f) = shell().text_prompt else { return false };
+    let title = CString::new(req.title.replace('\0', " ")).unwrap_or_default();
+    let cur = CString::new(req.current.replace('\0', " ")).unwrap_or_default();
+    let secure = req.title == "Password";
+    if let Ok(mut s) = TEXT.lock() {
+        s.open = Some(req.target);
+    }
+    tracing::info!(target = ?req.target, title = %req.title, "tvOS: on-screen keyboard");
+    f(title.as_ptr(), cur.as_ptr(), req.max_len as u32, secure);
+    true
+}
+
+/// Once a frame, after the pads were read: A (Y for a chat box) on a field that takes text opens the
+/// on-screen keyboard; a field appearing opens it once by itself; while it is up the pad does nothing in the
+/// game; its answer goes into the field (`App::inject_text`).
+pub(crate) fn text_pad(app: &mut App) {
+    // the answer first
+    let answer = TEXT.lock().ok().and_then(|mut s| {
+        let a = s.answer.take()?;
+        Some((s.open.take(), a))
+    });
+    if let Some((Some(target), a)) = answer {
+        match a {
+            Some(text) => {
+                app.inject_text(target, &text);
+            }
+            None => tracing::info!(?target, "tvOS: on-screen keyboard cancelled"),
+        }
+        app.input.pad_menu.clear();
+        return;
+    }
+    if TEXT.lock().map(|s| s.open.is_some()).unwrap_or(false) {
+        app.input.pad_menu.clear();
+        return;
+    }
+    let req = app.text_request();
+    let auto_done = TEXT.lock().map(|s| s.auto_done).unwrap_or(None);
+    match req {
+        None => {
+            if let Ok(mut s) = TEXT.lock() {
+                s.auto_done = None;
+            }
+        }
+        Some(r) => {
+            use nfs_input::MenuNav as N;
+            let asked = if r.chat { app.input.pad_menu.contains(&N::Alt) } else { app.input.pad_menu.iter().any(|k| matches!(k, N::Select | N::Alt)) };
+            let auto = !r.chat && auto_done != Some(r.target);
+            if (asked || auto) && open_prompt(&r) {
+                if let Ok(mut s) = TEXT.lock() {
+                    s.auto_done = Some(r.target);
+                }
+                app.input.pad_menu.retain(|k| !matches!(k, N::Select | N::Alt));
+            }
+        }
+    }
+}
+
 fn shell() -> OuShellCallbacks {
-    SHELL.with(|s| s.get()).unwrap_or(OuShellCallbacks { launched: None, engine_error: None })
+    SHELL.with(|s| s.get()).unwrap_or(OuShellCallbacks { launched: None, engine_error: None, text_prompt: None })
 }
 
 /// The tvOS `run`: the event loop first, the `App` when the data is there.
@@ -154,6 +262,18 @@ impl ApplicationHandler for Boot {
         }
         match self.app.as_mut() {
             Some(app) => {
+                // Stage 6.3: background → the race pauses (never resumes by itself) and the audio stream stops
+                if BACKGROUND.swap(false, Ordering::AcqRel) {
+                    app.request_pause("app in background");
+                    if let Some(a) = app.snd.audio.as_ref() {
+                        a.set_stream_paused(true);
+                    }
+                }
+                if FOREGROUND.swap(false, Ordering::AcqRel) {
+                    if let Some(a) = app.snd.audio.as_ref() {
+                        a.set_stream_paused(false);
+                    }
+                }
                 app.about_to_wait(event_loop);
                 // winit's UIKit backend delivers redraws only between run-loop iterations: a redraw the
                 // engine requests from inside its frame (as on the desktop) is lost there, so the next

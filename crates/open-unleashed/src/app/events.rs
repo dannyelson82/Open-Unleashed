@@ -196,11 +196,8 @@ impl App {
             let _ = self.input.take_pressed(Action::Pause);
         } else if self.input.take_pressed(Action::Pause) {
             if self.vehicle.is_some() {
-                self.paused = true;
-                // 0x4151E3 → 0x461740: the orbit's yaw and step start at 0
-                self.orbit = Orbit::default();
-                self.pause_sel = 0;
-                self.pause_confirm = None;
+                // 0x4151E3 → 0x461740: the orbit's yaw and step start at 0 (`lifecycle.rs`)
+                self.enter_pause();
             } else {
                 event_loop.exit();
             }
@@ -437,36 +434,11 @@ impl ApplicationHandler for App {
                     use winit::keyboard::{Key, NamedKey};
                     let mut took = false;
                     match event.logical_key.as_ref() {
-                        // the chat box's own Return, 0x4C3310 (`netplay::NetPlay::say`)
-                        Key::Named(NamedKey::Enter)
-                            if let Some(text) = self.fe.layout_preview.as_mut().and_then(|l| l.take_chat(i)) =>
-                        {
-                            let empty = self.fe.strings.get(287).unwrap_or_default().to_string();
-                            if let Some(n) = self.net.session.as_mut() {
-                                n.say(&text, &empty);
-                            }
-                            took = true;
-                        }
-                        // `NFS5.CHARVECTACCESSORINPUTBOX`'s own Return, slot 4 **0x4C2120** (in
-                        // place of 0x4CCC20): a non-empty string goes into the list accessor at
-                        // row 0 (0x4B8B70 with 0, the list's front) and the list selects row 0
-                        // (slot 0x2C(0), 0x4C21B8); then `data.callback` when there is one
-                        // (0x50D6D0 — empty on both shipped boxes), else the string's commit
-                        // (slot 0x0C); focus off (0x4C7DA0), the update, and **no sound**. The
-                        // port's `Comms.IPList` is the lobby's own list, whose row 0 is the typed
-                        // address — so the address becomes `Comms.IP` and the selection 0.
-                        Key::Named(NamedKey::Enter)
-                            if self.fe.layout_preview.as_ref().and_then(|l| l.class_of(i)).as_deref() == Some("NFS5.CHARVECTACCESSORINPUTBOX") =>
-                        {
-                            self.fe_charvect_return(i);
-                            return;
-                        }
+                        // Return: the chat box's 0x4C3310, the char-vector box's 0x4C2120, or 0x4CCC20's
+                        // commit — one implementation, shared with the platform text prompt (`text_entry.rs`)
                         Key::Named(NamedKey::Enter) => {
-                            if let Some(l) = self.fe.layout_preview.as_mut()
-                                && let Some((name, text)) = l.commit_input(i)
-                            {
-                                tracing::info!(accessor = %name, value = %text, "input box committed");
-                                took = true;
+                            if self.fe_input_return(i) {
+                                return;
                             }
                         }
                         Key::Named(NamedKey::Backspace) => {
@@ -721,8 +693,13 @@ impl ApplicationHandler for App {
                 // gamepad: d-pad / left stick moves, A (cross) selects, B backs — PORT-DEVIATION D10
                 // (PORT-DEVIATIONS.md) [the FE reads no pad, event pump 0x529700]
                 self.gamepads.poll(&mut self.input);
+                // tvOS: the on-screen keyboard's A / Y, and nothing of the pad while it is up (TVOS.md)
+                #[cfg(target_os = "tvos")]
+                crate::tvos::text_pad(self);
                 if self.gamepads.take_pad_hotplug() {
                     self.pad_layout_if_untouched();
+                    // TVOS.md Stage 5.5: the last pad going away mid-race pauses it
+                    self.pad_hotplug_pause();
                 }
                 if nfs_game::config::cfg().nfs_ff_test.is_set() {
                     self.gamepads.rumble_test_tick();
@@ -737,6 +714,10 @@ impl ApplicationHandler for App {
                 // timers, so the `b` of 0x4D2970 comes from the keyboard only and no pad button
                 // goes back on a layout screen. (The pad's other keys are the port's own on both.)
                 let text_menu = self.fe.layout_preview.is_none();
+                // tvOS (TVOS.md, no keyboard): the pad's B / the Siri Remote's Menu is the front end's Esc, and
+                // A (Y for a chat box) on a field that takes text opens the on-screen keyboard instead
+                #[cfg(target_os = "tvos")]
+                let pad_back = !text_menu && self.input.pad_menu.contains(&nfs_input::MenuNav::Back);
                 let mut keys: Vec<MenuKey> = self
                     .input
                     .pad_menu
@@ -759,6 +740,14 @@ impl ApplicationHandler for App {
                 // not while a binding row listens (0x51C4E0): the button is the row's capture
                 if self.fe_input_swallowed() || self.fe.binding_base.is_some() {
                     keys.clear();
+                }
+                #[cfg(target_os = "tvos")]
+                if pad_back && !self.fe_input_swallowed() && self.fe.binding_base.is_none() && self.fe.dialog.is_none() {
+                    self.fe_key_code(0x1B, event_loop);
+                    if let Some(w) = &self.window {
+                        w.request_redraw();
+                    }
+                    return;
                 }
                 // PAD-HANG2: a frame that ends early asks for the next one itself. The frames run as a
                 // chain (each `draw_frame` asks for the next redraw), and this redraw has used up the
@@ -806,8 +795,13 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested if event_loop.exiting() => {}
             WindowEvent::RedrawRequested => {
                 self.gamepads.poll(&mut self.input);
+                // tvOS: the on-screen keyboard's A / Y, and nothing of the pad while it is up (TVOS.md)
+                #[cfg(target_os = "tvos")]
+                crate::tvos::text_pad(self);
                 if self.gamepads.take_pad_hotplug() {
                     self.pad_layout_if_untouched();
+                    // TVOS.md Stage 5.5: the last pad going away mid-race pauses it
+                    self.pad_hotplug_pause();
                 }
                 // PAD-HANG: a force-feedback device connected after the race armed (a Bluetooth
                 // pad's discovery ends after the arm, or the player switches one on) is armed now

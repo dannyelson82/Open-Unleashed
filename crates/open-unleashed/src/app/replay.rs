@@ -468,7 +468,7 @@ impl App {
     /// The first free `Replay<n>` (n from 1) among the saved replays: the pad's save name when the field
     /// is empty. A port-side name (the original pre-fills nothing; its own default is `replay.rpl`, the
     /// automatic save of every race, which a manual save must not overwrite unasked).
-    fn default_replay_name(&self) -> String {
+    pub(crate) fn default_replay_name(&self) -> String {
         (1..)
             .map(|n| format!("Replay{n}"))
             .find(|name| !self.replay_file(name).exists() && !self.replay_file(name).with_extension("rpl").exists())

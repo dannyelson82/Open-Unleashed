@@ -207,6 +207,13 @@ impl LayoutScreen {
         Some(self.edits.remove(&index).unwrap_or_default())
     }
 
+    /// What input box `index` holds now (empty when nothing was typed), and its accessor's name — for a
+    /// platform text prompt (tvOS on-screen keyboard, TVOS.md).
+    pub fn edit_state(&self, index: usize) -> (String, Option<String>) {
+        let accessor = self.layout.elements.get(index).and_then(|e| e.get("accessor")).map(str::to_string);
+        (self.edits.get(&index).cloned().unwrap_or_default(), accessor)
+    }
+
     /// Type `text` into the input box bound to `accessor`, a character at a time through
     /// [`Self::type_char`] (diagnostic: `NFS_FE_KEYS`'s `type:`).
     pub fn type_into(&mut self, accessor: &str, text: &str) {
