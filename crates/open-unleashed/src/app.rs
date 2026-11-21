@@ -6,6 +6,7 @@ mod debug_menu;
 mod text_entry;
 mod lifecycle;
 pub(crate) mod overlay;
+pub(crate) mod extras_ui;
 #[cfg_attr(not(target_os = "tvos"), allow(unused_imports))]
 pub(crate) use text_entry::{TextRequest, TextTarget};
 mod menu;
@@ -603,6 +604,8 @@ pub(crate) struct App {
     pub(crate) net_notice: Option<u32>,
     /// PORT-DEVIATION D46: photo mode's state (`photo.rs`)
     pub(crate) photo: photo::PhotoState,
+    /// PORT-DEVIATION: the Extras menu, when it is up over the pause menu (`extras_ui.rs`)
+    pub(crate) extras_ui: Option<extras_ui::ExtrasUi>,
     /// the box up is `[0x60C9FC]` (Spacebar byte 1, 0x4250BF) — the pause action's 18190 — not
     /// `[0x60C9C0]` (byte 0, 0x4251D5): Space closes it (0x42A3D0) and its hints show both keys
     pub(crate) net_notice_space: bool,

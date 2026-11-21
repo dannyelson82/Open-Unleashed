@@ -344,6 +344,10 @@ thread_local! {
 thread_local! {
     /// The render target's size in pixels, for [`Hud::place`] / [`Hud::anchor`] (see [`Hud::set_screen`]).
     pub(crate) static HUD_PX: std::cell::Cell<(u32, u32)> = const { std::cell::Cell::new((640, 480)) };
+    /// the render target's real size (HUD_PX is it divided by the HUD size factor)
+    pub(crate) static HUD_REAL_PX: std::cell::Cell<(u32, u32)> = const { std::cell::Cell::new((640, 480)) };
+    /// the HUD size factor (Extras › HUD size; 1 = the original)
+    pub(crate) static HUD_SCALE: std::cell::Cell<f32> = const { std::cell::Cell::new(1.0) };
 }
 
 thread_local! {
@@ -706,4 +710,9 @@ impl App {
         let stored = cache.cfg.as_ref().and_then(|c| c.find(layout, w, h).map(|i| c.stored_positions(i)));
         Hud::set_stored(layout, stored);
     }
+}
+
+/// Extras › HUD size (`app/extras_ui.rs`).
+pub(crate) fn set_hud_scale(s: f32) {
+    Hud::set_scale(s);
 }

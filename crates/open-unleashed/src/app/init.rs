@@ -498,6 +498,7 @@ impl App {
             exchange_tick_at: Instant::now(),
             net_notice: None,
             photo: Default::default(),
+            extras_ui: None,
             net_notice_space: false,
             net_lag_box: false,
             num_laps: launch.laps,

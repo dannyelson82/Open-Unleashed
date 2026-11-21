@@ -368,7 +368,24 @@ impl Hud {
     /// Tell the HUD the render target's size in pixels (the game's resolution, the window's
     /// physical framebuffer).
     pub(crate) fn set_screen(w: u32, h: u32) {
-        HUD_PX.with(|c| c.set((w.max(1), h.max(1))));
+        HUD_REAL_PX.with(|c| c.set((w.max(1), h.max(1))));
+        let s = HUD_SCALE.with(|c| c.get()).max(1.0);
+        // PORT-DEVIATION (HUD size, `extras.rs`): the HUD lays itself out on a screen `s` times smaller and the
+        // result is mapped onto the real one — every element `s` times larger, the original's edge anchoring
+        // (0x41E480) kept against the real edges. `s` = 1 is the original's constant pixels.
+        HUD_PX.with(|c| c.set((((w as f32 / s) as u32).max(640), ((h as f32 / s) as u32).max(480))));
+    }
+
+    /// The HUD size factor (`HudSize::scale`); re-lays the current screen.
+    pub(crate) fn set_scale(s: f32) {
+        HUD_SCALE.with(|c| c.set(s.clamp(1.0, 3.0)));
+        let (w, h) = HUD_REAL_PX.with(|c| c.get());
+        Self::set_screen(w, h);
+    }
+
+    /// The HUD size factor in use.
+    pub(crate) fn scale() -> f32 {
+        HUD_SCALE.with(|c| c.get())
     }
 
     /// Where the 640 × 480 design screen's top-left corner lies on the render target:
