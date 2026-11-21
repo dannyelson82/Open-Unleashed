@@ -180,6 +180,18 @@ fn shell() -> OuShellCallbacks {
     SHELL.with(|s| s.get()).unwrap_or(OuShellCallbacks { launched: None, engine_error: None, text_prompt: None })
 }
 
+/// Stage 7.3, render resolution: the UIKit view's content scale decides how many pixels the Metal surface has
+/// (1080p logical × scale) and the system scales the picture to the TV's mode. `NFS_RENDER_SCALE` (set by the
+/// shell from the Display setting): `1` = 1080p, `1.5` = 1440p, `2` = native 4K; unset = the screen's own.
+pub(crate) fn apply_render_scale(window: &Window) {
+    use winit::platform::ios::WindowExtIOS;
+    let Some(s) = std::env::var("NFS_RENDER_SCALE").ok().and_then(|v| v.parse::<f64>().ok()) else { return };
+    let s = s.clamp(1.0, 2.0);
+    window.set_scale_factor(s);
+    let px = window.inner_size();
+    tracing::info!(scale = s, width = px.width, height = px.height, "tvOS: render scale (surface pixels)");
+}
+
 /// The tvOS `run`: the event loop first, the `App` when the data is there.
 pub(crate) fn run() -> Result<()> {
     let event_loop = new_event_loop(false)?;

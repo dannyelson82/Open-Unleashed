@@ -43,7 +43,7 @@ impl App {
     /// After a pad hot-plug: the race pauses when the last pad went away mid-race (the keyboard / Siri Remote
     /// can't race on tvOS; on the Mac the keyboard could, but a pad vanishing mid-corner is still worth a pause).
     pub(crate) fn pad_hotplug_pause(&mut self) {
-        let now = self.gamepads.records().len();
+        let now = self.gamepads.racing_pad_count();
         let before = PADS_SEEN.swap(now, Ordering::Relaxed);
         if before != usize::MAX && now < before {
             self.request_pause("controller disconnected");

@@ -5,6 +5,7 @@ use crate::*;
 mod debug_menu;
 mod text_entry;
 mod lifecycle;
+pub(crate) mod overlay;
 #[cfg_attr(not(target_os = "tvos"), allow(unused_imports))]
 pub(crate) use text_entry::{TextRequest, TextTarget};
 mod menu;
