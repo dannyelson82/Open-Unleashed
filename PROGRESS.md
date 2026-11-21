@@ -62,6 +62,7 @@ Choices made without asking (per your instruction); each is easy to change.
 18. **Siri Remote Menu never leaves the app** (Apple's guideline wants Menu at the top level to go Home; for a sideloaded personal build the game's own "back"/exit question is more useful). Home (TV button) still leaves.
 19. **On-screen keyboard opens by itself** when a text field becomes active (once per field); a chat box only on Y, since it is always focused.
 21. **Render resolution via the view's content scale** (system upscales) instead of an engine render target — default native until measured on the device.
+23. **Unsigned .ipa** for atvloadly (it signs with its own Apple ID) — nothing needs your Apple ID on the Mac.
 22. **Siri Remote not counted as a racing pad** (matched by name "remote").
 20. **Pause on controller loss also on the Mac** (the shared `request_pause`; the keyboard could keep racing, but a pad vanishing mid-corner is worth a pause).
 
@@ -91,6 +92,8 @@ Choices made without asking (per your instruction); each is easy to change.
 | 7.2 60 Hz display criteria | — | 🟡 requested on scene activation (only acts with Match Frame Rate on) | 📺 |
 | 7.3 Render resolution (`-ou.renderScale 1/1.5/2`) | — | ✅ surface 1760×960 / 2640×1440 / 3520×1920. Note: the window is 1760×960 points, not 1920×1080 — a TV safe-area inset in winit's window? To check (safe-area enhancement) | 📺 pick the default by measuring |
 | 7.4–7.5 Shader stutter, Instruments profiling | — | — | 📺 |
+| 8 `.ipa` for atvloadly (`scripts/export-ipa.sh`) | — | ✅ unsigned device build → `target/tvos/OpenUnleashed.ipa` (5.5 MB, checked: no game files) | 📺 install via atvloadly; check refresh keeps Caches + UserDefaults |
+| 8 atvloadly docs (TVOS.md) | ✅ | — | — |
 | 5 Xbox/PlayStation pads via SDL's GameController driver, rumble | — | — | 📺 (no pads in the Simulator) |
 | 6.3 Lifecycle | — | ✅ Home/other app mid-race → race pauses ("app in background"), audio stream stops; back → audio restarts, pause menu shown, no crash; saves mirrored on background | 📺 |
 
@@ -124,8 +127,7 @@ Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, e
 Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-local; `colima start` / `colima stop`).
 
 ## Next (in order, not started)
-1. Stage 8: `scripts/export-ipa.sh` (an unsigned device build zipped as `Payload/OpenUnleashed.app` → `.ipa` for atvloadly) + atvloadly docs in TVOS.md.
-2. Stage 9 item 0: Extras settings menu + `extras.json` (switches for the overlay, render scale, etc.).
+1. Stage 9 item 0: Extras settings menu + `extras.json` (switches for the overlay, render scale, etc.).
 3. Server clients in the engine: save sync (phase 2) and lobby (phase 3).
 4. Remaining enhancements 1–11 and the AirPods plan (incl. Mac head-look), LAN multiplayer test.
 
