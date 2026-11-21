@@ -1,0 +1,16 @@
+# ou-server image build context: sources only. Never any game file.
+target
+**/target
+game-data
+game
+GameData
+FEData
+**/*.bin
+**/*.cue
+**/*.iso
+**/*.viv
+**/*.exe
+platform
+packaging/brand
+.git
+**/.DS_Store
