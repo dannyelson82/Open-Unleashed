@@ -185,7 +185,8 @@ fn shell() -> OuShellCallbacks {
 /// shell from the Display setting): `1` = 1080p, `1.5` = 1440p, `2` = native 4K; unset = the screen's own.
 pub(crate) fn apply_render_scale(window: &Window) {
     use winit::platform::ios::WindowExtIOS;
-    let Some(s) = std::env::var("NFS_RENDER_SCALE").ok().and_then(|v| v.parse::<f64>().ok()) else { return };
+    // the shell's launch setting wins, else Extras › Render resolution
+    let Some(s) = std::env::var("NFS_RENDER_SCALE").ok().and_then(|v| v.parse::<f64>().ok()).or_else(|| nfs_game::extras::get().display.render_scale.factor()) else { return };
     let s = s.clamp(1.0, 2.0);
     window.set_scale_factor(s);
     let px = window.inner_size();

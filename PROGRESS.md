@@ -62,6 +62,8 @@ Choices made without asking (per your instruction); each is easy to change.
 18. **Siri Remote Menu never leaves the app** (Apple's guideline wants Menu at the top level to go Home; for a sideloaded personal build the game's own "back"/exit question is more useful). Home (TV button) still leaves.
 19. **On-screen keyboard opens by itself** when a text field becomes active (once per field); a chat box only on Y, since it is always focused.
 21. **Render resolution via the view's content scale** (system upscales) instead of an engine render target — default native until measured on the device.
+24. **HUD size by a smaller "virtual screen"** for the HUD's layout: every element scales, the original's anchoring rules run unchanged; default Original on both platforms for now (the plan suggests Large on tvOS — decide on the TV).
+25. **Extras opened from the pause menu first** (the race HUD's text drawing exists there); the main-menu entry follows.
 23. **Unsigned .ipa** for atvloadly (it signs with its own Apple ID) — nothing needs your Apple ID on the Mac.
 22. **Siri Remote not counted as a racing pad** (matched by name "remote").
 20. **Pause on controller loss also on the Mac** (the shared `request_pause`; the keyboard could keep racing, but a pad vanishing mid-corner is worth a pause).
@@ -94,6 +96,15 @@ Choices made without asking (per your instruction); each is easy to change.
 | 7.4–7.5 Shader stutter, Instruments profiling | — | — | 📺 |
 | 8 `.ipa` for atvloadly (`scripts/export-ipa.sh`) | — | ✅ unsigned device build → `target/tvos/OpenUnleashed.ipa` (5.5 MB, checked: no game files) | 📺 install via atvloadly; check refresh keeps Caches + UserDefaults |
 | 8 atvloadly docs (TVOS.md) | ✅ | — | — |
+
+### Stage 9 — enhancements
+| Item | macOS | tvOS Simulator | Apple TV |
+|---|---|---|---|
+| 0 Extras menu + `extras.json` (`nfs_game::extras`, `app/extras_ui.rs`) | ✅ pause menu's last item "extras"; pages/rows with value, explanation, "applies now/at next start", reset page; arrows/d-pad; saved + reloaded (tests); `extras.json` is in the tvOS save mirror | ✅ (same code; settings file read at start) | 📺 pad/remote navigation |
+| 0 Extras from the main menu (pad View / F12 / Siri Remote Play/Pause) | ⬜ the front end has no HUD font object yet — needs its own text path | ⬜ | 📺 |
+| 2.2 HUD size Original / Large (1.5×) / Extra large (2×) | ✅ (pointer hover follows) | ✅ screenshots: every element scaled, original edge anchoring kept, nothing clipped | 📺 couch check on a 55″ TV |
+| 7.1 Frame-time overlay switch in Extras | ✅ | ✅ | — |
+| 7.3 Render resolution in Extras (tvOS only) | — | ✅ row shown on tvOS only; read at window creation | 📺 |
 | 5 Xbox/PlayStation pads via SDL's GameController driver, rumble | — | — | 📺 (no pads in the Simulator) |
 | 6.3 Lifecycle | — | ✅ Home/other app mid-race → race pauses ("app in background"), audio stream stops; back → audio restarts, pause menu shown, no crash; saves mirrored on background | 📺 |
 

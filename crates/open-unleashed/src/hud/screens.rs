@@ -473,14 +473,16 @@ impl Hud {
     /// `HPauseMenu`'s three buttons' top-left corners (0x42A482…0x42A587).
     /// PORT-DEVIATION D46: a fourth button, one step under quit, is the photo-mode item (`App::pause_items`);
     /// the original's three keep their places.
-    pub(crate) fn pause_buttons() -> [(f32, f32); 4] {
+    pub(crate) fn pause_buttons() -> [(f32, f32); 5] {
         let (bw, bh) = HUD_BUTTON;
         let step = bh * 1.6;
         let y0 = (HUD_REF_H / 2.0 - step * 3.0 * 0.5).trunc();
         let y1 = (y0 + step).trunc();
         let x = HUD_REF_W / 2.0 - bw / 2.0;
         let y2 = (y1 + step).trunc();
-        [(x, y0), (x, y1), (x, y2), (x, (y2 + step).trunc())]
+        // PORT-DEVIATION D46 / Extras: the port's items under the original's three
+        let y3 = (y2 + step).trunc();
+        [(x, y0), (x, y1), (x, y2), (x, y3), (x, (y3 + step).trunc())]
     }
 
     /// `HYesNoOverlay`'s yes / no buttons, two `ftol`'d steps under its two text lines (0x437482…

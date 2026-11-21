@@ -57,6 +57,12 @@ impl App {
     /// d-pad / left stick and A, pick and answer its buttons; `HButtonVisual` picks by the cursor
     /// only, 0x41B3BA…0x41B3CE).
     pub(crate) fn pause_menu_key(&mut self, key: MenuKey, event_loop: &ActiveEventLoop) {
+        // PORT-DEVIATION: the Extras menu takes the keys while it is up
+        if self.extras_ui.is_some() {
+            self.extras_key(key);
+            return;
+        }
+        let extras_item = self.pause_items() as u8 - 1;
         match key {
             MenuKey::Up | MenuKey::Left => match self.pause_confirm.as_mut() {
                 Some(c) => *c = 0,
@@ -84,6 +90,7 @@ impl App {
                         self.restart_race(event_loop);
                     }
                 }
+                (None, k) if k == extras_item => self.extras_open(),
                 (None, 3) => {
                     // PORT-DEVIATION D46: the pause menu's photo-mode item
                     self.photo_enter();
@@ -567,7 +574,9 @@ impl ApplicationHandler for App {
                 let scale = self.window.as_ref().map_or(1.0, |w| w.scale_factor());
                 self.fe.cursor = if race_hud {
                     let (ox, oy) = Hud::origin();
-                    Some(((position.x / scale) as f32 - ox, (position.y / scale) as f32 - oy))
+                    // the HUD size factor (Extras): the HUD's pixels are that many window points
+                    let hs = Hud::scale() as f64;
+                    Some(((position.x / scale / hs) as f32 - ox, (position.y / scale / hs) as f32 - oy))
                 } else { self.window.as_ref().map(|w| {
                     let size = w.inner_size();
                     let (sw, sh) = (size.width.max(1) as f32, size.height.max(1) as f32);

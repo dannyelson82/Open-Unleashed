@@ -974,9 +974,15 @@ impl App {
         if !self.paused || self.photo.active {
             return;
         }
-        // PORT-DEVIATION D46: the pause menu's fourth item (photo mode) when it is offered
+        // PORT-DEVIATION: the Extras menu in the pause menu's place while it is up
+        if self.extras_ui.is_some() {
+            *hud_hover = Some(None);
+            self.extras_sprites();
+            return;
+        }
+        // PORT-DEVIATION D46: the pause menu's fourth item (photo mode) when it is offered, then Extras
         let pause_items = self.pause_items();
-        let photo_label = (pause_items == 4).then(|| self.photo_item_label());
+        let photo_label = (pause_items == 5).then(|| self.photo_item_label());
         let Some(h) = self.hud.as_ref().filter(|h| h.font.is_some()) else { return };
         let strings = &self.fe.strings;
         let fe = move |id: u32| strings.hud(id).unwrap_or_default();
@@ -1006,6 +1012,7 @@ impl App {
                 if let Some(l) = photo_label.as_deref() {
                     labels.push(l);
                 }
+                labels.push("extras");
                 h.pause_sprites(out, aspect, &bb, &labels, self.pause_sel as usize, pressed);
             }
             Some(sel) => {

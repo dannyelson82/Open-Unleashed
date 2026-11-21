@@ -284,9 +284,11 @@ impl App {
     }
 
     /// PORT-DEVIATION D46: how many buttons the pause menu has — `HPauseMenu`'s three (0x42A440), plus the photo-mode
-    /// item when photo mode can be entered from the menu (not in a network race).
+    /// item when photo mode can be entered from the menu (not in a network race), plus Extras.
     pub(crate) fn pause_items(&self) -> usize {
-        if self.paused && self.pause_confirm.is_none() && self.photo_entry() == Some(PhotoEntry::Pause) { 4 } else { 3 }
+        // + the Extras item, always last (PORT-DEVIATION, `extras_ui.rs`)
+        let photo = self.paused && self.pause_confirm.is_none() && self.photo_entry() == Some(PhotoEntry::Pause);
+        3 + usize::from(photo) + 1
     }
 
     /// The pause menu's photo-mode button caption (the port's own string).
@@ -388,6 +390,8 @@ impl App {
                 "enter" => Some(KeyCode::Enter),
                 "up" => Some(KeyCode::ArrowUp),
                 "down" => Some(KeyCode::ArrowDown),
+                "left" => Some(KeyCode::ArrowLeft),
+                "right" => Some(KeyCode::ArrowRight),
                 other => {
                     tracing::warn!(tok = other, "NFS_RACE_KEYS: unknown token");
                     None
@@ -398,6 +402,9 @@ impl App {
                     let key = match code {
                         KeyCode::ArrowUp => Some(MenuKey::Up),
                         KeyCode::ArrowDown => Some(MenuKey::Down),
+                        KeyCode::ArrowLeft => Some(MenuKey::Left),
+                        KeyCode::ArrowRight => Some(MenuKey::Right),
+                        KeyCode::Escape => Some(MenuKey::Back),
                         KeyCode::Enter => Some(MenuKey::Enter),
                         _ => None,
                     };
