@@ -953,6 +953,14 @@ impl Gamepads {
         out.extend(d.list.iter().map(Device::record));
     }
 
+    /// Connected devices a race can be driven with: every pad except an Apple TV **Siri Remote** (SDL lists the
+    /// remote as a joystick, but it can't race). Platform glue for tvOS's "connect a controller" notice and the
+    /// pause when the last pad goes (TVOS.md).
+    pub fn racing_pad_count(&self) -> usize {
+        let Some(d) = self.devices.as_ref() else { return 0 };
+        d.list.iter().filter(|x| !x.name.to_ascii_lowercase().contains("remote")).count()
+    }
+
     /// The connected devices' axis sets, in connection order — what `NFS5.DEADZONE` draws from.
     /// `[rec+4+4n]` is the **device's** own reading, not the accessor's: the image sets no
     /// `DIPROP_RANGE` (0x56FD70's only `SetProperty` is `DIPROP_BUFFERSIZE`), so an absolute axis

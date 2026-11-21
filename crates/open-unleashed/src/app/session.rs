@@ -36,6 +36,9 @@ impl App {
                     // 2026-09-29: the `NFS_PLAY_INTRO=1` walk left one up ~10s).
                     .with_visible(!scripted);
                 let window = Arc::new(event_loop.create_window(attrs).expect("window"));
+                // tvOS: the render resolution (Stage 7.3) is the view's pixel scale, set before the surface is made
+                #[cfg(target_os = "tvos")]
+                crate::tvos::apply_render_scale(&window);
                 let renderer = Renderer::new(window.clone()).expect("renderer");
                 (window, renderer)
             }

@@ -20,6 +20,10 @@ final class Shell {
         try? FileManager.default.createDirectory(at: saveDir, withIntermediateDirectories: true)
         setenv("NFS5_GAME_PATH", gameDir.path, 1)
         setenv("NFS5_DATA_DIR", saveDir.path, 1)
+        // frame-time overlay (Stage 7.1) until the Extras menu has the switch: `-ou.fpsOverlay YES`
+        if UserDefaults.standard.bool(forKey: "ou.fpsOverlay") { setenv("NFS_FPS_OVERLAY", "1", 1) }
+        DisplayMode.exportRenderScale()
+        AudioSetup.configure()
         NSLog("OpenUnleashed: game data %@, saves %@", gameDir.path, saveDir.path)
     }
 
@@ -107,6 +111,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         ou_app_foreground()
+        for w in (scene as? UIWindowScene)?.windows ?? [] { DisplayMode.request60Hz(on: w) }
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		21737664A999AE02BE8CEC29 /* AudioDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D853CB8DCAE931F5EDF3690 /* AudioDisplay.swift */; };
 		32139F157CC7801B78C841C7 /* ServerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00B5534C94C680C0FD17C5B /* ServerClient.swift */; };
 		5CDCE500CE20CFDFC0FD24FD /* GameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7BAC9333C818674CEE00870 /* GameStore.swift */; };
 		763D16EE45684CF2385845A0 /* Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = A267AFA0CFD493B179B3E243 /* Shell.swift */; };
@@ -18,6 +19,7 @@
 
 /* Begin PBXFileReference section */
 		122F654BC474259CF43A70D0 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		1D853CB8DCAE931F5EDF3690 /* AudioDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDisplay.swift; sourceTree = "<group>"; };
 		4D42B09C075E16229EE31B8E /* Bonjour.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bonjour.swift; sourceTree = "<group>"; };
 		7FE33CDB731467D5403E4DDE /* OpenUnleashed-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OpenUnleashed-Bridging-Header.h"; sourceTree = "<group>"; };
 		97558A36196C41A7E289C416 /* OpenUnleashed.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OpenUnleashed.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -33,6 +35,7 @@
 		10912F4FE965FFA4A3177042 /* OpenUnleashed */ = {
 			isa = PBXGroup;
 			children = (
+				1D853CB8DCAE931F5EDF3690 /* AudioDisplay.swift */,
 				4D42B09C075E16229EE31B8E /* Bonjour.swift */,
 				EB6884F0FEE12204803634A6 /* GameDataViewController.swift */,
 				E7BAC9333C818674CEE00870 /* GameStore.swift */,
@@ -121,6 +124,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				21737664A999AE02BE8CEC29 /* AudioDisplay.swift in Sources */,
 				FB04D7802EB74F7261D65B4D /* Bonjour.swift in Sources */,
 				913E96BC4101262D1A3E1056 /* GameDataViewController.swift in Sources */,
 				5CDCE500CE20CFDFC0FD24FD /* GameStore.swift in Sources */,

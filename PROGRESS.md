@@ -5,7 +5,7 @@ Status of every stage of `openunleashed-tvos-prompt.md` (+ `enhancements-plan.md
 
 Legend: ✅ done & verified · 🟡 partly / done but unverified · ⛔ blocked · 📺 **needs Apple TV** (real device, from Wednesday) · — not applicable
 
-_Last updated: 2026-11-21_
+_Last updated: 2026-11-21 (session paused: usage limit)_
 
 ## Environment (this Mac)
 | Item | State |
@@ -61,6 +61,8 @@ Choices made without asking (per your instruction); each is easy to change.
 17. **B / Menu = back on tvOS only**: the original's front end reads no pad; the Mac keeps that (authentic), tvOS needs a back button.
 18. **Siri Remote Menu never leaves the app** (Apple's guideline wants Menu at the top level to go Home; for a sideloaded personal build the game's own "back"/exit question is more useful). Home (TV button) still leaves.
 19. **On-screen keyboard opens by itself** when a text field becomes active (once per field); a chat box only on Y, since it is always focused.
+21. **Render resolution via the view's content scale** (system upscales) instead of an engine render target — default native until measured on the device.
+22. **Siri Remote not counted as a racing pad** (matched by name "remote").
 20. **Pause on controller loss also on the Mac** (the shared `request_pause`; the keyboard could keep racing, but a pad vanishing mid-corner is worth a pause).
 
 ## Stage status
@@ -82,7 +84,13 @@ Choices made without asking (per your instruction); each is easy to change.
 | 5 Text entry (profile name, address, replay name, input dialogs, chat) | ✅ Mac unchanged (Return now goes through one shared function) | ✅ native tvOS keyboard prompt opens by itself on "create player" ("Player name", up to 8 characters); A (Y on a chat box) reopens it. Typing + OK needs a person | 📺 |
 | 5 Pointer hidden | — | ✅ parked outside the screen: no pointer, no hover tooltips | 📺 |
 | 5 Pause when the last controller disconnects mid-race | ✅ (shared `request_pause`) | 🟡 code path shared with the background pause (verified); hot-unplug not possible in the Simulator | 📺 |
-| 5 "Connect a controller" prompt | ⬜ next | ⬜ | 📺 |
+| 5 "Connect a controller" notice | — | 🟡 drawn in a race when no racing pad is connected (Siri Remote excluded); not visible in the Simulator, which provides a virtual "Gamepad" | 📺 |
+| 6.1 AVAudioSession (playback, multichannel declared) | — | ✅ set before the engine opens audio (Simulator: Speaker, 2/2 channels) | 📺 channel count with your TV/receiver/AirPods |
+| 6.2 Intro movies | ✅ skipped cleanly (no `nfs5.exe`) | ✅ same | — |
+| 7.1 Frame-time overlay (`NFS_FPS_OVERLAY=1`, tvOS `-ou.fpsOverlay YES`) | ✅ | ✅ shows fps / avg / worst / budget (Simulator 60.0 fps — not representative) | 📺 real numbers |
+| 7.2 60 Hz display criteria | — | 🟡 requested on scene activation (only acts with Match Frame Rate on) | 📺 |
+| 7.3 Render resolution (`-ou.renderScale 1/1.5/2`) | — | ✅ surface 1760×960 / 2640×1440 / 3520×1920. Note: the window is 1760×960 points, not 1920×1080 — a TV safe-area inset in winit's window? To check (safe-area enhancement) | 📺 pick the default by measuring |
+| 7.4–7.5 Shader stutter, Instruments profiling | — | — | 📺 |
 | 5 Xbox/PlayStation pads via SDL's GameController driver, rumble | — | — | 📺 (no pads in the Simulator) |
 | 6.3 Lifecycle | — | ✅ Home/other app mid-race → race pauses ("app in background"), audio stream stops; back → audio restarts, pause menu shown, no crash; saves mirrored on background | 📺 |
 
@@ -114,6 +122,12 @@ Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, e
 | Phase 4 (dedicated host, EA lobby revival) | ⬜ research only, not started |
 
 Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-local; `colima start` / `colima stop`).
+
+## Next (in order, not started)
+1. Stage 8: `scripts/export-ipa.sh` (an unsigned device build zipped as `Payload/OpenUnleashed.app` → `.ipa` for atvloadly) + atvloadly docs in TVOS.md.
+2. Stage 9 item 0: Extras settings menu + `extras.json` (switches for the overlay, render scale, etc.).
+3. Server clients in the engine: save sync (phase 2) and lobby (phase 3).
+4. Remaining enhancements 1–11 and the AirPods plan (incl. Mac head-look), LAN multiplayer test.
 
 ## Needs Apple TV
 - Stage 3: install + launch on the device; check winit/UIKit behaviour on real hardware.

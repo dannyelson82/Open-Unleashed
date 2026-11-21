@@ -435,6 +435,7 @@ pub(crate) fn build_app(on_loop: &mut dyn FnMut(bool) -> Result<()>) -> Result<O
     }
     // the `NFS_*` switches are read once from here on (`nfs_game::config`, F4): pin the snapshot after the two `set_var`s above
     nfs_game::config::init();
+    app::overlay::init_overlay_switch();
     let fe_start = if layout_sweep { fe_start.or_else(|| Some("QuickRace".to_string())) } else { fe_start };
     // A plain launch is the original's: main 0x4B6A50 plays the intro movies (0x4DD600, unless
     // NOINTROMOVIES) and enters the front end on `"gamesetup"` (0x4B6C52, `FE_ENTRY`), with the

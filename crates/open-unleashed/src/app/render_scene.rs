@@ -872,6 +872,8 @@ impl App {
         }
         // PORT-DEVIATION D46: photo mode's hint, and the pointer to it on the pause menu / in a replay
         self.photo_hint();
+        // the port's own overlays: frame time, tvOS "connect a controller" (`overlay.rs`)
+        self.port_overlays();
         // `+0x100` for the next release, and sound 9 when the pointer crosses into a button
         // (0x41B3BA…0x41B3C6)
         let hover = hud_hover.flatten();
