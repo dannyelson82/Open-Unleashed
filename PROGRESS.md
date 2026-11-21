@@ -52,6 +52,12 @@ Choices made without asking (per your instruction); each is easy to change.
 8. **Lobby** accepts `?via=tailnet|lan` from the client, because behind Docker NAT the server may not see the device's real address.
 9. **Stand-in bundle ID** `org.openunleashed.tvos` until `<com.yourname.openunleashed>` is given; Simulator default "Apple TV 4K (4th generation)".
 10. **Local Docker**: Colima (Homebrew, no admin rights) instead of Docker Desktop.
+11. **Game Data screen in UIKit** (app shell, Swift) rather than drawn by the engine — the engine can't start without the data; focus engine gives Siri Remote + controller navigation for free.
+12. **Launch check = sizes + a "verified" marker** of the last complete download (no hashing ~0.5 GB per launch); full SHA-256 only while downloading.
+13. **ATS**: `NSAllowsLocalNetworking` + a narrow `ts.net` exception (plain HTTP inside WireGuard) so the tailnet name works even without `tailscale serve` HTTPS; HTTPS is still tried first for `*.ts.net`.
+14. **Save mirror by polling** (every 15 s + on background, size/mtime stamp) instead of a hook in the engine's save code — no engine change; worst case a save made < 15 s before tvOS purges Caches *and* kills the app is lost locally (the server sync will cover it).
+15. **Default server address** `tower.local`; token must be entered once.
+16. **tvOS command line**: the engine ignores `-ou.*` UserDefaults launch arguments (they're the shell's).
 
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
@@ -62,7 +68,11 @@ Choices made without asking (per your instruction); each is easy to change.
 | 2 tvOS cross-compile | ✅ unaffected | ✅ static lib builds (winit 0.30 patched, SDL3 video on for tvOS) | ✅ device static lib (`aarch64-apple-tvos`) builds, and the unsigned device-SDK Xcode build links; signing + install need the team ID and the Apple TV |
 | 3 App shell (Xcode/XcodeGen, `scripts/build-tvos.sh`) | — | ✅ builds, installs, launches on "Apple TV 4K (4th generation)" Simulator, tvOS 27.2 | 📺 |
 | 3 Engine runs | ✅ | ✅ **front end renders** (main menu + profile prompt) and **a race runs** (`alps 993 --opponents 3`: in-car view, HUD, mirror, race clock) from your disc's data copied into the Simulator app's Caches/game; audio output opens (CoreAudio 48 kHz stereo); SDL joystick layer starts | 📺 |
-| 3 "Game data missing" gate | — | 🟡 Stage-3 placeholder screen written (shown when Caches/game is empty); not yet screenshotted | 📺 |
+| 4 Game Data screen (Swift: `GameDataViewController`, `GameStore`, `ServerClient`, `Bonjour`) | — | ✅ fresh install → screen → downloads all 1,593 files (529 MB) from ou-server at ~79 MB/s with overall/per-file progress, SHA-256 per file, then the engine starts (main menu). Killed mid-download (306 MB + 76.5 MB partial) → relaunch completes and verifies. Server/token in UserDefaults, Find on network (Bonjour), Test connection, data-set choice (original/mod sets), clear errors (unreachable / token / disk full / hash mismatch) | 📺 LAN + Tailscale download from tower |
+| 4 Launch check | — | ✅ verified manifest + per-file size check (no hashing on launch) | 📺 |
+| 4 Caches purge → re-download only missing files | — | ⛔ not run: deleting part of the Simulator's Caches was blocked by a safety check (variable path); the code path is the same size check as the launch check. To try: delete a few files under the app's `Library/Caches/game/GameData/Music/` and relaunch | 📺 |
+| 4 Save mirror to NSUserDefaults (`SaveMirror.swift`) | — | 🟡 written (every 15 s + on background, ≤ 400 KB, restore-missing before the engine starts); not exercised yet — no career save exists yet | 📺 |
+| 4 Save sizes | 🟡 estimate from the format: `.sav` ≈ 8 KB missions + 0.36 KB/market part + ~1.7 KB/car ≈ 20–80 KB per profile; `nfs5.trk` 17.9 KB → several profiles fit 400 KB. Exact figure: the mirror logs it on the first real save | — | — |
 
 ### tvOS fixes found in the Simulator (all in TVOS.md)
 1. tvOS 27 SDK **requires the UIScene life cycle** (crash `UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`): scene manifest + Swift `SceneDelegate`; winit's window attaches to the scene; the engine waits for `ou_scene_ready()`.
@@ -86,7 +96,7 @@ Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, e
 | Auth (Bearer / `?token=`), PUID/PGID drop, `--healthcheck` | ✅ |
 | Tests | ✅ `cargo test -p ou-manifest -p ou-server`: 11 passed |
 | Docker image (`tools/ou-server/Dockerfile`, context = repo root) | ✅ built and run locally (Colima, arm64): healthy, runs as UID 99, real game data mounted read-only, mod overlay + save verified |
-| GitHub Actions → `ghcr.io/dannyelson82/ou-server` (`.github/workflows/ou-server-image.yml`, same pattern/pinned actions as ReelHaven) | 🟡 written, YAML-checked; **not run** — see Blockers |
+| GitHub Actions → `ghcr.io/dannyelson82/ou-server` (`.github/workflows/ou-server-image.yml`, same pattern/pinned actions as ReelHaven) | ✅ **published**: fork `github.com/dannyelson82/Open-Unleashed` (branch `tvos-port`), run 44932561662 green (build, smoke test, Trivy, publish); tags `latest`, `edge`, `sha-5a34ce2`; package **public** (Unraid pulls without login). First run failed only on a test bug (process-name match) — fixed |
 | Unraid template `packaging/unraid/ou-server.xml` (all under `/mnt/user/appdata/ou-server`) | ✅ written, XML-checked; you add the container yourself |
 | Compose file, Bonjour (avahi service file), Tailscale (a/b, `tailscale serve` HTTPS) docs | ✅ |
 | Phase 4 (dedicated host, EA lobby revival) | ⬜ research only, not started |
@@ -98,7 +108,4 @@ Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-loc
 - Signing (also needs `<MY_APPLE_ID_OR_TEAM>`): device builds, `scripts/build-tvos.sh device`.
 
 ## Blockers
-- **Publishing the image to GHCR needs a GitHub repo of yours.** This clone's `origin` is upstream
-  (`Second-Boot/Open-Unleashed`). The workflow runs once the branch is pushed to e.g. `github.com/dannyelson82/Open-Unleashed`
-  (a fork); the Unraid template's icon/template URLs assume that name. Creating the fork and pushing is outward-facing, so
-  it's waiting for your OK (and `gh`/credentials — no GitHub login is set up on this Mac).
+- (resolved) GHCR publishing — fork created and image published after your OK.

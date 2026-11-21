@@ -23,72 +23,48 @@ final class Shell {
         NSLog("OpenUnleashed: game data %@, saves %@", gameDir.path, saveDir.path)
     }
 
-    /// Both folders the engine needs are present.
-    static var gameDataPresent: Bool {
-        let fm = FileManager.default
+    /// The data is ready: a complete, verified download (or, for development only, data copied in by
+    /// `scripts/build-tvos.sh sim --data` with the launch argument `-ou.trustLocalData YES`).
+    static var gameDataReady: Bool {
+        if GameStore.isReady { return true }
+        guard UserDefaults.standard.bool(forKey: "ou.trustLocalData") else { return false }
         var isDir: ObjCBool = false
         return ["GameData", "FEData"].allSatisfy {
-            fm.fileExists(atPath: gameDir.appendingPathComponent($0).path, isDirectory: &isDir) && isDir.boolValue
+            FileManager.default.fileExists(atPath: gameDir.appendingPathComponent($0).path, isDirectory: &isDir) && isDir.boolValue
         }
     }
 
     private var gateWindow: UIWindow?
 
-    /// UIKit is up (the engine's first `resumed`).
+    /// UIKit is up and the scene is connected (the engine's first `resumed`).
     func launched() {
-        if Shell.gameDataPresent {
+        SaveMirror.restoreMissing()
+        SaveMirror.startWatching()
+        if Shell.gameDataReady {
             ou_data_ready()
         } else {
-            showGate(error: nil)
+            showGameData(error: nil)
         }
     }
 
-    /// The engine refused the data: back to the gate with the message.
+    /// The engine refused the data: back to the Game Data screen with the message.
     func engineError(_ message: String) {
-        showGate(error: message)
+        showGameData(error: message)
     }
 
-    /// Stage 3 placeholder for the Game Data screen (Stage 4): explains what is missing.
-    private func showGate(error: String?) {
+    private func showGameData(error: String?) {
         let window = gateWindow ?? (SceneDelegate.scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds))
-        let vc = GateViewController()
+        let vc = GameDataViewController()
         vc.errorText = error
+        vc.onReady = { [weak self] in
+            // hand the screen to the engine's window
+            self?.gateWindow?.isHidden = true
+            self?.gateWindow = nil
+            ou_data_ready()
+        }
         window.rootViewController = vc
         window.makeKeyAndVisible()
         gateWindow = window
-    }
-}
-
-/// "Game data missing" screen.
-final class GateViewController: UIViewController {
-    var errorText: String?
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .black
-        let title = UILabel()
-        title.text = "OpenUnleashed"
-        title.font = .systemFont(ofSize: 72, weight: .bold)
-        title.textColor = .white
-        let body = UILabel()
-        body.numberOfLines = 0
-        body.textAlignment = .center
-        body.textColor = UIColor(white: 0.8, alpha: 1)
-        body.font = .systemFont(ofSize: 34)
-        var text = "Game data missing.\n\nThe original GameData and FEData folders of your own copy are needed in\n\(Shell.gameDir.path)"
-        if let e = errorText { text += "\n\nThe engine could not start:\n\(e)" }
-        body.text = text
-        let stack = UIStackView(arrangedSubviews: [title, body])
-        stack.axis = .vertical
-        stack.alignment = .center
-        stack.spacing = 40
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            stack.widthAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.widthAnchor),
-        ])
     }
 }
 
@@ -100,5 +76,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         SceneDelegate.scene = scene as? UIWindowScene
         ou_scene_ready()
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        SaveMirror.mirror()
     }
 }
