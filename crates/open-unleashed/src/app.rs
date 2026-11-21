@@ -3,6 +3,10 @@
 
 use crate::*;
 mod debug_menu;
+mod text_entry;
+mod lifecycle;
+#[cfg_attr(not(target_os = "tvos"), allow(unused_imports))]
+pub(crate) use text_entry::{TextRequest, TextTarget};
 mod menu;
 mod fe_lists;
 mod fe_colour;

@@ -52,6 +52,28 @@ final class Shell {
         showGameData(error: message)
     }
 
+    /// The engine wants text (profile name, address, replay name…): the tvOS keyboard in a prompt over the game.
+    func textPrompt(title: String, current: String, maxLen: Int, secure: Bool) {
+        guard let host = SceneDelegate.scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController
+                ?? SceneDelegate.scene?.windows.first?.rootViewController else {
+            ou_text_entered(nil)
+            return
+        }
+        let a = UIAlertController(title: title, message: maxLen > 0 ? "Up to \(maxLen) characters." : nil, preferredStyle: .alert)
+        a.addTextField { t in
+            t.text = current
+            t.isSecureTextEntry = secure
+            t.autocapitalizationType = .none
+            t.autocorrectionType = .no
+        }
+        a.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            let text = String((a.textFields?.first?.text ?? "").prefix(maxLen > 0 ? maxLen : 256))
+            text.withCString { ou_text_entered($0) }
+        })
+        a.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in ou_text_entered(nil) })
+        host.present(a, animated: true)
+    }
+
     private func showGameData(error: String?) {
         let window = gateWindow ?? (SceneDelegate.scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds))
         let vc = GameDataViewController()
@@ -76,6 +98,15 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         SceneDelegate.scene = scene as? UIWindowScene
         ou_scene_ready()
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        // the race pauses, the audio stream stops (TVOS.md Stage 6.3)
+        ou_app_background()
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        ou_app_foreground()
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
