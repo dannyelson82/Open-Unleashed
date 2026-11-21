@@ -18,3 +18,13 @@
 # Python bytecode
 __pycache__/
 *.pyc
+
+# original game files — never in git (TVOS.md)
+/game-data/
+/game/
+GameData/
+FEData/
+*.bin
+*.cue
+*.iso
+nfs5.exe

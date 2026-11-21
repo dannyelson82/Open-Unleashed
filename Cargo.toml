@@ -54,6 +54,10 @@ sdl3-sys = { version = "0.7", features = ["build-from-source-static", "debug-imp
 cpal = "0.18"
 libm = "0.2"
 
+# tvOS port (TVOS.md): winit 0.30 with its UIKit backend switched on for tvOS too
+[patch.crates-io]
+winit = { path = "third_party/winit" }
+
 [profile.release]
 debug = 1
 # perf: whole-program optimisation (PA, RE/notes/PERF.md); Rust does no fast-math / FMA contraction,

@@ -1,0 +1,49 @@
+# XcodeGen spec for the Apple TV app (TVOS.md). Generate with `xcodegen` (scripts/build-tvos.sh does it).
+# The engine is the Rust static library `libopen_unleashed.a`, built by cargo before Xcode runs.
+name: OpenUnleashed
+options:
+  bundleIdPrefix: org.openunleashed
+  deploymentTarget:
+    tvOS: "17.0"
+settings:
+  base:
+    # stand-in until <com.yourname.openunleashed> is known (PROGRESS.md)
+    PRODUCT_BUNDLE_IDENTIFIER: ${OU_BUNDLE_ID}
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ${OU_TEAM_ID}
+    ENABLE_BITCODE: NO
+    DEAD_CODE_STRIPPING: YES
+targets:
+  OpenUnleashed:
+    type: application
+    platform: tvOS
+    sources:
+      - path: OpenUnleashed
+    settings:
+      base:
+        INFOPLIST_FILE: OpenUnleashed/Info.plist
+        SWIFT_OBJC_BRIDGING_HEADER: OpenUnleashed/OpenUnleashed-Bridging-Header.h
+        TARGETED_DEVICE_FAMILY: "3"
+        "LIBRARY_SEARCH_PATHS[sdk=appletvsimulator*]": $(SRCROOT)/../../target/tvos/aarch64-apple-tvos-sim/release
+        "LIBRARY_SEARCH_PATHS[sdk=appletvos*]": $(SRCROOT)/../../target/tvos/aarch64-apple-tvos/release
+        ARCHS: arm64
+        OTHER_LDFLAGS:
+          - -lopen_unleashed
+          - -lc++
+          - -framework Metal
+          - -framework QuartzCore
+          - -framework UIKit
+          - -framework Foundation
+          - -framework CoreFoundation
+          - -framework CoreGraphics
+          - -framework CoreVideo
+          - -framework AVFoundation
+          - -framework AudioToolbox
+          - -framework CoreAudio
+          - -framework GameController
+          - -framework CoreHaptics
+          - -framework Security
+          - -framework SystemConfiguration
+          - -framework OpenGLES
+          - -framework CoreBluetooth

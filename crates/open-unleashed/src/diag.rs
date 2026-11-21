@@ -75,7 +75,10 @@ pub fn init() {
     let tee = Tee(Arc::new(Mutex::new(file)));
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                // tvOS: winit's UIKit backend logs every frame (redraw phases, ignored window calls) — keep its errors only
+                if cfg!(target_os = "tvos") { "info,winit=error".into() } else { "info".into() }
+            }),
         )
         .with_ansi(false)
         .with_writer(tee)
@@ -169,7 +172,14 @@ fn message_box(text: &str) {
 }
 
 /// Linux and the other Unixes: the desktop's own dialog tool when one is installed (GNOME / KDE), else only the log and stderr.
-#[cfg(all(unix, not(target_os = "macos")))]
+/// tvOS: no process spawning and no alert without a running UIKit app; the app shell shows the
+/// log's last error (`ou_last_error`). Only the log here.
+#[cfg(target_os = "tvos")]
+fn message_box(text: &str) {
+    let _ = text;
+}
+
+#[cfg(all(unix, not(any(target_os = "macos", target_os = "tvos"))))]
 fn message_box(text: &str) {
     use std::process::Command;
     let title = crate::brand::TITLE;

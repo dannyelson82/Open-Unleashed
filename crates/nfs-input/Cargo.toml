@@ -6,5 +6,13 @@ license.workspace = true
 
 [dependencies]
 winit.workspace = true
-sdl3-sys.workspace = true
 tracing.workspace = true
+
+[target.'cfg(not(target_os = "tvos"))'.dependencies]
+sdl3-sys.workspace = true
+
+# tvOS (TVOS.md): SDL's UIKit code (SDL.c `SDL_IsTV`, the lifecycle observer, `SDL_sysurl.m`) calls into its
+# UIKit *video* driver even with SDL_VIDEO=OFF, so the video subsystem is compiled in (never initialised:
+# only SDL_INIT_GAMEPAD / HAPTIC are started).
+[target.'cfg(target_os = "tvos")'.dependencies]
+sdl3-sys = { version = "0.7", features = ["build-from-source-static", "debug-impls", "no-sdl-audio", "no-sdl-gpu", "no-sdl-render", "no-sdl-camera", "no-sdl-dialog", "no-sdl-tray"] }

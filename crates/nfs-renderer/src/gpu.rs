@@ -523,7 +523,15 @@ impl Core {
             label: Some("nfs-renderer"),
             // no optional feature for the game itself; the profiler adds the timestamp queries only when asked (never in `minimal`)
             required_features: if crate::prof::wanted() { adapter.features() & wgpu::Features::TIMESTAMP_QUERY } else { wgpu::Features::empty() },
-            required_limits: wgpu::Limits::default(),
+            // PLATFORM GLUE (TVOS.md): the WebGPU defaults, except `max_inter_stage_shader_variables` capped to what the
+            // adapter offers — the tvOS Simulator's Metal reports 15 (default 16); the game's shaders use far fewer.
+            // Every real Mac / Apple TV / desktop GPU offers ≥ 16, so the request is unchanged there.
+            required_limits: wgpu::Limits {
+                max_inter_stage_shader_variables: wgpu::Limits::default()
+                    .max_inter_stage_shader_variables
+                    .min(adapter.limits().max_inter_stage_shader_variables),
+                ..wgpu::Limits::default()
+            },
             ..Default::default()
         }))
         .context("request device")?;
