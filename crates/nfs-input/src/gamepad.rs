@@ -148,6 +148,10 @@ impl Devices {
             // the MFi driver, whose rumble is CoreHaptics (four `CHHapticEngine`s, two
             // `sendParameters` a call) — late and smeared on an Xbox pad, where HIDAPI
             // writes the pad's own rumble report at once.
+            // tvOS (TVOS.md): on UIKit SDL expects its own `SDL_main` to have run; the app is started by
+            // winit, so tell SDL the process is ready (as SDL_MAIN_HANDLED programs do)
+            #[cfg(target_os = "tvos")]
+            sdl3_sys::main::SDL_SetMainReady();
             if !SDL_Init(SUBSYSTEMS) {
                 return Err(sdl_error());
             }

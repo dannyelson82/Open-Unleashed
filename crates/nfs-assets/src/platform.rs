@@ -22,7 +22,16 @@ pub fn data_dir() -> PathBuf {
     // PORT-DEVIATION D41 (RE/notes/PORT-DEVIATIONS.md): the saves live in the per-OS data folder, not in the
     // original's `.\SaveData\` (install.txt directory entry 48, `[0x65B360]`) under the game folder, and an
     // existing original profile is not imported.
-    if cfg!(target_os = "macos") {
+    if cfg!(target_os = "tvos") {
+        // PORT-DEVIATION (tvOS, TVOS.md): an app's only writable, sizeable storage is its sandbox
+        // `Library/Caches`, which the system may purge; the app shell mirrors the saves into
+        // `NSUserDefaults` and restores them before the engine starts. `NFS5_DATA_DIR` (set by the
+        // shell) wins.
+        if let Some(d) = std::env::var_os("NFS5_DATA_DIR").filter(|v| !v.is_empty()) {
+            return PathBuf::from(d);
+        }
+        tvos_caches().join("save")
+    } else if cfg!(target_os = "macos") {
         let base = home_dir().unwrap_or_else(|| PathBuf::from("."));
         base.join("Library").join("Application Support").join("PorscheUnleashed")
     } else if cfg!(windows) {
@@ -54,6 +63,10 @@ pub fn game_data_candidates() -> Vec<PathBuf> {
         if cfg!(target_os = "macos") {
             v.push(dir.join("../../../game"));
         }
+    }
+    if cfg!(target_os = "tvos") {
+        // tvOS: the data the app shell downloaded from the OpenUnleashed server (TVOS.md, Stage 4)
+        v.push(tvos_caches().join("game"));
     }
     if let Some(home) = home_dir() {
         v.push(home.join("Games/NFS-Porsche-Unleashed/game_info/data"));
@@ -87,6 +100,10 @@ pub fn photo_dir() -> PathBuf {
     if let Some(d) = std::env::var_os("NFS_PHOTO_DIR").filter(|v| !v.is_empty()) {
         return PathBuf::from(d);
     }
+    if cfg!(target_os = "tvos") {
+        // tvOS has no user-visible Pictures folder: the stills stay in Caches (TVOS.md)
+        return tvos_caches().join("photos");
+    }
     let Some(home) = home_dir() else { return PathBuf::from("PorscheUnleashed") };
     let pictures = if cfg!(windows) {
         known_pictures().unwrap_or_else(|| home.join("Pictures"))
@@ -97,6 +114,12 @@ pub fn photo_dir() -> PathBuf {
         std::fs::read_to_string(conf.join("user-dirs.dirs")).ok().and_then(|t| xdg_pictures_dir(&t, &home)).unwrap_or_else(|| home.join("Pictures"))
     };
     pictures.join("PorscheUnleashed")
+}
+
+/// tvOS: the app sandbox's `Library/Caches` (`$HOME` is the sandbox container there), the parent of the
+/// downloaded `game/`, the `save/` folder and `photos/`. Elsewhere unused.
+pub fn tvos_caches() -> PathBuf {
+    home_dir().unwrap_or_else(|| PathBuf::from(".")).join("Library").join("Caches")
 }
 
 /// Windows: the user's Pictures folder as the shell knows it (Explorer's "Pictures"); `None` when the call fails.
