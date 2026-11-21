@@ -16,6 +16,9 @@ members = [
     "tools/track-viewer",
     "tools/car-viewer",
     "tools/format-dumper",
+    "crates/ou-manifest",
+    "tools/make-manifest",
+    "tools/ou-server",
 ]
 
 [workspace.package]

@@ -1,0 +1,10 @@
+[package]
+name = "make-manifest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Writes manifest.json (path, size, SHA-256) for an original game folder"
+
+[dependencies]
+ou-manifest = { path = "../../crates/ou-manifest" }
+serde_json = "1"

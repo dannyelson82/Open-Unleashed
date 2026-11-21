@@ -32,8 +32,11 @@ _Last updated: 2026-11-21_
 - `.gitignore` now also blocks `/game-data/`, `/game/`, `GameData/`, `FEData/`, `*.bin`, `*.cue`, `*.iso`, `nfs5.exe`.
 - Use: `export NFS5_GAME_PATH=~/Documents/OpenUnleashed/game-data`.
 
-## Placeholders left for later (as asked)
-`<UNRAID_IP_OR_HOSTNAME>` / `<TAILSCALE_NAME>`, `<MY_APPLE_ID_OR_TEAM>`,
+## Placeholders
+Filled in: `<UNRAID_IP_OR_HOSTNAME>` = **the server's LAN address / tower.local**, `<TAILSCALE_NAME>` = **the server's Tailscale name**
+(used in `docs/ou-server.md`; the game's Server setting will default to `tower.local`).
+
+Left for later (as asked): `<MY_APPLE_ID_OR_TEAM>`,
 Apple TV paired `<yes/no>`, controller `<Xbox / PlayStation / other>`, bundle ID `<com.yourname.openunleashed>`
 (a stand-in `org.openunleashed.tvos` is used until then).
 
@@ -43,10 +46,46 @@ Apple TV paired `<yes/no>`, controller `<Xbox / PlayStation / other>`, bundle ID
 | 1 Baseline build | ✅ release builds; runs; without data exits with the clear "game data not found" error | — | — |
 | 1 Race starts | ✅ `NFS5_GAME_PATH=game-data open-unleashed alps 993`: 20 s headless race (car accelerates, shifts 1→4); windowed `--screenshot` race with 3 opponents renders correctly on Metal (Apple M2 Pro) | — | — |
 | 1 Engine as a library | ✅ `crates/open-unleashed` is now `lib.rs` + a 3-line `main.rs`; `run()` split into `build_app()` + event loop (desktop order unchanged) | ✅ builds as a static lib | — |
-| 2 tvOS cross-compile | ✅ unaffected | ✅ `cargo build --release --target aarch64-apple-tvos-sim -p open-unleashed --lib` succeeds (winit 0.30 patched, SDL3 video on for tvOS) | 🟡 device target `aarch64-apple-tvos` not built yet |
+| 2 tvOS cross-compile | ✅ unaffected | ✅ static lib builds (winit 0.30 patched, SDL3 video on for tvOS) | 🟡 device target `aarch64-apple-tvos` not built yet (needs signing team to go further) |
+| 3 App shell (Xcode/XcodeGen, `scripts/build-tvos.sh`) | — | ✅ builds, installs, launches on "Apple TV 4K (4th generation)" Simulator, tvOS 27.2 | 📺 |
+| 3 Engine runs | ✅ | ✅ **front end renders** (main menu + profile prompt) and **a race runs** (`alps 993 --opponents 3`: in-car view, HUD, mirror, race clock) from your disc's data copied into the Simulator app's Caches/game; audio output opens (CoreAudio 48 kHz stereo); SDL joystick layer starts | 📺 |
+| 3 "Game data missing" gate | — | 🟡 Stage-3 placeholder screen written (shown when Caches/game is empty); not yet screenshotted | 📺 |
+
+### tvOS fixes found in the Simulator (all in TVOS.md)
+1. tvOS 27 SDK **requires the UIScene life cycle** (crash `UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`): scene manifest + Swift `SceneDelegate`; winit's window attaches to the scene; the engine waits for `ou_scene_ready()`.
+2. winit called **iOS-only UIKit selectors** (`setNeedsUpdateOfHomeIndicatorAutoHidden`, status bar, rotation, multi-touch) → skipped on tvOS in `third_party/winit`.
+3. SDL on UIKit needs `SDL_SetMainReady()` (no `SDL_main`).
+4. Simulator GPU offers 15 inter-stage shader variables (WebGPU default asks 16) → the request is capped to the adapter.
+5. winit's UIKit backend drops redraws requested inside a frame → the tvOS handler requests the next redraw from `about_to_wait` (the engine drew only one frame before this).
+6. winit logs every frame on UIKit → `winit=error` log filter on tvOS.
+
+Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, enhancement 2.6); no app icon yet (placeholder); the
+"start-up movies" are skipped (no `nfs5.exe` on the disc — see above).
+
+## OpenUnleashed server (`tools/ou-server`, `docs/ou-server.md`)
+| Part | State |
+|---|---|
+| `crates/ou-manifest` (shared) + `tools/make-manifest` | ✅ your data: 1,593 files, 528.8 MB, ~2 s; the server's manifest is byte-identical |
+| Phase 1 — info + data sets (`original`, `mod-<name>` overlays, `hd`), manifests with hash cache, files with Range/If-Range/ETag | ✅ tested on the Mac: resumed download of the largest file (117.6 MB) verifies against its SHA-256; 416 past end; path escapes 400; files outside the manifest 404 |
+| Phase 2 — saves (`If-Match`/412, versions: last N + one per day for 30 days, restore) | ✅ server side; tested (Mac/TV conflict keeps both, restore works). Client side: ⬜ not started (Stage 9 item 7) |
+| Phase 3 — lobby (register/heartbeat/expiry, address order for tailnet vs LAN, `?via=`) | ✅ server side; tested. Client side: ⬜ not started |
+| Status page (`/?token=…`): sets, saves + versions with download/restore, games, devices | ✅ |
+| Auth (Bearer / `?token=`), PUID/PGID drop, `--healthcheck` | ✅ |
+| Tests | ✅ `cargo test -p ou-manifest -p ou-server`: 11 passed |
+| Docker image (`tools/ou-server/Dockerfile`, context = repo root) | ✅ built and run locally (Colima, arm64): healthy, runs as UID 99, real game data mounted read-only, mod overlay + save verified |
+| GitHub Actions → `ghcr.io/dannyelson82/ou-server` (`.github/workflows/ou-server-image.yml`, same pattern/pinned actions as ReelHaven) | 🟡 written, YAML-checked; **not run** — see Blockers |
+| Unraid template `packaging/unraid/ou-server.xml` (all under `/mnt/user/appdata/ou-server`) | ✅ written, XML-checked; you add the container yourself |
+| Compose file, Bonjour (avahi service file), Tailscale (a/b, `tailscale serve` HTTPS) docs | ✅ |
+| Phase 4 (dedicated host, EA lobby revival) | ⬜ research only, not started |
+
+Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-local; `colima start` / `colima stop`).
 
 ## Needs Apple TV
-(filled in as stages progress)
+- Stage 3: install + launch on the device; check winit/UIKit behaviour on real hardware.
+- Signing (also needs `<MY_APPLE_ID_OR_TEAM>`): device builds, `scripts/build-tvos.sh device`.
 
 ## Blockers
-(filled in as they appear)
+- **Publishing the image to GHCR needs a GitHub repo of yours.** This clone's `origin` is upstream
+  (`Second-Boot/Open-Unleashed`). The workflow runs once the branch is pushed to e.g. `github.com/dannyelson82/Open-Unleashed`
+  (a fork); the Unraid template's icon/template URLs assume that name. Creating the fork and pushing is outward-facing, so
+  it's waiting for your OK (and `gh`/credentials — no GitHub login is set up on this Mac).

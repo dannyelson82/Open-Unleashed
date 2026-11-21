@@ -1,0 +1,21 @@
+[package]
+name = "ou-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "OpenUnleashed server: game data, saves and the multiplayer lobby for the Apple TV and Mac builds"
+
+[dependencies]
+ou-manifest = { path = "../../crates/ou-manifest" }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "net", "signal", "sync", "time", "io-util"] }
+tokio-util = { version = "0.7", features = ["io"] }
+serde = { workspace = true }
+serde_json = "1"
+sha2 = "0.10"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
