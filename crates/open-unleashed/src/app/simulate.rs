@@ -10,6 +10,25 @@ impl App {
     /// press (0x41312F…0x4131E9), the reset key as command **5** (`C1_RESET`) among them: 0x40F7EB reads
     /// it back from `car+0xD8B` for every human car, in the exchange, in a live race and in a playback.
     /// The scripted drive (`follow_road`, autotest only, not the original's) steers the car itself.
+    /// The Extras › Driving assists on one packet (state kept between ticks).
+    fn apply_assists(axes: nfs_game::assists::Axes, v: &Vehicle) -> nfs_game::assists::Axes {
+        thread_local! {
+            static STATE: std::cell::Cell<nfs_game::assists::AssistState> = std::cell::Cell::new(Default::default());
+        }
+        let s = nfs_game::extras::get().assists.settings();
+        if !s.any() {
+            return axes;
+        }
+        let body = v.orientation * v.velocity;
+        let car = nfs_game::assists::CarState { forward: body.z, lateral: body.x, any_locked: v.wheels.iter().any(|w| w.locked) };
+        STATE.with(|c| {
+            let mut st = c.get();
+            let out = nfs_game::assists::apply(axes, &car, &s, &mut st);
+            c.set(st);
+            out
+        })
+    }
+
     pub(crate) fn controller_sample(
         input: &mut InputState,
         mirror: bool,
@@ -56,10 +75,19 @@ impl App {
         // The shape the original's controller packet has (`replay.md` §2): every axis is at
         // most 0x7E and the car doubles it (0x4992CF), so the values the physics sees are even
         // and never exceed 252 / ±126.
-        Controls {
+        let axes = nfs_game::assists::Axes {
             throttle: ((throttle * 126.0) as u8).min(0x7E) * 2,
             brake: ((input.brake() * 126.0) as u8).min(0x7E) * 2,
             steer: (steer / 2).clamp(-63, 63) * 2,
+        };
+        // PORT-DEVIATION (driving assists, `nfs_game::assists`): the local player's packet only — this is the
+        // live sample, which the physics, the replay recorder and the network all take, so a replay plays back
+        // exactly what was driven. Off by default; never on the scripted drive.
+        let axes = if follow_road { axes } else { Self::apply_assists(axes, v) };
+        Controls {
+            throttle: axes.throttle,
+            brake: axes.brake,
+            steer: axes.steer,
             handbrake: input.held(Action::Handbrake),
             // the packer's plain group fires a command on its press (0x41312F…0x4131E9): code 2
             // `C1_SHIFTUP`, 3 `C1_SHIFTDOWN`, 4 `C1_ABORT`, 6 `C1_AIDRIVE`, 10 / 11 the turn

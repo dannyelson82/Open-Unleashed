@@ -62,6 +62,8 @@ Choices made without asking (per your instruction); each is easy to change.
 18. **Siri Remote Menu never leaves the app** (Apple's guideline wants Menu at the top level to go Home; for a sideloaded personal build the game's own "back"/exit question is more useful). Home (TV button) still leaves.
 19. **On-screen keyboard opens by itself** when a text field becomes active (once per field); a chat box only on Y, since it is always focused.
 21. **Render resolution via the view's content scale** (system upscales) instead of an engine render target — default native until measured on the device.
+27. **Traction control "On" left out**: it's a physics flag (`vehicle.tcs`) set at race start that replays and network peers don't know about, so it would make them diverge. Needs the flag recorded in the replay/launch data first (or an input-side throttle limiter once wheel-slip units are checked).
+28. **Assists default off on both platforms** (the plan suggests a soft curve + medium speed steering on tvOS; decide with a pad on the TV).
 26. **Head-look**: bumper/driver views only (the plan's "also in chase views" left out for now); recentre = race start, unpause, pad L3+R3 (no keyboard key bound); positive head yaw = view left — to confirm with AirPods.
 24. **HUD size by a smaller "virtual screen"** for the HUD's layout: every element scales, the original's anchoring rules run unchanged; default Original on both platforms for now (the plan suggests Large on tvOS — decide on the TV).
 25. **Extras opened from the pause menu first** (the race HUD's text drawing exists there); the main-menu entry follows.
@@ -106,6 +108,7 @@ Choices made without asking (per your instruction); each is easy to change.
 | 2.2 HUD size Original / Large (1.5×) / Extra large (2×) | ✅ (pointer hover follows) | ✅ screenshots: every element scaled, original edge anchoring kept, nothing clipped | 📺 couch check on a 55″ TV |
 | 7.1 Frame-time overlay switch in Extras | ✅ | ✅ | — |
 | 6b-H Mac head-look (AirPods) | ✅ built in; filter unit-tested (5 tests: dead zone, 20°→75°, clamp, jump guard, look-key wins, drift); inside the app bundle CoreMotion starts ("motion updates started"); the bare binary refuses safely. 🙋 **needs you with AirPods**: direction, feel, 10-minute no-drift check | — (hidden: no API) | — |
+| 4 Driving assists (`nfs_game::assists`, Extras › Driving assists) | ✅ steering response curve, speed-sensitive steering, countersteer assist (≤ 30 % lock, never fights you), ABS pulse; 5 unit tests; applied to the local live packet only. Replay/network exactness by construction (applied before the recorder/sender) — no separate A/B run yet. ⬜ braking assist (needs the AI's corner speed), ⬜ HUD "ABS/ASSIST" indicators, ⬜ presets row | same code | 📺 feel with a pad; 🙋 tuning |
 | 7.3 Render resolution in Extras (tvOS only) | — | ✅ row shown on tvOS only; read at window creation | 📺 |
 | 5 Xbox/PlayStation pads via SDL's GameController driver, rumble | — | — | 📺 (no pads in the Simulator) |
 | 6.3 Lifecycle | — | ✅ Home/other app mid-race → race pauses ("app in background"), audio stream stops; back → audio restarts, pause menu shown, no crash; saves mirrored on background | 📺 |

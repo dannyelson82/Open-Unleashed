@@ -114,6 +114,48 @@ fn pages() -> Vec<Page> {
             },
         ],
         reset: |s| s.controller = Default::default(),
+    },
+    Page {
+        title: "Driving assists",
+        rows: vec![
+            Row {
+                label: "Steering response",
+                help: "Softer = finer control around the centre of the stick, full lock unchanged.",
+                applies: Applies::Now,
+                shown: true,
+                values: &["Linear (original)", "Soft", "Softer"],
+                get: |s| s.assists.steering_response as usize,
+                set: |s, v| s.assists.steering_response = v as u8,
+            },
+            Row {
+                label: "Speed-sensitive steering",
+                help: "Less steering lock at high speed (at 200 km/h: 75 / 55 / 40 percent).",
+                applies: Applies::Now,
+                shown: true,
+                values: &["Off", "Low", "Medium", "High"],
+                get: |s| s.assists.speed_steering as usize,
+                set: |s, v| s.assists.speed_steering = v as u8,
+            },
+            Row {
+                label: "Steering assist",
+                help: "Countersteers a little when the rear slides. Never fights your own countersteer.",
+                applies: Applies::Now,
+                shown: true,
+                values: &["Off", "Light", "Strong"],
+                get: |s| s.assists.countersteer as usize,
+                set: |s, v| s.assists.countersteer = v as u8,
+            },
+            Row {
+                label: "ABS",
+                help: "Pulses the brake when a wheel locks, so you can still steer while braking hard.",
+                applies: Applies::Now,
+                shown: true,
+                values: &["Off", "On"],
+                get: |s| usize::from(s.assists.abs),
+                set: |s, v| s.assists.abs = v == 1,
+            },
+        ],
+        reset: |s| s.assists = Default::default(),
     }]
     .into_iter()
     .map(|mut p| {
