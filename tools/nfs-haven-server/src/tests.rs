@@ -253,3 +253,51 @@ async fn any_game_folder_is_a_game() {
     let (_, _, b) = call(&app, Method::GET, "/", &[], vec![], "10.0.0.2").await;
     assert!(String::from_utf8_lossy(&b).contains("NFS Haven server"));
 }
+
+#[tokio::test]
+async fn a_set_streams_as_one_tar_with_ranges() {
+    let root = tmp("tar");
+    game(&root);
+    // a path long enough for the ustar prefix, and a file of an exact block
+    let long = root.join("games/porsche/original/GameData/Track/a_folder_with_a_rather_long_name_for_the_ustar_prefix_field/and_another_long_folder_name_inside_it");
+    std::fs::create_dir_all(&long).unwrap();
+    std::fs::write(long.join("file_with_a_long_name_too.viv"), vec![7u8; 512]).unwrap();
+    let st = new_state(cfg(&root, ""));
+    data::rebuild_now(&st);
+    let app = router(st.clone());
+    let m = st.data.get("porsche/original").unwrap().manifest.clone();
+    let (s, h, full) = call(&app, Method::GET, "/v1/data/porsche/original.tar", &[], vec![], "10.0.0.2").await;
+    assert_eq!(s, StatusCode::OK);
+    let lay = bundle::layout(&m);
+    assert_eq!(full.len() as u64, lay.total);
+    assert_eq!(h["content-length"], lay.total.to_string().as_str());
+    // a real tar: the manifest's files, in its order, with their bytes
+    let mut ar = tar::Archive::new(&full[..]);
+    let mut seen = Vec::new();
+    for e in ar.entries().unwrap() {
+        let mut e = e.unwrap();
+        let path = e.path().unwrap().to_string_lossy().into_owned();
+        let mut buf = Vec::new();
+        std::io::Read::read_to_end(&mut e, &mut buf).unwrap();
+        let src = root.join("games/porsche/original").join(&path);
+        assert_eq!(buf, std::fs::read(&src).unwrap(), "{path}");
+        seen.push(path);
+    }
+    assert_eq!(seen, m.files.iter().map(|f| f.path.clone()).collect::<Vec<_>>());
+    // resume from the second file's header, and from the middle of a file
+    let etag = h["etag"].to_str().unwrap().to_string();
+    for from in [lay.offsets[1], lay.offsets[1] + 512 + 3] {
+        let r = format!("bytes={from}-");
+        let (s, _, part) = call(&app, Method::GET, "/v1/data/porsche/original.tar", &[("range", &r), ("if-range", &etag)], vec![], "10.0.0.2").await;
+        assert_eq!(s, StatusCode::PARTIAL_CONTENT);
+        assert_eq!(part, full[from as usize..], "from {from}");
+    }
+    // a closed range in the middle
+    let (s, _, part) = call(&app, Method::GET, "/v1/data/porsche/original.tar", &[("range", "bytes=100-1500")], vec![], "10.0.0.2").await;
+    assert_eq!(s, StatusCode::PARTIAL_CONTENT);
+    assert_eq!(part, full[100..=1500]);
+    // a range for another manifest: the whole tar again
+    let (s, _, again) = call(&app, Method::GET, "/v1/data/porsche/original.tar", &[("range", "bytes=1024-"), ("if-range", "\"tar-old\"")], vec![], "10.0.0.2").await;
+    assert_eq!((s, again.len()), (StatusCode::OK, full.len()));
+    assert_eq!(call(&app, Method::GET, "/v1/data/porsche/nope.tar", &[], vec![], "10.0.0.2").await.0, StatusCode::NOT_FOUND);
+}

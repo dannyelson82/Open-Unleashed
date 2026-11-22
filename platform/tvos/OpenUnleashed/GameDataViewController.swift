@@ -246,6 +246,7 @@ final class GameDataViewController: UIViewController {
                 refresh()
                 onReady?()
             } catch {
+                NSLog("NFS Haven: game data download failed: %@", error.localizedDescription)
                 busy = false
                 progress.isHidden = true
                 progressLabel.text = nil

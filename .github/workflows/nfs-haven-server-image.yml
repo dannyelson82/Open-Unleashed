@@ -86,6 +86,9 @@ jobs:
           test "$(curl -fsS -H "$H" -r 2- http://127.0.0.1:8642/v1/data/porsche/original/file/GameData/Track/a.bin)" = ack
           test "$(curl -fsS -H "$H" http://127.0.0.1:8642/v1/data/porsche/mod-test/file/GameData/Track/a.bin)" = modded
           test "$(curl -fsS -H "$H" http://127.0.0.1:8642/v1/data/nfsse/original/file/NFS_DOS.EXE)" = exe
+          # the fast-install bundle: a real tar of the set, and a range of it
+          curl -fsS -H "$H" http://127.0.0.1:8642/v1/data/porsche/original.tar | tar -tf - | grep -q 'GameData/Track/a.bin'
+          test "$(curl -fsS -H "$H" -r 512-513 http://127.0.0.1:8642/v1/data/porsche/original.tar)" = fe
           printf 'save' | curl -fsS -H "$H" -X PUT --data-binary @- http://127.0.0.1:8642/v1/saves/porsche/files/SaveData/0.sav
           test "$(printf 'x' | curl -s -o /dev/null -w '%{http_code}' -H "$H" -X PUT --data-binary @- http://127.0.0.1:8642/v1/saves/porsche/files/SaveData/0.sav)" = 412
           curl -fsS "http://127.0.0.1:8642/?token=ci-token" | grep -q 'NFS Haven server'

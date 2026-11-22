@@ -9,6 +9,7 @@
 //!
 //! LAN/tailnet only — never port-forward it to the internet. GPL-3.0-or-later.
 
+mod bundle;
 mod data;
 mod lobby;
 mod saves;
@@ -136,7 +137,7 @@ async fn info(State(st): State<Shared>) -> Response {
         "server": "nfs-haven-server",
         "version": VERSION,
         "api": 1,
-        "features": ["data", "saves", "lobby"],
+        "features": ["data", "data-tar", "saves", "lobby"],
         "games": st.data.game_ids(),
         "data_sets": sets,
         "data_state": st.data.state_text(),
