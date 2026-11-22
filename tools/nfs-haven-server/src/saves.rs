@@ -53,15 +53,21 @@ pub fn profile_ok(p: &str) -> bool {
     !p.is_empty() && p.len() <= 64 && !p.starts_with('.') && p.chars().all(|c| c.is_ascii_alphanumeric() || " _-.'".contains(c))
 }
 
-/// The files the save service keeps: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, and the port's
-/// `career.json`, `extras.json`, `settings.json`. Replays and photos stay on the device.
+/// The files the save service keeps. Porsche Unleashed: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, and
+/// the port's `career.json`, `extras.json`, `settings.json` (replays and photos stay on the device). The Need for Speed
+/// SE (ReNFS's home folder): `config.dat` (settings, records), `renfs.cfg`, `joystick.cfg`, tournaments `*.sav` and
+/// replays `*.rpl` at the top level.
 pub fn file_ok(f: &str) -> bool {
     if !nfs_haven_manifest::safe_rel_path(f) || f.len() > 128 {
         return false;
     }
     let lower = f.to_ascii_lowercase();
     match lower.split_once('/') {
-        None => matches!(lower.as_str(), "career.json" | "extras.json" | "settings.json"),
+        None => {
+            matches!(lower.as_str(), "career.json" | "extras.json" | "settings.json" | "config.dat" | "renfs.cfg" | "joystick.cfg")
+                || lower.ends_with(".sav")
+                || lower.ends_with(".rpl")
+        }
         Some(("savedata", name)) => !name.contains('/') && (name.ends_with(".sav") || name == "nfs5.trk" || name.ends_with(".json")),
         _ => false,
     }

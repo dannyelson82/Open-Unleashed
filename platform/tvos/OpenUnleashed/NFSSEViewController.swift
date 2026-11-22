@@ -75,6 +75,7 @@ final class NFSSEViewController: GCEventViewController, MTKViewDelegate {
 
     private func startGame() {
         let g = GameID.nfsse
+        NFSSEViewController.prepareHome(g.saveDir)
         var cb = RenfsHostCallbacks(
             message: { text in
                 let t = text.map { String(cString: $0) } ?? "The game stopped."
@@ -96,8 +97,41 @@ final class NFSSEViewController: GCEventViewController, MTKViewDelegate {
         NSLog("NFS SE: started=%d data=%@ home=%@", ok ? 1 : 0, g.dataDir.path, g.saveDir.path)
         audio.start()
         input.start()
-        UIApplication.shared.isIdleTimerDisabled = true
         if let script = UserDefaults.standard.string(forKey: "nfsh.seScript") { input.play(script: script) }
+    }
+
+    /// First-run defaults for a controller (nfs-haven-plan.md Phase 6.1), in ReNFS's own files:
+    /// - `joystick.cfg`: the calibration ReNFS itself made for a pad's full range (its calibration screen driven
+    ///   by the Mac harness with the stick and both triggers moved end to end: platform/renfs-host/test), so the
+    ///   1996 calibration screen doesn't come up; Options › Controls › Calibrate still redoes it.
+    /// - `config.dat`, once: Steering = Joystick left/right and Accelerate/brake = Joystick (the triggers as pedals)
+    ///   instead of the keys, for analogue driving. ReNFS turns them back to the keys by itself when no controller
+    ///   is connected. config.dat exists from the game's first run on, so this applies from the second start.
+    static func prepareHome(_ home: URL) {
+        let cal = home.appendingPathComponent("joystick.cfg")
+        if !FileManager.default.fileExists(atPath: cal.path) {
+            let hex = "0000000000010000ff010000dd22000000230000800000007f0100000000000000010000ff010000dd22000000230000800000007f010000000000000001000000020000dd220000da250000f71100000000000000020000f7110000"
+            var d = Data()
+            var i = hex.startIndex
+            while i < hex.endIndex {
+                let j = hex.index(i, offsetBy: 2)
+                d.append(UInt8(hex[i..<j], radix: 16)!)
+                i = j
+            }
+            try? d.write(to: cal, options: .atomic)
+        }
+        let key = "nfsh.nfsse.analogDefault"
+        let cfg = home.appendingPathComponent("config.dat")
+        if !UserDefaults.standard.bool(forKey: key), var d = try? Data(contentsOf: cfg), d.count == 0x5f52 {
+            // only if both are still the keys (the player hasn't chosen)
+            if d[0x5f36] == 0 && d[0x5f37] == 0 && d[0x5f38] == 0 && d[0x5f39] == 0 {
+                d[0x5f36] = 1      // steering: the joystick across
+                d[0x5f38] = 2      // accelerate / brake: the joystick's pedals
+                try? d.write(to: cfg, options: .atomic)
+                NSLog("NFS SE: controls set to analogue (joystick) for a controller")
+            }
+            UserDefaults.standard.set(true, forKey: key)
+        }
     }
 
     private func gameEnded() {
@@ -172,6 +206,10 @@ final class NFSSEViewController: GCEventViewController, MTKViewDelegate {
 
     func draw(in view: MTKView) {
         input.poll()
+        // the screen saver: kept away while someone plays (any input in the last 10 minutes); a replay or the
+        // showcase left alone longer lets the TV sleep as usual (ReNFS doesn't tell the app what screen it is on)
+        let want = CACurrentMediaTime() - NFSSEInput.lastInput < 600
+        if UIApplication.shared.isIdleTimerDisabled != want { UIApplication.shared.isIdleTimerDisabled = want }
         guard let device = view.device, let pipeline, let queue else { return }
         var w: Int32 = 0, h: Int32 = 0
         var serial: UInt64 = 0
@@ -267,6 +305,9 @@ final class NFSSEAudio {
 /// Controllers, the Siri Remote and a keyboard → the game (renfs_host_pad / renfs_host_key).
 final class NFSSEInput {
     var onTextRequest: (() -> Void)?
+    /// When a key, button, stick or trigger last changed (the screen saver's clock).
+    static var lastInput = CACurrentMediaTime()
+    private var lastPad: [Int32] = []
     private var remoteHeld: Int32 = 0         // the arrow key the remote's touch surface holds (HID usage)
     private var remoteNext: CFTimeInterval = 0
     private var observers: [NSObjectProtocol] = []
@@ -289,6 +330,7 @@ final class NFSSEInput {
 
     private func wire() {
         GCKeyboard.coalesced?.keyboardInput?.keyChangedHandler = { _, _, code, pressed in
+            NFSSEInput.lastInput = CACurrentMediaTime()
             renfs_host_key(Int32(code.rawValue), pressed)
         }
         for c in GCController.controllers() {
@@ -318,8 +360,14 @@ final class NFSSEInput {
             ]
             for (btn, bit) in map where btn?.isPressed == true { b |= 1 << UInt32(bit) }
             // SDL's y is down-positive
-            renfs_host_pad(true, ax(g.leftThumbstick.xAxis.value), ax(-g.leftThumbstick.yAxis.value),
-                           tr(g.leftTrigger.value), tr(g.rightTrigger.value), b)
+            let st: [Int32] = [Int32(ax(g.leftThumbstick.xAxis.value)), Int32(ax(-g.leftThumbstick.yAxis.value)),
+                               Int32(tr(g.leftTrigger.value)), Int32(tr(g.rightTrigger.value)), Int32(bitPattern: b)]
+            // (a stick resting a little off centre isn't "playing")
+            if lastPad.count != st.count || zip(st, lastPad).enumerated().contains(where: { i, p in i == 4 ? p.0 != p.1 : abs(p.0 - p.1) > 3000 }) {
+                Self.lastInput = CACurrentMediaTime()
+                lastPad = st
+            }
+            renfs_host_pad(true, Int16(st[0]), Int16(st[1]), Int16(st[2]), Int16(st[3]), b)
         } else {
             renfs_host_pad(false, 0, 0, 0, 0, 0)
         }
@@ -334,6 +382,7 @@ final class NFSSEInput {
             return
         }
         let x = m.dpad.xAxis.value, y = m.dpad.yAxis.value
+        if x != 0 || y != 0 || m.buttonA.isPressed || m.buttonMenu.isPressed { Self.lastInput = CACurrentMediaTime() }
         var want: Int32 = 0
         if abs(x) > 0.5 || abs(y) > 0.5 { want = abs(x) > abs(y) ? (x > 0 ? 79 : 80) : (y > 0 ? 82 : 81) }
         let now = CACurrentMediaTime()

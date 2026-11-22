@@ -1,5 +1,5 @@
 /* NFS Haven: ReNFS through the host on the Mac, without a window: start it, play keys in, write frames.
-   usage: harness <data> <home> <out-dir> [script]   script: "t:key" steps (t seconds from start; key enter,
+   usage: [HARNESS_PAD=1] harness <data> <home> <out-dir> [script]   script: "t:key" steps (key also pad=lx,ly,lt,rt,buttons) (t seconds from start; key enter,
    esc, up, down, left, right, or "quit"); a frame is written as <out-dir>/f<t>.ppm before each step and at the end.
    GPL-3.0-or-later. */
 #include "renfs_host.h"
@@ -40,6 +40,8 @@ int main(int argc, char **argv)
 {
     if (argc < 4) return 2;
     RenfsHostCallbacks cb = { on_msg, 0, on_end };
+    if (getenv("HARNESS_PAD"))         /* a pad attached from the start (the calibration screen) */
+        renfs_host_pad(true, 0, 0, 0, 0, 0);
     if (!renfs_host_start(argv[1], argv[2], 0, &cb)) return 1;
     double t = 0;
     short buf[2 * 512];
@@ -51,7 +53,12 @@ int main(int argc, char **argv)
         shot(argv[3], t);
         if (!strcmp(key, "quit")) renfs_host_quit();
         else if (hid(key)) { renfs_host_key(hid(key), true); usleep(80000); renfs_host_key(hid(key), false); t += 0.08; }
-        else if (!strncmp(key, "pad", 3)) { renfs_host_pad(true, 0, 0, 0, 0, 0); }
+        else if (!strncmp(key, "pad=", 4)) {
+            /* pad=<lx>,<ly>,<lt>,<rt>,<buttons>: held until the next pad= step */
+            int lx = 0, ly = 0, lt = 0, rt = 0; unsigned bt = 0;
+            sscanf(key + 4, "%d,%d,%d,%d,%u", &lx, &ly, &lt, &rt, &bt);
+            renfs_host_pad(true, (int16_t)lx, (int16_t)ly, (int16_t)lt, (int16_t)rt, bt);
+        }
     }
     for (int i = 0; i < 1000 && ended < 0; i++) { usleep(10000); renfs_host_audio_render(buf, 441); }
     shot(argv[3], t);

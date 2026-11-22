@@ -57,8 +57,7 @@ final class Shell {
     /// UIKit is up and the scene is connected (the engine's first `resumed`): the launcher, or straight into the
     /// game named with the launch argument `-nfsh.game porsche|nfsse` (development, tests).
     func launched() {
-        SaveMirror.restoreMissing()
-        SaveMirror.startWatching()
+        for g in GameID.allCases { SaveMirror.restoreMissing(g) }
         if let id = UserDefaults.standard.string(forKey: "nfsh.game"), let g = GameID(rawValue: id) {
             start(g)
         } else {
@@ -79,6 +78,7 @@ final class Shell {
     func start(_ g: GameID) {
         Shell.game = g
         UserDefaults.standard.set(g.rawValue, forKey: GameID.lastKey)
+        SaveMirror.startWatching(g)
         NSLog("OpenUnleashed: starting %@ (data %@)", g.rawValue, Shell.gameDir.path)
         switch g {
         case .porsche: startPorsche()
@@ -95,6 +95,14 @@ final class Shell {
     }
 
     private func presentNFSSE() {
+        // the saves from the server first (another Apple TV, the Mac); at most a few seconds, offline it just starts
+        Task { @MainActor in
+            await SaveSync.pull()
+            self.showNFSSE()
+        }
+    }
+
+    private func showNFSSE() {
         gateWindow?.isHidden = true
         gateWindow = nil
         let window = SceneDelegate.scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds)
@@ -231,6 +239,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
-        SaveMirror.mirror()
+        SaveMirror.mirror(Shell.game)
+        if Shell.game == .nfsse { SaveSync.pushSoon() }
     }
 }
