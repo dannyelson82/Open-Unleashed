@@ -130,7 +130,7 @@ pub struct Graphics {
     pub draw_distance: u8,
     /// field-of-view offset, chase views: 0 = −5°, 1 = 0, 2 = +5°, 3 = +10°
     pub fov_chase: u8,
-    /// anti-aliasing: 0 off (the original), 1 FXAA
+    /// anti-aliasing: 0 off (the original), 1 FXAA, 2 MSAA 4×
     pub anti_aliasing: u8,
     /// field-of-view offset, bumper / driver views (same steps)
     pub fov_incar: u8,

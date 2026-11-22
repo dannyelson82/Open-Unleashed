@@ -143,6 +143,7 @@ pub(crate) fn build_app(on_loop: &mut dyn FnMut(bool) -> Result<()>) -> Result<O
     // PORT-DEVIATION (Extras › Graphics › Texture filtering), also before the renderer is made
     nfs_renderer::set_anisotropy(nfs_game::extras::get().graphics.anisotropy());
     nfs_renderer::set_fxaa(nfs_game::extras::get().graphics.anti_aliasing == 1);
+    nfs_renderer::set_msaa(nfs_game::extras::get().graphics.anti_aliasing == 2);
     // PORT-DEVIATION (HD texture packs): Extras › Graphics › Textures
     nfs_assets::hd::set_enabled(nfs_game::extras::get().graphics.textures == 1);
     let cli = cli::Cli::from_env();

@@ -216,12 +216,12 @@ fn pages() -> Vec<Page> {
         rows: vec![
             Row {
                 label: "Anti-aliasing",
-                help: "FXAA smooths jagged 3D edges. The HUD and menus are not touched. MSAA comes later.",
+                help: "Smooths jagged 3D edges (the HUD and menus are not touched). FXAA: a light filter. MSAA 4x: true multisampling of the 3D scene.",
                 applies: Applies::NextStart,
                 shown: true,
                 kind: Kind::Choice,
-                values: &["Off (original)", "FXAA"],
-                get: |s| s.graphics.anti_aliasing.min(1) as usize,
+                values: &["Off (original)", "FXAA", "MSAA 4x"],
+                get: |s| s.graphics.anti_aliasing.min(2) as usize,
                 set: |s, v| s.graphics.anti_aliasing = v as u8,
             },
             Row {
