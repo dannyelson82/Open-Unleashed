@@ -25,6 +25,7 @@ impl App {
             let mut st = c.get();
             let out = nfs_game::assists::apply(axes, &car, &s, &mut st);
             c.set(st);
+            super::overlay::assists_acted(st.acted);
             out
         })
     }

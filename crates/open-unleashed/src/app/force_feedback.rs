@@ -210,8 +210,8 @@ pub(crate) fn haptics_drive(h: &mut nfs_game::haptics::Haptics, pads: &mut nfs_i
         limiter: v.ignition_cut != 0,
         gear: v.gear,
         locked,
-        // the ABS assist works the brake whenever a wheel would lock under a firm pedal
-        abs: nfs_game::extras::get().assists.abs && brake > 0.3 && speed_kmh > 15.0 && (locked || v.wheels.iter().any(|w| w.slip > 0.3)),
+        // the ABS assist released the brake lately (`overlay::assists_acted`)
+        abs: super::overlay::assist_recent(0),
         wheelspin: ((rear.iter().map(|w| w.slip).fold(0.0f32, f32::max) - 0.15) / 0.5).clamp(0.0, 1.0),
         throttle: f32::from(v.throttle_raw) / 255.0,
         brake,
