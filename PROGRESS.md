@@ -24,6 +24,8 @@ _Last updated: 2026-11-21 (session paused: usage limit)_
 failures are **identical on unmodified upstream 0.1.5** with the same data (checked in a separate worktree): golden /
 real-data tests recorded against a different install than your US disc v3.2 (fonts, string tables, car catalogue,
 golden car pages, driver camera, speech bank, and `nfs5.exe`, which this disc doesn't have). No regressions from the port.
+With the 3.5 data: **1,388 passed, 19 failed**. The 6 new failures are layout counts that are exactly +2 (buttons,
+gotos, stems, bevels, glinty boxes): the two "showcase…" buttons the 3.5 patch adds. A data difference, not a bug.
 
 **Dial needles in the test screenshots (checked 2026-11-21):** the race stills sent overnight come from command-line
 races (`open-unleashed alps 993 --screenshot …`). That path is the original's "no front end" launch, which leaves the dial
@@ -55,6 +57,16 @@ mission 0M01, Boxster, mid-race). The tvOS app always starts races from the menu
   copied; the intro movies are skipped cleanly, as documented.
 - `.gitignore` now also blocks `/game-data/`, `/game/`, `GameData/`, `FEData/`, `*.bin`, `*.cue`, `*.iso`, `nfs5.exe`.
 - Use: `export NFS5_GAME_PATH=~/Documents/OpenUnleashed/game-data`.
+- **Patched to 3.5 (2026-11-21)** with the "Enhanced Patch v3.5" you linked (nfs-cars.com, `SETUP.EXE` = Wise installer,
+  MD5 matched its `SIGFILE.MD5`). The installer was **never run**: its deflate streams were unpacked with a small script in
+  the session scratch folder and matched to the install script's file list. Applied the data files only:
+  `version.txt` (now `3.5`), `FEData/Layouts/{garage,loadreplay,usedcars}.lay` (adds the "showcase…" buttons),
+  `FEData/Data/nfs5-{1,2}.hud`, `FEData/Locale/festrings.loc`, `properties.txt`. Also installed the patch's unprotected game
+  executable as **`nfs5.exe`**: the engine only reads the movie decoder's tables from it (never runs it), so **the intro
+  movies now play** (golden movie-frame test passes; seen in the tvOS Simulator). The 3.2 originals of the replaced
+  files are in `game-data-v3.2-backup/` (git-ignored, like all `game-data-*`).
+- **For Unraid:** copy the updated `game-data/` (incl. `nfs5.exe`) into `/mnt/user/appdata/ou-server/game` and restart the
+  container. The Apple TV app then offers the update at its next launch (see TVOS.md, "Game data updates").
 
 ## Placeholders
 Filled in: `<UNRAID_IP_OR_HOSTNAME>` = **the server's LAN address / tower.local**, `<TAILSCALE_NAME>` = **the server's Tailscale name**
@@ -97,6 +109,12 @@ Choices made without asking (per your instruction); each is easy to change.
 23. **Unsigned .ipa** for atvloadly (it signs with its own Apple ID) — nothing needs your Apple ID on the Mac.
 22. **Siri Remote not counted as a racing pad** (matched by name "remote").
 20. **Pause on controller loss also on the Mac** (the shared `request_pause`; the keyboard could keep racing, but a pad vanishing mid-corner is worth a pause).
+
+- **35. 3.5 patch: data files only.** The patch's `Porsche.exe` → `nfs5.exe` (tables only) and the data files were
+  applied; `gimme.dll`, the uninstaller and the SaveData HUD copies were not (Windows-only / per-profile).
+- **36. tvOS launch-time data update check.** With a verified download and a server set, the app compares its manifest
+  with the server's (gives up after ~4 s, so an offline Apple TV starts as before). If they differ, the Game Data screen
+  offers **Update** (only changed files) or **Play** (keep the current files; asked again next launch).
 
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |

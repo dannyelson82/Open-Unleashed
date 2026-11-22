@@ -21,6 +21,7 @@ __pycache__/
 
 # original game files — never in git (TVOS.md)
 /game-data/
+/game-data-*/
 /game/
 GameData/
 FEData/
