@@ -87,6 +87,19 @@ pub struct Controller {
     pub head_look_pitch: bool,
 }
 
+/// The OpenUnleashed server (`server-plan.md`): address (name or IP, optional `:port`), token, save sync.
+/// On tvOS the app shell's Server setting (UserDefaults) is passed in as `OU_SERVER` / `OU_TOKEN` and wins.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Network {
+    pub server: String,
+    pub token: String,
+    /// sync the saves with the server (off until a server is set)
+    pub sync_saves: bool,
+    /// the save namespace on the server (one per household by default)
+    pub save_profile: String,
+}
+
 /// Graphics (`enhancements-plan.md` §3). Indices into the Extras rows' values; 0 = the original everywhere.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -154,11 +167,12 @@ pub struct ExtrasSettings {
     pub controller: Controller,
     pub assists: Assists,
     pub graphics: Graphics,
+    pub network: Network,
 }
 
 impl Default for ExtrasSettings {
     fn default() -> Self {
-        Self { version: VERSION, display: Display::default(), controller: Controller::default(), assists: Assists::default(), graphics: Graphics::default() }
+        Self { version: VERSION, display: Display::default(), controller: Controller::default(), assists: Assists::default(), graphics: Graphics::default(), network: Network::default() }
     }
 }
 

@@ -35,6 +35,7 @@ mod intro_run;
 mod netlobby;
 mod netplay;
 mod parts_shop;
+mod sync;
 #[cfg(target_os = "tvos")]
 mod tvos;
 use app::*;
@@ -129,6 +130,10 @@ fn new_event_loop(scripted: bool) -> Result<EventLoop<()>> {
 /// `None`: a tool mode that has already done its work (`--net-browse`) — nothing to run.
 pub(crate) fn build_app(on_loop: &mut dyn FnMut(bool) -> Result<()>) -> Result<Option<App>> {
     let paths = GamePaths::locate()?;
+    // the OpenUnleashed server's save sync (`sync.rs`): what another device saved comes down before any save is
+    // read; changes go up from a worker thread. Nothing at all without a server set.
+    sync::pull_at_start();
+    sync::start_watcher();
     tracing::info!(root = %paths.root.display(), "located original game data");
     // the Verok patch's `nfs5.ini` (dll 0x100022B0): `Filtering=0` is the renderer's, before it is made
     nfs_renderer::set_point_filter(!paths.nfs5_ini().filtering);
