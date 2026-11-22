@@ -7,6 +7,8 @@ mod text_entry;
 mod lifecycle;
 pub(crate) mod overlay;
 pub(crate) mod extras_ui;
+#[cfg(target_os = "macos")]
+mod headlook;
 #[cfg_attr(not(target_os = "tvos"), allow(unused_imports))]
 pub(crate) use text_entry::{TextRequest, TextTarget};
 mod menu;

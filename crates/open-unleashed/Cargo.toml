@@ -31,6 +31,12 @@ nfs-math.workspace = true
 image.workspace = true
 nfs-audio.workspace = true
 
+# Mac head-look (AirPods motion, `airpods-plan.md` H): CoreMotion's headphone motion manager, macOS only
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-core-motion = { version = "0.3", default-features = false, features = ["std", "CMHeadphoneMotionManager", "CMDeviceMotion", "CMAttitude", "CMLogItem", "CMAuthorization"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSBundle", "NSDictionary", "NSString"] }
+objc2 = "0.6"
+
 [build-dependencies]
 embed-resource = "3"
 

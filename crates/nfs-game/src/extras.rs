@@ -58,16 +58,46 @@ pub struct Display {
     pub hud_size: HudSize,
 }
 
+/// Head-look strength (`airpods-plan.md` H): the view turn for 20° of head turn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HeadLookStrength {
+    Low,
+    #[default]
+    Medium,
+    High,
+}
+
+impl HeadLookStrength {
+    pub fn view_at_20(self) -> f32 {
+        match self {
+            HeadLookStrength::Low => 50.0,
+            HeadLookStrength::Medium => 75.0,
+            HeadLookStrength::High => 100.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Controller {
+    /// Mac only: AirPods head tracking turns the in-car view (off = the original)
+    pub head_look: bool,
+    pub head_look_strength: HeadLookStrength,
+    pub head_look_pitch: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ExtrasSettings {
     pub version: u32,
     pub display: Display,
+    pub controller: Controller,
 }
 
 impl Default for ExtrasSettings {
     fn default() -> Self {
-        Self { version: VERSION, display: Display::default() }
+        Self { version: VERSION, display: Display::default(), controller: Controller::default() }
     }
 }
 

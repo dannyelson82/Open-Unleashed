@@ -1245,7 +1245,11 @@ impl App {
                 (y, turn) = nfs_game::camera::look_step(y, target);
             }
             self.look_yaw = Some((y, view, turn));
-            Quat::from_rotation_y(if turn { (y as f32).to_radians() } else { 0.0 })
+            let keys = Quat::from_rotation_y(if turn { (y as f32).to_radians() } else { 0.0 });
+            // PORT-DEVIATION (Mac head-look, `headlook.rs`): AirPods head tracking on top; a held look key wins
+            #[cfg(target_os = "macos")]
+            let keys = keys * self.head_look(view, look_left || look_right || look_fwd || rear_view);
+            keys
         } else {
             self.look_yaw = None;
             Quat::IDENTITY

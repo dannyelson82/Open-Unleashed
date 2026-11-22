@@ -5,7 +5,7 @@
 //! `nfs_game::extras` (`extras.json`).
 
 use crate::*;
-use nfs_game::extras::{self, ExtrasSettings, HudSize, RenderScale};
+use nfs_game::extras::{self, ExtrasSettings, HeadLookStrength, HudSize, RenderScale};
 
 /// The menu's place.
 #[derive(Debug, Clone, Copy, Default)]
@@ -81,12 +81,46 @@ fn pages() -> Vec<Page> {
             },
         ],
         reset: |s| s.display = Default::default(),
+    },
+    Page {
+        title: "Controller",
+        rows: vec![
+            Row {
+                label: "Head-look (AirPods)",
+                help: "Turn your head to look around inside the car (bumper and driver views). Needs AirPods with head tracking.",
+                applies: Applies::Now,
+                shown: cfg!(target_os = "macos"),
+                values: &["Off", "On"],
+                get: |s| usize::from(s.controller.head_look),
+                set: |s, v| s.controller.head_look = v == 1,
+            },
+            Row {
+                label: "Head-look strength",
+                help: "How far the view turns for 20 degrees of head turn (50 / 75 / 100 degrees).",
+                applies: Applies::Now,
+                shown: cfg!(target_os = "macos"),
+                values: &["Low", "Medium", "High"],
+                get: |s| s.controller.head_look_strength as usize,
+                set: |s, v| s.controller.head_look_strength = [HeadLookStrength::Low, HeadLookStrength::Medium, HeadLookStrength::High][v.min(2)],
+            },
+            Row {
+                label: "Head-look up and down",
+                help: "The view also tilts a little with your head (at most 15 degrees).",
+                applies: Applies::Now,
+                shown: cfg!(target_os = "macos"),
+                values: &["Off", "On"],
+                get: |s| usize::from(s.controller.head_look_pitch),
+                set: |s, v| s.controller.head_look_pitch = v == 1,
+            },
+        ],
+        reset: |s| s.controller = Default::default(),
     }]
     .into_iter()
     .map(|mut p| {
         p.rows.retain(|r| r.shown);
         p
     })
+    .filter(|p| !p.rows.is_empty())
     .collect()
 }
 
