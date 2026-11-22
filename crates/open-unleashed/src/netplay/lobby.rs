@@ -192,6 +192,10 @@ impl Lobby {
                 tracing::warn!(target: "netplay", ?kind, %to, error = %e, "no probe could be sent — on macOS check System Settings > Privacy & Security > Local Network");
                 self.warned = true;
             }
+            // PLATFORM GLUE (`server_lobby.rs`): the server's games, probed unicast (they answer like LAN ones)
+            for a in crate::server_lobby::probe_targets() {
+                let _ = self.net.probe_at(a);
+            }
             if let Ok(a) = self.ip.trim().parse::<SocketAddr>() {
                 let _ = self.net.probe_at(a);
             } else if let Ok(ip) = self.ip.trim().parse::<Ipv4Addr>() {

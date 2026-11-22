@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
-struct SyncConfig {
+pub(crate) struct SyncConfig {
     bases: Vec<String>,
     token: String,
     device: String,
@@ -52,12 +52,22 @@ fn candidates(addr: &str) -> Vec<String> {
     v
 }
 
+/// The save sync's settings: a server set **and** sync on (tvOS: on whenever the shell passes a server).
 fn config() -> Option<SyncConfig> {
+    let n = nfs_game::extras::get().network;
+    let enabled = std::env::var("OU_SERVER").is_ok_and(|v| !v.trim().is_empty()) || n.sync_saves;
+    if !enabled || std::env::var_os("NFS_NO_SYNC").is_some() {
+        return None;
+    }
+    server_config()
+}
+
+/// The OpenUnleashed server, if one is set (the lobby needs only this).
+pub(crate) fn server_config() -> Option<SyncConfig> {
     let n = nfs_game::extras::get().network;
     let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
     let server = env("OU_SERVER").unwrap_or(n.server.clone());
-    let enabled = env("OU_SERVER").is_some() || n.sync_saves;
-    if !enabled || server.trim().is_empty() || std::env::var_os("NFS_NO_SYNC").is_some() {
+    if server.trim().is_empty() {
         return None;
     }
     let device = env("OU_DEVICE").unwrap_or_else(|| {
@@ -137,7 +147,7 @@ fn sha(bytes: &[u8]) -> String {
 }
 
 /// A connection: the first base URL that answers.
-struct Client {
+pub(crate) struct ServerConn {
     agent: ureq::Agent,
     base: String,
     cfg: SyncConfig,
@@ -159,8 +169,8 @@ fn seg(s: &str) -> String {
     s.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
 }
 
-impl Client {
-    fn connect(cfg: &SyncConfig, timeout: Duration) -> Option<Self> {
+impl ServerConn {
+    pub(crate) fn connect(cfg: &SyncConfig, timeout: Duration) -> Option<Self> {
         let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(Some(timeout)).http_status_as_error(false).build().into();
         for b in &cfg.bases {
             let ok = agent
@@ -173,6 +183,65 @@ impl Client {
             }
         }
         None
+    }
+
+    pub(crate) fn base(&self) -> &str {
+        &self.base
+    }
+
+    fn auth(&self) -> String {
+        format!("Bearer {}", self.cfg.token)
+    }
+
+    /// The lobby's open games: each one's best address for this device (`?via=` says how it reached the server).
+    pub(crate) fn lobby_games(&self) -> Option<Vec<std::net::SocketAddr>> {
+        let host = self.base.split("://").nth(1).unwrap_or("").split([':', '/']).next().unwrap_or("");
+        let via = if host.ends_with(".ts.net") || host.starts_with("100.") { "tailnet" } else { "lan" };
+        let mut r = self.agent.get(format!("{}/v1/lobby/games?via={via}", self.base)).header("Authorization", self.auth()).call().ok()?;
+        if !r.status().is_success() {
+            return None;
+        }
+        let v: serde_json::Value = r.body_mut().read_json().ok()?;
+        let games = v.get("games")?.as_array()?;
+        Some(
+            games
+                .iter()
+                .filter_map(|g| {
+                    let port = g.get("port").and_then(|p| p.as_u64()).unwrap_or(9442) as u16;
+                    let ip: std::net::IpAddr = g.get("addresses")?.as_array()?.first()?.as_str()?.parse().ok()?;
+                    Some(std::net::SocketAddr::new(ip, port))
+                })
+                .collect(),
+        )
+    }
+
+    /// Register a hosted game; its id.
+    pub(crate) fn lobby_register(&self, body: &serde_json::Value) -> Option<String> {
+        let mut r = self.agent.post(format!("{}/v1/lobby/games", self.base)).header("Authorization", self.auth()).send_json(body).ok()?;
+        if !r.status().is_success() {
+            return None;
+        }
+        let v: serde_json::Value = r.body_mut().read_json().ok()?;
+        v.get("id")?.as_str().map(str::to_string)
+    }
+
+    /// Heartbeat: `Some(true)` kept, `Some(false)` unknown on the server (expired), `None` unreachable.
+    pub(crate) fn lobby_heartbeat(&self, id: &str, players: u32, started: bool) -> Option<bool> {
+        let r = self
+            .agent
+            .put(format!("{}/v1/lobby/games/{}", self.base, seg(id)))
+            .header("Authorization", self.auth())
+            .send_json(serde_json::json!({ "players": players, "started": started }))
+            .ok()?;
+        match r.status().as_u16() {
+            200..=299 => Some(true),
+            404 => Some(false),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn lobby_delete(&self, id: &str) {
+        let _ = self.agent.delete(format!("{}/v1/lobby/games/{}", self.base, seg(id))).header("Authorization", self.auth()).call();
     }
 
     fn url(&self, kind: &str, file: &str) -> String {
@@ -233,7 +302,7 @@ pub fn pull_at_start() {
         return;
     }
     let t0 = std::time::Instant::now();
-    let Some(c) = Client::connect(&cfg, Duration::from_secs(3)) else {
+    let Some(c) = ServerConn::connect(&cfg, Duration::from_secs(3)) else {
         tracing::warn!(server = ?cfg.bases, "save sync: server unreachable at start — playing with the local saves");
         return;
     };
@@ -280,7 +349,7 @@ pub fn pull_at_start() {
 }
 
 /// One pass of the watcher: upload what changed since it was last agreed.
-fn push_pass(c: &Client, st: &mut State) -> bool {
+fn push_pass(c: &ServerConn, st: &mut State) -> bool {
     let mut changed = false;
     for (file, path) in local_files() {
         let s = stamp(&path);
@@ -319,11 +388,11 @@ fn push_pass(c: &Client, st: &mut State) -> bool {
 pub fn start_watcher() {
     let Some(cfg) = config() else { return };
     let _ = std::thread::Builder::new().name("ou-save-sync".into()).spawn(move || {
-        let mut client: Option<Client> = None;
+        let mut client: Option<ServerConn> = None;
         let mut st = load_state();
         loop {
             if client.is_none() {
-                client = Client::connect(&cfg, Duration::from_secs(5));
+                client = ServerConn::connect(&cfg, Duration::from_secs(5));
             }
             if let Some(c) = client.as_ref() {
                 if push_pass(c, &mut st) {

@@ -843,6 +843,10 @@ impl App {
     /// launch settled goes to `net.race`, which `start_from_layout` reads.
     pub(crate) fn net_launch_sync(&mut self) {
         let host = self.net.session.as_ref().is_some_and(|n| n.is_host());
+        // the server lobby shows the game as racing from here (`server_lobby.rs`)
+        if let Some(r) = self.net.session.as_ref().and_then(|n| n.server_reg.as_ref()) {
+            r.set_started(true);
+        }
         let mut settings = if host { self.net_launch_settings() } else { None };
         // 0x4EEDA0's record for the player (kind 1) — every machine builds it and the walk sends it
         let own_car = self.net_own_launch_car();
