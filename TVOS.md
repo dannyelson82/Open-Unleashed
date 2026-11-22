@@ -123,6 +123,32 @@ OU_BUNDLE_ID=com.you.openunleashed scripts/export-ipa.sh
 which keeps its data container — the downloaded game data in `Library/Caches/game` (unless tvOS purged it) and the
 `NSUserDefaults` save mirror + server setting. Deleting the app from the Apple TV deletes both.
 
+## Port features (both platforms unless noted)
+All off / original by default; switched in **Extras** (pause menu › extras), saved in `extras.json` beside the saves
+(`nfs_game::extras`; mirrored on tvOS, synced through the server).
+| Feature | Where | Code |
+|---|---|---|
+| Frame-time overlay | Display & HUD | `app/overlay.rs` (`NFS_FPS_OVERLAY=1`) |
+| HUD size Original / Large / Extra large | Display & HUD | `hud/geometry.rs` (`Hud::set_scale`) |
+| Render resolution Native / 1440p / 1080p (tvOS) | Display & HUD | `tvos.rs::apply_render_scale` |
+| Anisotropic filtering, draw distance (+fog), FOV offsets | Graphics | `nfs-renderer` (`set_anisotropy`), `race_stages.rs`, `render_scene.rs` |
+| Steering curve, speed-sensitive steering, countersteer, ABS | Driving assists | `nfs_game::assists` (applied to the local packet: replays/network exact) |
+| Pause when headphones disconnect; output follows the default device | Audio | `nfs-audio` `route_check`, `app/lifecycle.rs` |
+| Head-look with AirPods (Mac) | Controller | `nfs_game::headlook`, `app/headlook.rs` |
+| Button names follow the last device (Xbox / PlayStation / …) | automatic | `nfs_input::glyphs` |
+| Save sync + lobby through ou-server | `extras.json` › `network` (Mac); the Game Data server (tvOS) | `sync.rs`, `server_lobby.rs` |
+
+tvOS-only: Game Data screen (download from ou-server), on-screen keyboard for text fields, B / Menu = back, Siri
+Remote Menu never leaves the app, pointer hidden, pause on background, no screen saver during races, layered icon +
+Top Shelf, save mirror in NSUserDefaults.
+
+## Apple TV settings that matter
+- **Match Frame Rate / Match Dynamic Range** (Settings › Video and Audio › Match Content): the app asks for 60 Hz SDR;
+  with Match Dynamic Range on, a future HDR mode will switch the TV to HDR.
+- **Audio Format**: Auto sends multichannel PCM over HDMI (for a future 5.1 mode); through a TV's ARC usually only
+  stereo arrives (eARC passes 5.1 PCM).
+- **Automatic tvOS updates off** (atvloadly must be re-paired after updates).
+
 ## AirPods
 - **Mac head-look** (`airpods-plan.md` H; macOS 14+; Extras › Controller › Head-look, off by default): AirPods
   head tracking turns the bumper / driver view (strength Low/Medium/High = 50/75/100° of view for 20° of head
