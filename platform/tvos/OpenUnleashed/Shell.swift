@@ -50,6 +50,11 @@ final class Shell {
     func launched() {
         SaveMirror.restoreMissing()
         SaveMirror.startWatching()
+        // no screen saver during a race / replay / intro; menus let the TV sleep as usual (§2.7)
+        Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+            let want = ou_wants_no_sleep()
+            if UIApplication.shared.isIdleTimerDisabled != want { UIApplication.shared.isIdleTimerDisabled = want }
+        }
         if Shell.gameDataReady {
             ou_data_ready()
         } else {

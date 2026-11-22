@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D4F9180BBE40454EAA0C4B3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B85096C407BB942913B652E7 /* Assets.xcassets */; };
 		21737664A999AE02BE8CEC29 /* AudioDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D853CB8DCAE931F5EDF3690 /* AudioDisplay.swift */; };
 		32139F157CC7801B78C841C7 /* ServerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00B5534C94C680C0FD17C5B /* ServerClient.swift */; };
 		5CDCE500CE20CFDFC0FD24FD /* GameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7BAC9333C818674CEE00870 /* GameStore.swift */; };
@@ -25,6 +26,7 @@
 		97558A36196C41A7E289C416 /* OpenUnleashed.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OpenUnleashed.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9EB71FAE444FF345B037D283 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A267AFA0CFD493B179B3E243 /* Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell.swift; sourceTree = "<group>"; };
+		B85096C407BB942913B652E7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CA1DBCFAB84757E0D21FEBDF /* SaveMirror.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveMirror.swift; sourceTree = "<group>"; };
 		E7BAC9333C818674CEE00870 /* GameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameStore.swift; sourceTree = "<group>"; };
 		EB6884F0FEE12204803634A6 /* GameDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDataViewController.swift; sourceTree = "<group>"; };
@@ -35,6 +37,7 @@
 		10912F4FE965FFA4A3177042 /* OpenUnleashed */ = {
 			isa = PBXGroup;
 			children = (
+				B85096C407BB942913B652E7 /* Assets.xcassets */,
 				1D853CB8DCAE931F5EDF3690 /* AudioDisplay.swift */,
 				4D42B09C075E16229EE31B8E /* Bonjour.swift */,
 				EB6884F0FEE12204803634A6 /* GameDataViewController.swift */,
@@ -73,6 +76,7 @@
 			buildConfigurationList = D2291F43637C9EFAAADA9171 /* Build configuration list for PBXNativeTarget "OpenUnleashed" */;
 			buildPhases = (
 				DA8B5A62220FF127FB13E0F8 /* Sources */,
+				CA00C854E3F9FAD9597D3883 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -118,6 +122,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CA00C854E3F9FAD9597D3883 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D4F9180BBE40454EAA0C4B3 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		DA8B5A62220FF127FB13E0F8 /* Sources */ = {

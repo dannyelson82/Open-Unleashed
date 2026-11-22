@@ -108,6 +108,8 @@ Choices made without asking (per your instruction); each is easy to change.
 |---|---|---|---|
 | 0 Extras menu + `extras.json` (`nfs_game::extras`, `app/extras_ui.rs`) | ✅ pause menu's last item "extras"; pages/rows with value, explanation, "applies now/at next start", reset page; arrows/d-pad; saved + reloaded (tests); `extras.json` is in the tvOS save mirror | ✅ (same code; settings file read at start) | 📺 pad/remote navigation |
 | 0 Extras from the main menu (pad View / F12 / Siri Remote Play/Pause) | ⬜ the front end has no HUD font object yet — needs its own text path | ⬜ | 📺 |
+| 2.1 Layered app icon + Top Shelf (+ Wide) from the project's own mark (`platform/tvos/make_brand_assets.py`, committed asset catalog) | — | ✅ icon on the Simulator's Home screen; 3 layers (opaque back, road, mark), App Store icon, Top Shelf images | 📺 parallax on focus, Top Shelf in the top row |
+| 2.7 No screen saver during race / replay / intro (menus can still sleep) | — | 🟡 wired (shell polls `ou_wants_no_sleep()` every 3 s) | 📺 15-minute race without screen saver |
 | 2.2 HUD size Original / Large (1.5×) / Extra large (2×) | ✅ (pointer hover follows) | ✅ screenshots: every element scaled, original edge anchoring kept, nothing clipped | 📺 couch check on a 55″ TV |
 | 7.1 Frame-time overlay switch in Extras | ✅ | ✅ | — |
 | 6b-H Mac head-look (AirPods) | ✅ built in; filter unit-tested (5 tests: dead zone, 20°→75°, clamp, jump guard, look-key wins, drift); inside the app bundle CoreMotion starts ("motion updates started"); the bare binary refuses safely. 🙋 **needs you with AirPods**: direction, feel, 10-minute no-drift check | — (hidden: no API) | — |
