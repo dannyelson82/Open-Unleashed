@@ -373,10 +373,20 @@ impl App {
 
     /// **TEST GLUE** (`NFS_RACE_KEYS=<tok;tok;...>`, a `--screenshot` race run): key presses in the window
     /// handler's own order, photo mode's hook first and then the pause menu's keys. Tokens: `pause` (the menu
-    /// up, as Esc does), `k`, `f11`, `esc`, `enter`, `up`, `down`. Logs the state after each. `true` when it ran.
+    /// up, as Esc does), `k`, `f11`, `esc`, `enter`, `up`, `down`, `left`, `right`; `type=<text>` (characters into
+    /// the Extras text row being typed into) and `sleep=<ms>` (wait, e.g. for Test connection). Logs the state
+    /// after each. `true` when it ran.
     pub(crate) fn race_keys_script(&mut self, event_loop: &ActiveEventLoop) -> bool {
         let Some(spec) = nfs_game::config::cfg().nfs_race_keys.as_str().filter(|s| !s.trim().is_empty()) else { return false };
         for tok in spec.split(';').map(str::trim).filter(|t| !t.is_empty()) {
+            if let Some(t) = tok.strip_prefix("type=") {
+                crate::app::extras_ui::type_text(t);
+                continue;
+            }
+            if let Some(ms) = tok.strip_prefix("sleep=").and_then(|v| v.parse::<u64>().ok()) {
+                std::thread::sleep(std::time::Duration::from_millis(ms));
+                continue;
+            }
             let code = match tok {
                 "pause" => {
                     self.paused = true;

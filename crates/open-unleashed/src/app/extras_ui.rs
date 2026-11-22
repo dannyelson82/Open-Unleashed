@@ -2,10 +2,134 @@
 //! port's other overlays (the HUD's font and quads), opened from the pause menu's last item. Fully driven by
 //! the d-pad / arrows (up/down: rows; left/right: values, or pages on the page row; A/Enter: the reset row;
 //! B/Esc: close). Each row shows its value, a one-line explanation and when it applies. The settings live in
-//! `nfs_game::extras` (`extras.json`).
+//! `nfs_game::extras` (`extras.json`; the Network page's in `network.json`, this device's own).
+//!
+//! **Network** has text rows (server address, token): Enter / A starts typing — on the Mac in place (the
+//! keyboard, Cmd+V pastes, Enter keeps, Esc drops), on tvOS in the on-screen keyboard (`text_entry.rs`). On
+//! tvOS a change is also handed to the app shell, whose copy the Game Data screen uses.
 
 use crate::*;
 use nfs_game::extras::{self, ExtrasSettings, HeadLookStrength, HudSize, RenderScale};
+use std::cell::{Cell, RefCell};
+use std::sync::Mutex;
+
+/// An Extras text row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Field {
+    Server,
+    Token,
+}
+
+impl Field {
+    pub(crate) fn title(self) -> &'static str {
+        match self {
+            Field::Server => "OpenUnleashed server (name or IP address)",
+            Field::Token => "Server token",
+        }
+    }
+
+    pub(crate) fn secure(self) -> bool {
+        self == Field::Token
+    }
+
+    fn value(self, s: &ExtrasSettings) -> &str {
+        match self {
+            Field::Server => &s.network.server,
+            Field::Token => &s.network.token,
+        }
+    }
+}
+
+/// The longest text a row takes.
+pub(crate) const MAX_TEXT: usize = 200;
+
+thread_local! {
+    /// the text row being typed into, and its text so far
+    static EDIT: RefCell<Option<(Field, String)>> = const { RefCell::new(None) };
+    /// Cmd (macOS) / Ctrl held — for paste
+    static COMMAND: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Test connection's last answer.
+#[derive(Debug, Clone)]
+enum Test {
+    Idle,
+    Running,
+    Ok(String),
+    Failed(String),
+}
+
+static TEST: Mutex<Test> = Mutex::new(Test::Idle);
+
+fn test_state() -> Test {
+    TEST.lock().map(|t| t.clone()).unwrap_or(Test::Idle)
+}
+
+fn set_test(t: Test) {
+    if let Ok(mut g) = TEST.lock() {
+        *g = t;
+    }
+}
+
+/// The text row being typed into (field, text so far).
+pub(crate) fn editing() -> Option<(Field, String)> {
+    EDIT.with(|e| e.borrow().clone())
+}
+
+pub(crate) fn cancel_edit() {
+    EDIT.with(|e| *e.borrow_mut() = None);
+}
+
+fn set_edit(v: Option<(Field, String)>) {
+    EDIT.with(|e| *e.borrow_mut() = v);
+}
+
+/// **TEST GLUE** (`NFS_RACE_KEYS` `type=`): the text row being typed into gets this text (replacing it).
+pub(crate) fn type_text(t: &str) {
+    EDIT.with(|e| {
+        if let Some((_, buf)) = e.borrow_mut().as_mut() {
+            *buf = t.chars().filter(|c| !c.is_control()).collect();
+        }
+    });
+}
+
+/// The window's modifier keys changed (Cmd+V pastes into a text row on the Mac).
+pub(crate) fn set_modifiers(m: winit::keyboard::ModifiersState) {
+    COMMAND.with(|c| c.set(m.super_key() || m.control_key()));
+}
+
+/// The clipboard's text (the Mac's `pbpaste`), first line only.
+fn clipboard_text() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let out = std::process::Command::new("/usr/bin/pbpaste").output().ok()?;
+        let t = String::from_utf8_lossy(&out.stdout);
+        return t.lines().next().map(|l| l.trim().to_string());
+    }
+    #[allow(unreachable_code)]
+    None
+}
+
+/// The server settings changed: tvOS hands them to the app shell too (its Game Data screen and next start).
+fn network_changed() {
+    set_test(Test::Idle);
+    #[cfg(target_os = "tvos")]
+    {
+        let n = extras::get().network;
+        crate::tvos::server_changed(&n.server, &n.token);
+    }
+}
+
+/// What a row is.
+#[derive(Clone, Copy)]
+enum Kind {
+    /// a value picked with left / right
+    Choice,
+    /// text typed in (Enter / A)
+    Text(Field),
+    /// Test connection (Enter / A)
+    Test,
+}
 
 /// The menu's place.
 #[derive(Debug, Clone, Copy, Default)]
@@ -30,6 +154,7 @@ struct Row {
     applies: Applies,
     /// the platforms it means something on
     shown: bool,
+    kind: Kind,
     values: &'static [&'static str],
     get: fn(&ExtrasSettings) -> usize,
     set: fn(&mut ExtrasSettings, usize),
@@ -50,6 +175,7 @@ fn pages() -> Vec<Page> {
                 help: "Frames per second and frame times in the top-left corner.",
                 applies: Applies::Now,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Off", "On"],
                 get: |s| usize::from(s.display.fps_overlay),
                 set: |s, v| s.display.fps_overlay = v == 1,
@@ -59,6 +185,7 @@ fn pages() -> Vec<Page> {
                 help: "Scales the race HUD. The original draws it in fixed pixels, small on a big TV.",
                 applies: Applies::Now,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Original", "Large", "Extra large"],
                 get: |s| match s.display.hud_size {
                     HudSize::Original => 0,
@@ -72,6 +199,7 @@ fn pages() -> Vec<Page> {
                 help: "Pixels the game draws. The Apple TV scales them to the TV, lower = more headroom.",
                 applies: Applies::NextStart,
                 shown: cfg!(target_os = "tvos"),
+                kind: Kind::Choice,
                 values: &["Native (4K)", "1440p", "1080p"],
                 get: |s| match s.display.render_scale {
                     RenderScale::Native => 0,
@@ -91,6 +219,7 @@ fn pages() -> Vec<Page> {
                 help: "FXAA smooths jagged 3D edges. The HUD and menus are not touched. MSAA comes later.",
                 applies: Applies::NextStart,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Off (original)", "FXAA"],
                 get: |s| s.graphics.anti_aliasing.min(1) as usize,
                 set: |s, v| s.graphics.anti_aliasing = v as u8,
@@ -100,6 +229,7 @@ fn pages() -> Vec<Page> {
                 help: "Sharper road and ground textures at shallow angles. Original = trilinear.",
                 applies: Applies::NextStart,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Original", "Anisotropic 4x", "Anisotropic 8x", "Anisotropic 16x"],
                 get: |s| s.graphics.filtering as usize,
                 set: |s, v| s.graphics.filtering = v as u8,
@@ -109,6 +239,7 @@ fn pages() -> Vec<Page> {
                 help: "Beyond the original's longest, with the fog pushed out to match. Check tracks for pop-in.",
                 applies: Applies::NextRace,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Original", "125 percent", "150 percent", "200 percent"],
                 get: |s| s.graphics.draw_distance as usize,
                 set: |s, v| s.graphics.draw_distance = v as u8,
@@ -118,6 +249,7 @@ fn pages() -> Vec<Page> {
                 help: "Added to the original's widescreen-correct field of view.",
                 applies: Applies::Now,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["-5 degrees", "0", "+5 degrees", "+10 degrees"],
                 get: |s| s.graphics.fov_chase as usize,
                 set: |s, v| s.graphics.fov_chase = v as u8,
@@ -127,6 +259,7 @@ fn pages() -> Vec<Page> {
                 help: "Bumper and driver views.",
                 applies: Applies::Now,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["-5 degrees", "0", "+5 degrees", "+10 degrees"],
                 get: |s| s.graphics.fov_incar as usize,
                 set: |s, v| s.graphics.fov_incar = v as u8,
@@ -142,6 +275,7 @@ fn pages() -> Vec<Page> {
                 help: "Turn your head to look around inside the car (bumper and driver views). Needs AirPods with head tracking.",
                 applies: Applies::Now,
                 shown: cfg!(target_os = "macos"),
+                kind: Kind::Choice,
                 values: &["Off", "On"],
                 get: |s| usize::from(s.controller.head_look),
                 set: |s, v| s.controller.head_look = v == 1,
@@ -151,6 +285,7 @@ fn pages() -> Vec<Page> {
                 help: "How far the view turns for 20 degrees of head turn (50 / 75 / 100 degrees).",
                 applies: Applies::Now,
                 shown: cfg!(target_os = "macos"),
+                kind: Kind::Choice,
                 values: &["Low", "Medium", "High"],
                 get: |s| s.controller.head_look_strength as usize,
                 set: |s, v| s.controller.head_look_strength = [HeadLookStrength::Low, HeadLookStrength::Medium, HeadLookStrength::High][v.min(2)],
@@ -160,6 +295,7 @@ fn pages() -> Vec<Page> {
                 help: "The view also tilts a little with your head (at most 15 degrees).",
                 applies: Applies::Now,
                 shown: cfg!(target_os = "macos"),
+                kind: Kind::Choice,
                 values: &["Off", "On"],
                 get: |s| usize::from(s.controller.head_look_pitch),
                 set: |s, v| s.controller.head_look_pitch = v == 1,
@@ -174,6 +310,7 @@ fn pages() -> Vec<Page> {
             help: "A single-player race pauses when AirPods or other headphones go away mid-race.",
             applies: Applies::Now,
             shown: true,
+            kind: Kind::Choice,
             values: &["Off", "On"],
             get: |s| usize::from(s.audio.pause_on_headphones_gone),
             set: |s, v| s.audio.pause_on_headphones_gone = v == 1,
@@ -188,6 +325,7 @@ fn pages() -> Vec<Page> {
                 help: "Softer = finer control around the centre of the stick, full lock unchanged.",
                 applies: Applies::Now,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Linear (original)", "Soft", "Softer"],
                 get: |s| s.assists.steering_response as usize,
                 set: |s, v| s.assists.steering_response = v as u8,
@@ -197,6 +335,7 @@ fn pages() -> Vec<Page> {
                 help: "Less steering lock at high speed (at 200 km/h: 75 / 55 / 40 percent).",
                 applies: Applies::Now,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Off", "Low", "Medium", "High"],
                 get: |s| s.assists.speed_steering as usize,
                 set: |s, v| s.assists.speed_steering = v as u8,
@@ -206,6 +345,7 @@ fn pages() -> Vec<Page> {
                 help: "Countersteers a little when the rear slides. Never fights your own countersteer.",
                 applies: Applies::Now,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Off", "Light", "Strong"],
                 get: |s| s.assists.countersteer as usize,
                 set: |s, v| s.assists.countersteer = v as u8,
@@ -215,12 +355,60 @@ fn pages() -> Vec<Page> {
                 help: "Pulses the brake when a wheel locks, so you can still steer while braking hard.",
                 applies: Applies::Now,
                 shown: true,
+                kind: Kind::Choice,
                 values: &["Off", "On"],
                 get: |s| usize::from(s.assists.abs),
                 set: |s, v| s.assists.abs = v == 1,
             },
         ],
         reset: |s| s.assists = Default::default(),
+    },
+    Page {
+        title: "Network",
+        rows: vec![
+            Row {
+                label: "Server",
+                help: "Your OpenUnleashed server: tower.local, an IP address or a Tailscale name. Port 8642 unless given.",
+                applies: Applies::NextStart,
+                shown: true,
+                kind: Kind::Text(Field::Server),
+                values: &[],
+                get: |_| 0,
+                set: |_, _| {},
+            },
+            Row {
+                label: "Token",
+                help: "The token set in the ou-server container's settings.",
+                applies: Applies::NextStart,
+                shown: true,
+                kind: Kind::Text(Field::Token),
+                values: &[],
+                get: |_| 0,
+                set: |_, _| {},
+            },
+            Row {
+                label: "Sync saves",
+                help: "Keep your saves on the server, shared with the Apple TV. Off: this Mac's saves stay here.",
+                applies: Applies::NextStart,
+                // tvOS always syncs once a server is set (PROGRESS.md decision 30)
+                shown: !cfg!(target_os = "tvos"),
+                kind: Kind::Choice,
+                values: &["Off", "On"],
+                get: |s| usize::from(s.network.sync_saves),
+                set: |s, v| s.network.sync_saves = v == 1,
+            },
+            Row {
+                label: "Test connection",
+                help: "Asks the server above whether it answers and takes the token.",
+                applies: Applies::Now,
+                shown: true,
+                kind: Kind::Test,
+                values: &[],
+                get: |_| 0,
+                set: |_, _| {},
+            },
+        ],
+        reset: |s| s.network = Default::default(),
     }]
     .into_iter()
     .map(|mut p| {
@@ -248,6 +436,16 @@ impl App {
         let pages = pages();
         let page = &pages[ui.page.min(pages.len() - 1)];
         let last = page.rows.len() + 1; // the reset row
+        // typing into a text row: Enter / A keeps it, B / Esc drops it, nothing else moves (the keyboard's own
+        // path types the characters)
+        if let Some((field, text)) = editing() {
+            match key {
+                MenuKey::Back => cancel_edit(),
+                MenuKey::Enter => self.extras_commit_text(field, &text),
+                _ => {}
+            }
+            return;
+        }
         match key {
             MenuKey::Up => ui.row = ui.row.saturating_sub(1),
             MenuKey::Down => ui.row = (ui.row + 1).min(last),
@@ -255,7 +453,9 @@ impl App {
                 let d: isize = if matches!(key, MenuKey::Left) { -1 } else { 1 };
                 if ui.row == 0 {
                     ui.page = (ui.page as isize + d).rem_euclid(pages.len() as isize) as usize;
-                } else if let Some(r) = page.rows.get(ui.row - 1) {
+                } else if let Some(r) = page.rows.get(ui.row - 1)
+                    && matches!(r.kind, Kind::Choice)
+                {
                     let n = r.values.len() as isize;
                     let s = extras::update(|s| {
                         let v = ((r.get)(s) as isize + d).rem_euclid(n) as usize;
@@ -267,9 +467,28 @@ impl App {
             }
             MenuKey::Enter => {
                 if ui.row == last {
+                    let before = extras::get().network;
                     let s = extras::update(|s| (page.reset)(s));
                     apply_now(&s);
+                    if s.network != before {
+                        network_changed();
+                    }
                     self.fe_sound(9);
+                } else if let Some(Kind::Text(field)) = page.rows.get(ui.row - 1).map(|r| r.kind) {
+                    // start typing: in place on the Mac, the on-screen keyboard on tvOS (`text_request`)
+                    set_edit(Some((field, field.value(&extras::get()).to_string())));
+                    self.fe_sound(9);
+                } else if let Some(Kind::Test) = page.rows.get(ui.row - 1).map(|r| r.kind) {
+                    if !matches!(test_state(), Test::Running) {
+                        set_test(Test::Running);
+                        let _ = std::thread::Builder::new().name("ou-test-server".into()).spawn(|| {
+                            set_test(match crate::sync::test_connection() {
+                                Ok(who) => Test::Ok(who),
+                                Err(e) => Test::Failed(e),
+                            });
+                        });
+                        self.fe_sound(9);
+                    }
                 } else if ui.row >= 1 {
                     // Enter steps the value forward, like Right
                     self.extras_ui = Some(ui);
@@ -285,6 +504,76 @@ impl App {
         self.extras_ui = Some(ui);
     }
 
+    /// A text row's new text (Enter on the Mac, OK in tvOS's keyboard).
+    pub(crate) fn extras_commit_text(&mut self, field: Field, text: &str) {
+        let t: String = text.trim().chars().filter(|c| !c.is_control()).take(MAX_TEXT).collect();
+        cancel_edit();
+        extras::update(|s| match field {
+            Field::Server => s.network.server = t,
+            Field::Token => s.network.token = t,
+        });
+        tracing::info!(?field, "Extras: network setting changed");
+        network_changed();
+        self.fe_sound(9);
+    }
+
+    /// **The keyboard while the Extras menu is up** (before photo mode, the race keys and the pause menu see it):
+    /// a text row being typed into takes the characters; otherwise the arrows, Enter and Esc drive the menu.
+    /// Returns whether the key was taken (every press is, so no race key acts under the menu).
+    pub(crate) fn extras_keyboard(&mut self, event: &winit::event::KeyEvent) -> bool {
+        use winit::keyboard::{Key, KeyCode, NamedKey, PhysicalKey};
+        if self.extras_ui.is_none() {
+            return false;
+        }
+        if event.state != winit::event::ElementState::Pressed {
+            return false;
+        }
+        if let Some((field, mut buf)) = editing() {
+            match event.logical_key.as_ref() {
+                Key::Named(NamedKey::Enter) => {
+                    self.extras_commit_text(field, &buf);
+                    return true;
+                }
+                Key::Named(NamedKey::Escape) => {
+                    cancel_edit();
+                    return true;
+                }
+                Key::Named(NamedKey::Backspace) => {
+                    buf.pop();
+                }
+                Key::Named(NamedKey::Space) => buf.push(' '),
+                Key::Character(t) if COMMAND.with(Cell::get) => {
+                    if t.eq_ignore_ascii_case("v")
+                        && let Some(clip) = clipboard_text()
+                    {
+                        buf.push_str(&clip);
+                    }
+                }
+                Key::Character(t) => buf.extend(t.chars().filter(|c| !c.is_control())),
+                _ => {}
+            }
+            buf = buf.chars().take(MAX_TEXT).collect();
+            set_edit(Some((field, buf)));
+            return true;
+        }
+        if event.repeat && !matches!(event.physical_key, PhysicalKey::Code(KeyCode::ArrowUp | KeyCode::ArrowDown)) {
+            return true;
+        }
+        let key = match event.physical_key {
+            PhysicalKey::Code(KeyCode::ArrowUp) => Some(MenuKey::Up),
+            PhysicalKey::Code(KeyCode::ArrowDown) => Some(MenuKey::Down),
+            PhysicalKey::Code(KeyCode::ArrowLeft) => Some(MenuKey::Left),
+            PhysicalKey::Code(KeyCode::ArrowRight) => Some(MenuKey::Right),
+            PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter) => Some(MenuKey::Enter),
+            PhysicalKey::Code(KeyCode::Escape | KeyCode::Backspace) => Some(MenuKey::Back),
+            _ => None,
+        };
+        if let Some(k) = key {
+            self.extras_key(k);
+        }
+        true
+    }
+
     /// The menu over the paused race.
     pub(crate) fn extras_sprites(&mut self) {
         let Some(ui) = self.extras_ui else { return };
@@ -295,7 +584,8 @@ impl App {
         let page = &pages[ui.page.min(pages.len() - 1)];
         let (w, line) = (420.0f32, FONT_SMALL + 8.0);
         let rows = page.rows.len() + 2;
-        let hgt = line * (rows as f32 + 4.0) + 16.0;
+        // room for a help text of up to three lines
+        let hgt = line * (rows as f32 + 6.0) + 16.0;
         let (x, y) = ((HUD_REF_W - w) * 0.5, (HUD_REF_H - hgt) * 0.5);
         let mut out = vec![h.quad(aspect, x, y, w, hgt, [0.0, 0.0, 0.0, 0.82])];
         let from = out.len();
@@ -318,8 +608,38 @@ impl App {
                 sel_bar(&mut out, yy);
             }
             h.text(&mut out, aspect, r.label, (x + 12.0, yy), FONT_SMALL, if sel { hi } else { white });
-            let v = r.values[(r.get)(&s).min(r.values.len() - 1)];
-            let vt = if sel { format!("<  {v}  >") } else { v.to_string() };
+            let vt = match r.kind {
+                Kind::Choice => {
+                    let v = r.values[(r.get)(&s).min(r.values.len() - 1)];
+                    if sel { format!("<  {v}  >") } else { v.to_string() }
+                }
+                Kind::Text(field) => match editing().filter(|(f, _)| *f == field) {
+                    // the token shows as stars while typed, and never in full
+                    Some((_, t)) => format!("{}_", if field.secure() { "*".repeat(t.chars().count()) } else { t }),
+                    None => {
+                        let v = field.value(&s);
+                        if v.is_empty() {
+                            "not set".to_string()
+                        } else if field.secure() {
+                            "********".to_string()
+                        } else {
+                            v.to_string()
+                        }
+                    }
+                },
+                Kind::Test => match test_state() {
+                    Test::Idle => String::new(),
+                    Test::Running => "testing...".to_string(),
+                    Test::Ok(_) => "OK".to_string(),
+                    Test::Failed(_) => "failed".to_string(),
+                },
+            };
+            // a long address keeps its end in view (the start gives way)
+            let room = w * 0.55;
+            let mut vt = vt;
+            while vt.chars().count() > 4 && h.text_width(&vt, FONT_SMALL) > room {
+                vt = format!("...{}", vt.chars().skip(4).collect::<String>());
+            }
             let vw = h.text_width(&vt, FONT_SMALL);
             h.text(&mut out, aspect, &vt, (x + w - 12.0 - vw, yy), FONT_SMALL, if sel { hi } else { white });
             yy += line;
@@ -331,20 +651,44 @@ impl App {
         h.text(&mut out, aspect, "Reset this page to original", (x + 12.0, yy), FONT_SMALL, if reset_sel { hi } else { dim });
         yy += line * 1.5;
         // the selected row's explanation
-        let help = if ui.row >= 1 && ui.row <= page.rows.len() {
+        let help = if ui.row >= 1 && ui.row <= page.rows.len() && editing().is_some() {
+            if cfg!(target_os = "macos") { "Type, Cmd+V pastes. Enter: keep.  Esc: cancel.".to_string() } else { "Enter the text in the keyboard.".to_string() }
+        } else if ui.row >= 1 && ui.row <= page.rows.len() && matches!(page.rows[ui.row - 1].kind, Kind::Test) {
+            match test_state() {
+                Test::Ok(who) => format!("Connected: {who}."),
+                Test::Failed(e) => format!("Not connected: {e}."),
+                Test::Running => "Asking the server...".to_string(),
+                Test::Idle => format!("{} Enter / A: test.", page.rows[ui.row - 1].help),
+            }
+        } else if ui.row >= 1 && ui.row <= page.rows.len() {
             let r = &page.rows[ui.row - 1];
             let when = match r.applies {
                 Applies::Now => "applies now",
                 Applies::NextRace => "applies from the next race",
                 Applies::NextStart => "applies at the next start",
             };
-            format!("{} ({when})", r.help)
+            let act = if matches!(r.kind, Kind::Text(_)) { " Enter / A: type." } else { "" };
+            format!("{}{act} ({when})", r.help)
         } else if reset_sel {
             "Every setting on this page back to the original game's behaviour.".to_string()
         } else {
             "Left / right: page.  B / Esc: close.".to_string()
         };
-        h.text(&mut out, aspect, &help, (x + 12.0, yy), FONT_ITALIC, dim);
+        // wrapped to the panel (at most three lines)
+        let mut lines: Vec<String> = vec![String::new()];
+        for word in help.split(' ') {
+            let cur = lines.last().cloned().unwrap_or_default();
+            let next = if cur.is_empty() { word.to_string() } else { format!("{cur} {word}") };
+            if !cur.is_empty() && h.text_width(&next, FONT_ITALIC) > w - 24.0 {
+                lines.push(word.to_string());
+            } else if let Some(l) = lines.last_mut() {
+                *l = next;
+            }
+        }
+        for l in lines.iter().take(3) {
+            h.text(&mut out, aspect, l, (x + 12.0, yy), FONT_ITALIC, dim);
+            yy += FONT_ITALIC + 4.0;
+        }
         Hud::resolve_text(&mut out[from..], (0.0, 0.0));
         PENDING_TEXT.with(|p| p.borrow_mut().clear());
         self.scene.sprites.extend(out);

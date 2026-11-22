@@ -19,7 +19,16 @@ joined over Tailscale. Design: `server-plan.md`. Code: `tools/ou-server` (+ `cra
 | Data | `/mnt/user/appdata/ou-server/` (`game/`, `mods/`, `hd/`, `data/`) |
 
 In the game's **Server** setting use `tower.local` (or `192.168.50.37`) at home and
-`tower-1.tawny-taipan.ts.net` away from home, plus the token.
+`tower-1.tawny-taipan.ts.net` away from home, plus the token. Where to enter it:
+
+- **In the game (both platforms):** pause a race › **extras** › page **Network**: *Server*, *Token* (Enter / A to
+  type: the keyboard on the Mac, where Cmd+V pastes; the on-screen keyboard on Apple TV), *Sync saves* (Mac only;
+  Apple TV always syncs once a server is set) and *Test connection*. Takes effect at the next start.
+- **Apple TV, before the game data is there:** the Game Data screen's *Server* button. Both places edit the same
+  setting.
+
+The address and token are kept per device (`network.json` beside `extras.json`, never synced), so the Mac and the
+Apple TV can use different names for the same server.
 
 ## Install on Unraid
 1. Copy your game folder's `GameData/`, `FEData/`, `version.txt` and `fe.txt` to `/mnt/user/appdata/ou-server/game/`

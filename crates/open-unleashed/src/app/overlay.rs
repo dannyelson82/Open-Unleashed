@@ -62,7 +62,7 @@ impl App {
             h.text(&mut out, aspect, &line, (x, y + 1.0), FONT_SMALL, col);
         }
 
-        if cfg!(target_os = "tvos") && self.vehicle.is_some() && self.gamepads.racing_pad_count() == 0 && self.replay.stream.as_ref().is_none_or(|r| !matches!(r.mode, nfs_game::replay::Mode::Playing | nfs_game::replay::Mode::Exhausted)) {
+        if cfg!(target_os = "tvos") && self.vehicle.is_some() && self.extras_ui.is_none() && self.gamepads.racing_pad_count() == 0 && self.replay.stream.as_ref().is_none_or(|r| !matches!(r.mode, nfs_game::replay::Mode::Playing | nfs_game::replay::Mode::Exhausted)) {
             let lines = ["Connect a game controller to race", "(Xbox or PlayStation; the Siri Remote drives the menus only)"];
             let line_h = FONT_SMALL + 4.0;
             let w = lines.iter().map(|l| h.text_width(l, FONT_SMALL)).fold(0.0f32, f32::max);
