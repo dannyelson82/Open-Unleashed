@@ -386,26 +386,26 @@ fn pages() -> Vec<Page> {
         rows: vec![
             Row {
                 label: "Preset",
-                help: "Sets every assist on this page at once. Light: soft steering, low speed sensitivity, ABS. Full: softer steering, medium, steering assist light, ABS.",
+                help: "Sets every assist on this page at once. Light: soft steering, low speed sensitivity, ABS, braking assist lifts the throttle. Full: softer steering, medium, steering assist light, ABS, braking assist brakes too.",
                 applies: Applies::Now,
                 shown: true,
                 kind: Kind::Choice,
                 values: &["Custom", "Off", "Light", "Full"],
                 get: |s| {
                     let a = &s.assists;
-                    match (a.steering_response, a.speed_steering, a.countersteer, a.abs) {
-                        (0, 0, 0, false) => 1,
-                        (1, 1, 0, true) => 2,
-                        (2, 2, 1, true) => 3,
+                    match (a.steering_response, a.speed_steering, a.countersteer, a.abs, a.brake_assist) {
+                        (0, 0, 0, false, 0) => 1,
+                        (1, 1, 0, true, 1) => 2,
+                        (2, 2, 1, true, 2) => 3,
                         _ => 0,
                     }
                 },
                 set: |s, v| {
                     let a = &mut s.assists;
                     match v {
-                        1 => (a.steering_response, a.speed_steering, a.countersteer, a.abs) = (0, 0, 0, false),
-                        2 => (a.steering_response, a.speed_steering, a.countersteer, a.abs) = (1, 1, 0, true),
-                        3 => (a.steering_response, a.speed_steering, a.countersteer, a.abs) = (2, 2, 1, true),
+                        1 => (a.steering_response, a.speed_steering, a.countersteer, a.abs, a.brake_assist) = (0, 0, 0, false, 0),
+                        2 => (a.steering_response, a.speed_steering, a.countersteer, a.abs, a.brake_assist) = (1, 1, 0, true, 1),
+                        3 => (a.steering_response, a.speed_steering, a.countersteer, a.abs, a.brake_assist) = (2, 2, 1, true, 2),
                         _ => {}
                     }
                 },
@@ -449,6 +449,16 @@ fn pages() -> Vec<Page> {
                 values: &["Off", "On"],
                 get: |s| usize::from(s.assists.abs),
                 set: |s, v| s.assists.abs = v == 1,
+            },
+            Row {
+                label: "Braking assist",
+                help: "Too fast for the corner ahead (at the speed the computer drivers would take it in this car): lifts the throttle, or lifts and brakes.",
+                applies: Applies::Now,
+                shown: true,
+                kind: Kind::Choice,
+                values: &["Off", "Lift throttle", "Lift and brake"],
+                get: |s| s.assists.brake_assist.min(2) as usize,
+                set: |s, v| s.assists.brake_assist = v as u8,
             },
         ],
         reset: |s| s.assists = Default::default(),

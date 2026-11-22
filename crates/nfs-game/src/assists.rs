@@ -13,15 +13,18 @@ pub struct AssistSettings {
     /// Countersteer assist gain (0 = off).
     pub countersteer: f32,
     pub abs: bool,
+    /// Braking assist: 0 off, 1 lift the throttle, 2 lift and brake — when the car is faster than its own `.ais`
+    /// would take the road ahead ([`CarState::corner_speed`]).
+    pub brake_assist: u8,
 }
 
 impl AssistSettings {
     pub fn off() -> Self {
-        Self { curve: 1.0, lock_at_200: 1.0, countersteer: 0.0, abs: false }
+        Self { curve: 1.0, lock_at_200: 1.0, countersteer: 0.0, abs: false, brake_assist: 0 }
     }
 
     pub fn any(&self) -> bool {
-        self.curve > 1.0 || self.lock_at_200 < 1.0 || self.countersteer > 0.0 || self.abs
+        self.curve > 1.0 || self.lock_at_200 < 1.0 || self.countersteer > 0.0 || self.abs || self.brake_assist > 0
     }
 }
 
@@ -34,6 +37,8 @@ pub struct CarState {
     pub lateral: f32,
     /// any wheel locked under braking
     pub any_locked: bool,
+    /// m/s: what this car's `.ais` would take the road ahead at (`AiDriver::corner_speed`), when known
+    pub corner_speed: Option<f32>,
 }
 
 /// The assists' memory between ticks.
@@ -42,7 +47,7 @@ pub struct AssistState {
     /// ABS: ticks of release left, then ticks of hold before the next release may start
     abs_release: u8,
     abs_hold: u8,
-    /// which assists acted this tick (HUD indicators): bit 0 ABS, bit 1 countersteer
+    /// which assists acted this tick (HUD indicators): bit 0 ABS, bit 1 countersteer, bit 2 braking assist
     pub acted: u8,
 }
 
@@ -91,7 +96,32 @@ pub fn apply(mut a: Axes, car: &CarState, s: &AssistSettings, st: &mut AssistSta
         }
     }
     a.steer = ((x.clamp(-1.0, 1.0) * 126.0 / 2.0).round() as i32).clamp(-63, 63) * 2;
-    // 3. ABS: on a locked wheel under braking above 10 km/h, release to 40 % for 2 ticks, then hold 1
+    // 3. braking assist: more than 5 % over the corner speed ahead, the throttle eases off in proportion (fully at
+    //    25 % over), and on "lift and brake" the brake comes in the same way — never less than the driver asks;
+    //    before ABS, so ABS can pulse an assisted stop too
+    if s.brake_assist > 0
+        && let Some(target) = car.corner_speed
+        && car.forward > 8.0
+        && target > 0.0
+    {
+        let over = car.forward - target * 1.05;
+        if over > 0.0 {
+            let k = (over / (target * 0.2)).clamp(0.0, 1.0);
+            let t = ((a.throttle as f32 * (1.0 - k)) as u8) & !1;
+            if t < a.throttle {
+                a.throttle = t;
+                st.acted |= 4;
+            }
+            if s.brake_assist >= 2 {
+                let b = ((k * 252.0) as u8) & !1;
+                if b > a.brake {
+                    a.brake = b;
+                    st.acted |= 4;
+                }
+            }
+        }
+    }
+    // 4. ABS: on a locked wheel under braking above 10 km/h, release to 40 % for 2 ticks, then hold 1
     if s.abs {
         if st.abs_release > 0 {
             st.abs_release -= 1;
@@ -120,9 +150,30 @@ mod tests {
     }
 
     #[test]
+    fn braking_assist_lifts_then_brakes_only_when_too_fast() {
+        let mut st = AssistState::default();
+        let lift = AssistSettings { brake_assist: 1, ..AssistSettings::off() };
+        let full = AssistSettings { brake_assist: 2, ..AssistSettings::off() };
+        let car = |v: f32| CarState { forward: v, corner_speed: Some(30.0), ..Default::default() };
+        // at or under the corner speed (+5 %): untouched
+        assert_eq!(apply(axes(252, 0, 0), &car(31.0), &full, &mut st), axes(252, 0, 0));
+        // 15 % over: half the throttle off; "lift" doesn't brake, "lift and brake" does, never less than asked
+        let l = apply(axes(252, 0, 0), &car(34.5), &lift, &mut st);
+        assert!(l.throttle < 252 && l.brake == 0 && st.acted & 4 != 0, "{l:?}");
+        let f = apply(axes(252, 0, 0), &car(34.5), &full, &mut st);
+        assert!(f.brake > 0 && f.brake % 2 == 0, "{f:?}");
+        assert_eq!(apply(axes(0, 252, 0), &car(34.5), &full, &mut st).brake, 252);
+        // 30 % over: throttle fully off
+        assert_eq!(apply(axes(252, 0, 0), &car(39.0), &lift, &mut st).throttle, 0);
+        // no corner speed known: nothing
+        let none = CarState { forward: 60.0, ..Default::default() };
+        assert_eq!(apply(axes(252, 0, 0), &none, &full, &mut st), axes(252, 0, 0));
+    }
+
+    #[test]
     fn off_is_the_original() {
         let mut st = AssistState::default();
-        let car = CarState { forward: 40.0, lateral: 8.0, any_locked: true };
+        let car = CarState { forward: 40.0, lateral: 8.0, any_locked: true, corner_speed: None };
         let a = axes(100, 200, -60);
         assert_eq!(apply(a, &car, &AssistSettings::off(), &mut st), a);
     }
@@ -154,7 +205,7 @@ mod tests {
         let s = AssistSettings { countersteer: 1.0, ..AssistSettings::off() };
         let mut st = AssistState::default();
         // sliding to the right (velocity points right of the heading): steer right, at most 30 % of lock
-        let car = CarState { forward: 30.0, lateral: 12.0, any_locked: false };
+        let car = CarState { forward: 30.0, lateral: 12.0, any_locked: false, corner_speed: None };
         let out = apply(axes(0, 0, 0), &car, &s, &mut st).steer;
         assert!(out > 0 && out <= 38, "{out}");
         assert_eq!(st.acted & 2, 2);
@@ -164,7 +215,7 @@ mod tests {
         let wrong = apply(axes(0, 0, -100), &car, &s, &mut st).steer;
         assert!(wrong > -100 && wrong < 0, "{wrong}");
         // no slide: nothing
-        let straight = CarState { forward: 30.0, lateral: 0.5, any_locked: false };
+        let straight = CarState { forward: 30.0, lateral: 0.5, any_locked: false, corner_speed: None };
         assert_eq!(apply(axes(0, 0, 20), &straight, &s, &mut st).steer, 20);
     }
 
@@ -172,15 +223,15 @@ mod tests {
     fn abs_pulses_on_lock() {
         let s = AssistSettings { abs: true, ..AssistSettings::off() };
         let mut st = AssistState::default();
-        let locked = CarState { forward: 30.0, lateral: 0.0, any_locked: true };
+        let locked = CarState { forward: 30.0, lateral: 0.0, any_locked: true, corner_speed: None };
         let seq: Vec<u8> = (0..6).map(|_| apply(axes(0, 252, 0), &locked, &s, &mut st).brake).collect();
         // release, release, hold, release, release, hold
         assert_eq!(seq, vec![100, 100, 252, 100, 100, 252]);
         // below 10 km/h or not braking: nothing
         let mut st = AssistState::default();
-        let slow = CarState { forward: 2.0, lateral: 0.0, any_locked: true };
+        let slow = CarState { forward: 2.0, lateral: 0.0, any_locked: true, corner_speed: None };
         assert_eq!(apply(axes(0, 252, 0), &slow, &s, &mut st).brake, 252);
-        let free = CarState { forward: 30.0, lateral: 0.0, any_locked: false };
+        let free = CarState { forward: 30.0, lateral: 0.0, any_locked: false, corner_speed: None };
         assert_eq!(apply(axes(0, 252, 0), &free, &s, &mut st).brake, 252);
     }
 }

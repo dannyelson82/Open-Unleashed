@@ -44,7 +44,7 @@ fn frame_stats(dt: f32) -> (f32, f32, f32) {
 
 thread_local! {
     /// PORT-DEVIATION (assist indicators): when the ABS (0) and the steering assist (1) last acted
-    static ASSIST_AT: std::cell::Cell<[Option<std::time::Instant>; 2]> = const { std::cell::Cell::new([None, None]) };
+    static ASSIST_AT: std::cell::Cell<[Option<std::time::Instant>; 3]> = const { std::cell::Cell::new([None, None, None]) };
 }
 
 /// The driving assists acted this tick (`nfs_game::assists::AssistState::acted`: bit 0 ABS, bit 1 steering).
@@ -113,7 +113,7 @@ impl App {
 
         // the driving assists at work: a small tag above the dials while one acts (not under a menu or in a replay)
         if self.vehicle.is_some() && !self.paused && self.extras_ui.is_none() && !self.hud_hidden {
-            let tags: Vec<&str> = [(0, "ABS"), (1, "STEER ASSIST")].iter().filter(|(k, _)| assist_recent(*k)).map(|(_, t)| *t).collect();
+            let tags: Vec<&str> = [(0, "ABS"), (1, "STEER ASSIST"), (2, "BRAKE ASSIST")].iter().filter(|(k, _)| assist_recent(*k)).map(|(_, t)| *t).collect();
             if !tags.is_empty() {
                 let line = tags.join("   ");
                 let w = h.text_width(&line, FONT_SMALL);

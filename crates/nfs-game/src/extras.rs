@@ -194,6 +194,8 @@ pub struct Assists {
     /// countersteer assist: 0 off, 1 light, 2 strong
     pub countersteer: u8,
     pub abs: bool,
+    /// braking assist: 0 off, 1 lift the throttle, 2 lift and brake
+    pub brake_assist: u8,
 }
 
 impl Assists {
@@ -203,6 +205,7 @@ impl Assists {
             lock_at_200: [1.0, 0.75, 0.55, 0.4][self.speed_steering.min(3) as usize],
             countersteer: [0.0, 0.5, 1.0][self.countersteer.min(2) as usize],
             abs: self.abs,
+            brake_assist: self.brake_assist.min(2),
         }
     }
 }
