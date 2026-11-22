@@ -10,13 +10,14 @@ _Last updated: 2026-11-21 (session paused: usage limit)_
 ## Morning summary
 - **Works on the Mac and in the tvOS Simulator** from your disc's data: front end, races, Game Data download from
   ou-server (verified, resumable), save sync + multiplayer lobby through ou-server, Extras menu (HUD size, graphics,
-  driving assists, audio, Mac head-look), lifecycle (pause on Home), on-screen keyboard, app icon + Top Shelf.
+  driving assists, FXAA, audio route handling, Mac head-look), lifecycle (pause on Home), on-screen keyboard, app icon + Top Shelf.
 - **ou-server** is published (`ghcr.io/dannyelson82/ou-server:latest`, public); add it on Unraid with
   `packaging/unraid/ou-server.xml` (data under `/mnt/user/appdata/ou-server`).
 - **Needs you**: the Apple TV (everything marked 📺), a pad for feel/rumble, AirPods for head-look and route tests (🙋),
   and the "Decisions to review" below.
 - **Not started / partly**: split-screen, HDR, 5.1 surround mixer, enhanced rumble + DualSense triggers, FXAA/MSAA,
-  HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, Mac UI for the server address.
+  HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, Mac UI for the server
+  address, MSAA.
 
 ## Test suite (2026-11-21)
 `NFS5_GAME_PATH=game-data cargo test --release --workspace --no-fail-fast`: **1,394 passed, 13 failed, 7 ignored.** The 13
@@ -133,7 +134,7 @@ Choices made without asking (per your instruction); each is easy to change.
 | 6b-A/B/E Audio route handling + auto-pause | ✅ hot-swappable output: the mixer state is handed back when a stream is dropped and the new default device's stream continues every voice (unit test; all 176 audio tests pass, stereo path unchanged); route checked every 2 s (Mac: default device name) and on the stream's error; headphones → speakers mid-race pauses a single-player race (Extras › Audio, default on; network race: notice only). 🙋 **check**: switch the Mac's output / take an AirPod out mid-race — not done unattended (it changes a system setting and plays sound aloud) | ✅ builds: AVAudioSession route changes → `ou_audio_route_changed` (old device unavailable → pause) | 📺 AirPods on the Apple TV (probe P1/P2) |
 | 6b-H Mac head-look (AirPods) | ✅ built in; filter unit-tested (5 tests: dead zone, 20°→75°, clamp, jump guard, look-key wins, drift); inside the app bundle CoreMotion starts ("motion updates started"); the bare binary refuses safely. 🙋 **needs you with AirPods**: direction, feel, 10-minute no-drift check | — (hidden: no API) | — |
 | 4 Driving assists (`nfs_game::assists`, Extras › Driving assists) | ✅ steering response curve, speed-sensitive steering, countersteer assist (≤ 30 % lock, never fights you), ABS pulse; 5 unit tests; applied to the local live packet only. Replay/network exactness by construction (applied before the recorder/sender) — no separate A/B run yet. ⬜ braking assist (needs the AI's corner speed), ⬜ HUD "ABS/ASSIST" indicators, ⬜ presets row | same code | 📺 feel with a pad; 🙋 tuning |
-| 3 Graphics: anisotropic 4/8/16× (scene trilinear samplers only), draw distance 125/150/200 % with fog pushed out, FOV −5…+10° (chase / in-car) | ✅ A/B screenshots: wider view and clearer far mountains as expected; anisotropy needs a look on the TV. ⬜ FXAA, ⬜ MSAA 4× (+ alpha-to-coverage), ⬜ per-track pop-in check at 150/200 %, ⬜ "Recommended for Apple TV" preset (after measuring) | same code | 📺 perf with the preset |
+| 3 Graphics: anisotropic 4/8/16× (scene trilinear samplers only), draw distance 125/150/200 % with fog pushed out, FOV −5…+10° (chase / in-car) | ✅ A/B screenshots: wider view and clearer far mountains as expected; anisotropy needs a look on the TV. ✅ **FXAA** (own small pass over the 3-D image, before the flare overlay and HUD; Extras › Anti-aliasing): A/B crops show softer stair-steps on fence rails, flat areas untouched — judge strength on the TV. ⬜ MSAA 4× (+ alpha-to-coverage), ⬜ per-track pop-in check at 150/200 %, ⬜ "Recommended for Apple TV" preset (after measuring) | same code | 📺 perf with the preset |
 | 11 HD texture pack — Stage 0 inventory (`tools/texture-pack scan`) | ✅ 12,683 texture entries (9,356 unique by content hash) in 664 files, 2 s. Projected pack (ASTC 6×6 world / 4×4 rest, mips): **2× ≈ 378 MB**, 4× ≈ 1.5 GB (1 GB of it front-end art). Alpha: 5,708 opaque, 2,549 full, 505 binary, 100 colour-key, 494 paint-label. Output in git-ignored `target/texture-pack/`. ⬜ Stage 1 engine hooks + fake 2× pack, ⬜ export / import, ⬜ upscaling (your Mac, your models) | — | — |
 | 7.3 Render resolution in Extras (tvOS only) | — | ✅ row shown on tvOS only; read at window creation | 📺 |
 | 5 Xbox/PlayStation pads via SDL's GameController driver, rumble | — | — | 📺 (no pads in the Simulator) |

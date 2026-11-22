@@ -29,6 +29,19 @@ pub fn set_anisotropy(n: u16) {
     ANISOTROPY.store(n.clamp(1, 16), std::sync::atomic::Ordering::Relaxed);
 }
 
+/// PORT-DEVIATION (Extras › Graphics › Anti-aliasing): an FXAA-style edge smoothing pass over the finished 3-D image,
+/// before the flare overlay and the 2D/HUD pass (so text stays sharp). Off = the original. Set before the renderer
+/// is made.
+static FXAA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_fxaa(on: bool) {
+    FXAA.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub(crate) fn fxaa() -> bool {
+    FXAA.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 pub(crate) fn anisotropy() -> u16 {
     ANISOTROPY.load(std::sync::atomic::Ordering::Relaxed)
 }
