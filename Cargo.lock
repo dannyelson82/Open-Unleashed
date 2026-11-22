@@ -1501,6 +1501,9 @@ dependencies = [
  "nfs-formats",
  "nfs-physics",
  "nfs-renderer",
+ "serde",
+ "serde_json",
+ "sha2",
  "thiserror 2.0.21",
  "tracing",
 ]
@@ -2809,9 +2812,12 @@ name = "texture-pack"
 version = "0.1.5"
 dependencies = [
  "anyhow",
+ "image",
+ "nfs-assets",
  "nfs-formats",
  "nfs-haven-manifest",
- "sha2",
+ "nfs-renderer",
+ "serde_json",
 ]
 
 [[package]]

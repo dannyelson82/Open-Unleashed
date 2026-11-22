@@ -1517,7 +1517,7 @@ pub fn car_specular_maps(r: &mut Renderer, paths: &nfs_assets::GamePaths, front_
             .map(|t| {
                 // 8888 in the file, 4444 in the original's key-3 cache (0x44DFE0 → 0x44D7E0 → 0x5350E0 → 0x570540,
                 // `nfs_assets::texture::cache_4444_from_8888`)
-                r.upload_texture_mips(t.width, t.height, &t.cache_mips())
+                nfs_assets::hd::upload(r, t, true)
             })
     })
 }
@@ -1805,8 +1805,10 @@ impl TrackWorld {
     /// same consecutive ones, in file order. Keyed by name: `(id, has_alpha)`.
     fn upload_track_textures(r: &mut Renderer, track: &TrackAssets) -> HashMap<String, (nfs_renderer::TextureId, bool)> {
         let mut tex_ids = HashMap::new();
-        let items: Vec<(u32, u32, &[Vec<u8>])> = track.textures.iter().map(|t| (t.width, t.height, t.mips.as_slice())).collect();
-        for (tex, id) in track.textures.iter().zip(r.upload_textures(&items)) {
+        // PORT-DEVIATION (HD texture packs): an entry's HD texture instead, when a pack has one (`nfs_assets::hd`)
+        let levels: Vec<_> = track.textures.iter().map(|t| nfs_assets::hd::gpu_levels(t, false)).collect();
+        let items: Vec<(u32, u32, nfs_renderer::TexFormat, &[Vec<u8>])> = levels.iter().map(|(w, h, f, m)| (*w, *h, *f, m.as_ref())).collect();
+        for (tex, id) in track.textures.iter().zip(r.upload_textures_fmt(&items)) {
             tex_ids.insert(tex.name.clone(), (id, tex.has_alpha));
         }
         tex_ids
@@ -2082,9 +2084,9 @@ impl TrackWorld {
         let mut env_by_id = HashMap::new();
         // key 2 (the track's `.env` / `.map`, 0x440A4F): the 16-bit cache of 0x44D7E0 keeps its 8888 entries as 4444
         // (`Y2T1`, `Y2T2`, `YT1`, `YT2` of coastal, read live: type 6 -> 7, thrash.md §6d.9) and a 565 one as 1555
-        let env_mips: Vec<Vec<Vec<u8>>> = track.env_textures.iter().map(|t| t.cache_mips()).collect();
-        let env_items: Vec<(u32, u32, &[Vec<u8>])> = track.env_textures.iter().zip(&env_mips).map(|(t, m)| (t.width, t.height, m.as_slice())).collect();
-        let env_ids = r.upload_textures(&env_items);
+        let env_levels: Vec<_> = track.env_textures.iter().map(|t| nfs_assets::hd::gpu_levels(t, true)).collect();
+        let env_items: Vec<(u32, u32, nfs_renderer::TexFormat, &[Vec<u8>])> = env_levels.iter().map(|(w, h, f, m)| (*w, *h, *f, m.as_ref())).collect();
+        let env_ids = r.upload_textures_fmt(&env_items);
         for (t, id) in track.env_textures.iter().zip(env_ids) {
             let mut name = [b' '; 4];
             for (i, c) in t.name.bytes().take(4).enumerate() {

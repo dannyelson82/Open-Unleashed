@@ -60,6 +60,16 @@ impl App {
             out.push(h.quad(aspect, x - 4.0, y - 2.0, w + 10.0, FONT_SMALL + 6.0, [0.0, 0.0, 0.0, 0.55]));
             text_from.push(out.len());
             h.text(&mut out, aspect, &line, (x, y + 1.0), FONT_SMALL, col);
+            // the HD texture pack's coverage of what this race uploaded through it
+            if nfs_assets::hd::available() {
+                let (hd, all) = nfs_assets::hd::counts();
+                let line = format!("HD textures in use: {hd} / {all}{}", if nfs_game::extras::get().graphics.textures == 1 { "" } else { "  (Textures: Original)" });
+                let w = h.text_width(&line, FONT_SMALL);
+                let y = y + FONT_SMALL + 8.0;
+                out.push(h.quad(aspect, x - 4.0, y - 2.0, w + 10.0, FONT_SMALL + 6.0, [0.0, 0.0, 0.0, 0.55]));
+                text_from.push(out.len());
+                h.text(&mut out, aspect, &line, (x, y + 1.0), FONT_SMALL, [0.75, 0.85, 1.0, 1.0]);
+            }
         }
 
         if cfg!(target_os = "tvos") && self.vehicle.is_some() && self.extras_ui.is_none() && self.gamepads.racing_pad_count() == 0 && self.replay.stream.as_ref().is_none_or(|r| !matches!(r.mode, nfs_game::replay::Mode::Playing | nfs_game::replay::Mode::Exhausted)) {

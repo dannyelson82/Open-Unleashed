@@ -312,6 +312,22 @@ impl Renderer {
 
     /// Several textures at once, the ids in the order given (the next free ones, as the same number
     /// of [`Self::upload_texture_mips`] calls would hand them).
+    /// [`Self::upload_texture_mips`] for levels in `format` (an HD pack's ASTC blocks, `nfs_assets::hd`).
+    pub fn upload_texture_fmt(&mut self, width: u32, height: u32, format: crate::TexFormat, mips: &[Vec<u8>]) -> TextureId {
+        let core = self.home();
+        let id = core.upload_texture_fmt(width, height, format, mips);
+        self.n_textures = core.texture_count();
+        id
+    }
+
+    /// [`Self::upload_textures`] with each texture's format.
+    pub fn upload_textures_fmt(&mut self, items: &[(u32, u32, crate::TexFormat, &[Vec<u8>])]) -> Vec<TextureId> {
+        let core = self.home();
+        let ids = core.upload_textures_fmt(items);
+        self.n_textures = core.texture_count();
+        ids
+    }
+
     pub fn upload_textures(&mut self, items: &[(u32, u32, &[Vec<u8>])]) -> Vec<TextureId> {
         let core = self.home();
         let ids = core.upload_textures(items);

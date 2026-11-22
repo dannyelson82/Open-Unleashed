@@ -524,7 +524,9 @@ impl Core {
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("nfs-renderer"),
             // no optional feature for the game itself; the profiler adds the timestamp queries only when asked (never in `minimal`)
-            required_features: if crate::prof::wanted() { adapter.features() & wgpu::Features::TIMESTAMP_QUERY } else { wgpu::Features::empty() },
+            // PORT-DEVIATION (HD texture packs): ASTC where the adapter has it, so an HD pack's blocks upload as they are
+            required_features: (if crate::prof::wanted() { adapter.features() & wgpu::Features::TIMESTAMP_QUERY } else { wgpu::Features::empty() })
+                | (if minimal { wgpu::Features::empty() } else { adapter.features() & wgpu::Features::TEXTURE_COMPRESSION_ASTC }),
             // PLATFORM GLUE (TVOS.md): the WebGPU defaults, except `max_inter_stage_shader_variables` capped to what the
             // adapter offers — the tvOS Simulator's Metal reports 15 (default 16); the game's shaders use far fewer.
             // Every real Mac / Apple TV / desktop GPU offers ≥ 16, so the request is unchanged there.
@@ -537,6 +539,8 @@ impl Core {
             ..Default::default()
         }))
         .context("request device")?;
+        crate::set_astc_supported(device.features().contains(wgpu::Features::TEXTURE_COMPRESSION_ASTC));
+        tracing::info!(astc = crate::astc_supported(), "texture formats");
         // A GPU error never stops the game: wgpu's default for an error no scope caught is a panic, which closes a GUI release silently.
         device.on_uncaptured_error(Arc::new(gpu_error));
         device.set_device_lost_callback(|reason, msg| tracing::error!(?reason, "wgpu device lost: {msg}"));
@@ -1339,7 +1343,12 @@ impl Core {
     /// [`Self::upload_texture`] over borrowed levels, so a caller that keeps its pixels does not
     /// clone a whole mip chain just to hand it over.
     pub fn upload_texture_mips(&mut self, width: u32, height: u32, mips: &[Vec<u8>]) -> TextureId {
-        let t = Self::make_texture(&self.device, &self.queue, &self.sprite_layout, &self.sprite_sampler, width, height, mips);
+        self.upload_texture_fmt(width, height, crate::TexFormat::Rgba8, mips)
+    }
+
+    /// [`Self::upload_texture_mips`] for levels in `format` (an HD pack's ASTC blocks).
+    pub fn upload_texture_fmt(&mut self, width: u32, height: u32, format: crate::TexFormat, mips: &[Vec<u8>]) -> TextureId {
+        let t = Self::make_texture(&self.device, &self.queue, &self.sprite_layout, &self.sprite_sampler, width, height, format, mips);
         self.textures.push(t);
         TextureId(self.textures.len() as u32 - 1)
     }
@@ -1348,16 +1357,22 @@ impl Core {
     /// number of [`Self::upload_texture_mips`] calls would hand them). The device and the queue
     /// are thread-safe, so the textures are built on worker threads and pushed in order.
     pub fn upload_textures(&mut self, items: &[(u32, u32, &[Vec<u8>])]) -> Vec<TextureId> {
+        let items: Vec<(u32, u32, crate::TexFormat, &[Vec<u8>])> = items.iter().map(|&(w, h, m)| (w, h, crate::TexFormat::Rgba8, m)).collect();
+        self.upload_textures_fmt(&items)
+    }
+
+    /// [`Self::upload_textures`] with each texture's [`crate::TexFormat`].
+    pub fn upload_textures_fmt(&mut self, items: &[(u32, u32, crate::TexFormat, &[Vec<u8>])]) -> Vec<TextureId> {
         let workers = std::thread::available_parallelism().map_or(1, |n| n.get()).min(8).min(items.len());
         let built: Vec<GpuTexture> = if workers <= 1 {
-            items.iter().map(|&(w, h, m)| Self::make_texture(&self.device, &self.queue, &self.sprite_layout, &self.sprite_sampler, w, h, m)).collect()
+            items.iter().map(|&(w, h, f, m)| Self::make_texture(&self.device, &self.queue, &self.sprite_layout, &self.sprite_sampler, w, h, f, m)).collect()
         } else {
             let (device, queue, layout, sampler) = (&self.device, &self.queue, &self.sprite_layout, &self.sprite_sampler);
             let chunk = items.len().div_ceil(workers);
             std::thread::scope(|s| {
                 let handles: Vec<_> = items
                     .chunks(chunk)
-                    .map(|c| s.spawn(move || c.iter().map(|&(w, h, m)| Self::make_texture(device, queue, layout, sampler, w, h, m)).collect::<Vec<_>>()))
+                    .map(|c| s.spawn(move || c.iter().map(|&(w, h, f, m)| Self::make_texture(device, queue, layout, sampler, w, h, f, m)).collect::<Vec<_>>()))
                     .collect();
                 handles.into_iter().flat_map(|h| h.join().expect("texture worker")).collect()
             })
@@ -1367,26 +1382,37 @@ impl Core {
         (first..self.textures.len() as u32).map(TextureId).collect()
     }
 
-    fn make_texture(device: &wgpu::Device, queue: &wgpu::Queue, sprite_layout: &wgpu::BindGroupLayout, sprite_sampler: &wgpu::Sampler, width: u32, height: u32, mips: &[Vec<u8>]) -> GpuTexture {
+    #[allow(clippy::too_many_arguments)]
+    fn make_texture(device: &wgpu::Device, queue: &wgpu::Queue, sprite_layout: &wgpu::BindGroupLayout, sprite_sampler: &wgpu::Sampler, width: u32, height: u32, format: crate::TexFormat, mips: &[Vec<u8>]) -> GpuTexture {
         let size = wgpu::Extent3d { width, height, depth_or_array_layers: 1 };
         let mip_level_count = mips.len().max(1) as u32;
+        let wformat = match format {
+            crate::TexFormat::Rgba8 => wgpu::TextureFormat::Rgba8Unorm,
+            crate::TexFormat::Astc4x4 => wgpu::TextureFormat::Astc { block: wgpu::AstcBlock::B4x4, channel: wgpu::AstcChannel::Unorm },
+        };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("texture"),
             size,
             mip_level_count,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            format: wformat,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
         let (mut w, mut h) = (width, height);
         for (level, data) in mips.iter().enumerate() {
+            let (row, rows) = format.layout(w, h);
+            // a compressed level is copied at its physical size (whole blocks)
+            let (cw, ch) = match format {
+                crate::TexFormat::Rgba8 => (w, h),
+                crate::TexFormat::Astc4x4 => (w.div_ceil(4) * 4, h.div_ceil(4) * 4),
+            };
             queue.write_texture(
                 wgpu::TexelCopyTextureInfo { texture: &texture, mip_level: level as u32, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
                 data,
-                wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(4 * w), rows_per_image: Some(h) },
-                wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+                wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(row), rows_per_image: Some(rows) },
+                wgpu::Extent3d { width: cw, height: ch, depth_or_array_layers: 1 },
             );
             w = (w / 2).max(1);
             h = (h / 2).max(1);
