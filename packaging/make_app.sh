@@ -57,6 +57,8 @@ if [ "$WITH_DATA" = 1 ]; then
   find "$DST" -type f \( -iname 'vssver.scc' -o -iname '*.xls' -o -iname '*.h' -o -iname '*.dtx' -o -iname '*.eng' -o -iname '*.pfn' \) -delete
   cargo run -q --release -p nfs-formats --example extract_mad_tables -- "$SRC/nfs5.exe" "$DST/madtables.bin"
   [ -f "$SRC/fe.txt" ] && cp "$SRC/fe.txt" "$DST/"
+  # the game's version (network races: every player must have the same, e.g. 3.5)
+  [ -f "$SRC/version.txt" ] && cp "$SRC/version.txt" "$DST/"
   # no regs/*.reg: the port reads only "Language" from them, and a missing value is "English",
   # which is what this install's own reg.reg holds (GamePaths::language, 0x4B73F0)
   chmod -R u+w "$DST"
