@@ -41,6 +41,44 @@ Clean rename, as asked (nothing was installed anywhere yet, so no compatibility 
   full download from the new server into `Caches/games/porsche/data`, intro movie plays, save sync lands under
   `porsche` with the device name. CI smoke test covers two games, mod overlay, saves, PUID 99.
 
+## Game data transfer speed (2026-11-22)
+Measured in the tvOS Simulator against the local nfs-haven-server (`porsche/original`, 1,594 files, 530.9 MB), fresh
+install each time, two runs each, by the server's loopback address and by the Mac's LAN address (10.0.0.186) — both
+on this Mac, so with no real network latency; the Unraid box over Wi-Fi / Ethernet will be slower (📺 measure there).
+
+| | 127.0.0.1 | LAN address | |
+|---|---:|---:|---|
+| **before** (a new URLSession per file, one at a time) | 83–86 MB/s (6.2–6.4 s) | 85–86 MB/s | |
+| **(1) one session, 5 files at once** | 228–230 MB/s (2.3 s) | 228–231 MB/s | updates / repairs |
+| **(2) fast install, the set's tar** | 241–258 MB/s (2.1–2.2 s) | 238–265 MB/s | fresh installs |
+
+- **(1) `GameStore.swift`**: one `URLSession` for the whole download (keep-alive, `httpMaximumConnectionsPerHost` 8),
+  its tasks' bytes routed to per-task sinks on one serial queue; **5 files at once** (a sliding window); Range resume,
+  `If-Range` on the file's hash and the per-file SHA-256 unchanged. Found on the way: two files of the game have the
+  **same contents** — their parts were named by hash and collided when downloaded side by side; parts are now named per
+  path. Interrupted mid-run (262 files in) and relaunched: finished, **all 1,594 files byte-identical** to the source.
+- **(2) nfs-haven-server `GET /v1/data/{game}/{set}.tar`** (`tools/nfs-haven-server/src/bundle.rs`): uncompressed ustar
+  streamed on the fly in manifest order (nothing extra on disk; fixed headers, so every offset follows from the
+  manifest), `Range` + `If-Range` on `"tar-<manifest hash>"`; 449 MB/s with curl locally; the system `tar` lists and
+  extracts it identically. The app uses it for **fresh installs** and extracts while downloading (no double storage),
+  checks every file's SHA-256 against the manifest and its place in the stream, and **resumes from the first missing
+  file** at its byte offset (cut at 159 files → "fast install from file 160 of 1594 (byte 25163264)", 505.9 MB more,
+  all files identical). An older server without the bundle → the per-file path. Tests: server 9/9 (new: the tar read
+  back by the `tar` crate in manifest order with every file's bytes, a long path in the ustar prefix, ranges from a
+  header / mid-file / mid-tar, a stale `If-Range` → the whole tar, 404); CI smoke lists the tar and reads a range.
+- **(3) zstd, measured only** (Python `zstandard`, all cores to compress, one core to decompress):
+
+| | raw | per file, lvl 3 | per file, lvl 19 | one stream, lvl 3 | one stream, lvl 19 |
+|---|---:|---:|---:|---:|---:|
+| porsche/original | 530.9 MB | 431.1 MB (−18.8 %) | 416.4 MB (−21.6 %) | 424.5 MB (−20.1 %) | 394.5 MB (−25.7 %) |
+| nfsse (the CD, not on the server yet) | 567.5 MB | 395.4 MB (−30.3 %) | 377.0 MB (−33.6 %) | 379.3 MB (−33.2 %) | 355.6 MB (−37.3 %) |
+
+  Porsche's bulk is already compressed (movies `.mad` 133 MB → 95 %, `.viv` 145 MB → 81 %, `.fsh` 168 MB → 73 %); NFS SE
+  saves more (`.fam` 88 MB → 21 %, its `.fsh` 34 MB → 24 %, but `.tgv` movies 180 MB → 92 %). Level 19 compresses at
+  ~8–25 MB/s (a one-off on the server, cacheable); level 3 decompresses at ~1 GB/s on one Mac core (an A15 maybe a third
+  of that — still above the measured download). Worth it over a slow link (Wi-Fi / Tailscale away from home: −20 % /
+  −33 % time); on a fast LAN the gain is small. **Not added**, as asked.
+
 ## NFS Haven – MW-0 (2026-11-22, side job; `nfs-mw-plan.md` MW-0) — ⛔ stopped: no 1.3 update in the image
 - **Image**: `~/Documents/Need For Speed Most Wanted (2005).iso` (iCloud, 2,288,615,424 bytes) copied to
   `~/Documents/nfs-mw-data/NFSMW.iso`; the original only read: SHA-256 `c89bf1ba…3282af9` before, of the copy, and after
