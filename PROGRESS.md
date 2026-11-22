@@ -7,6 +7,23 @@ Legend: ✅ done & verified · 🟡 partly / done but unverified · ⛔ blocked 
 
 _Last updated: 2026-11-21 (session paused: usage limit)_
 
+## Morning summary
+- **Works on the Mac and in the tvOS Simulator** from your disc's data: front end, races, Game Data download from
+  ou-server (verified, resumable), save sync + multiplayer lobby through ou-server, Extras menu (HUD size, graphics,
+  driving assists, audio, Mac head-look), lifecycle (pause on Home), on-screen keyboard, app icon + Top Shelf.
+- **ou-server** is published (`ghcr.io/dannyelson82/ou-server:latest`, public); add it on Unraid with
+  `packaging/unraid/ou-server.xml` (data under `/mnt/user/appdata/ou-server`).
+- **Needs you**: the Apple TV (everything marked 📺), a pad for feel/rumble, AirPods for head-look and route tests (🙋),
+  and the "Decisions to review" below.
+- **Not started / partly**: split-screen, HDR, 5.1 surround mixer, enhanced rumble + DualSense triggers, FXAA/MSAA,
+  HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, Mac UI for the server address.
+
+## Test suite (2026-11-21)
+`NFS5_GAME_PATH=game-data cargo test --release --workspace --no-fail-fast`: **1,394 passed, 13 failed, 7 ignored.** The 13
+failures are **identical on unmodified upstream 0.1.5** with the same data (checked in a separate worktree): golden /
+real-data tests recorded against a different install than your US disc v3.2 (fonts, string tables, car catalogue,
+golden car pages, driver camera, speech bank, and `nfs5.exe`, which this disc doesn't have). No regressions from the port.
+
 ## Environment (this Mac)
 | Item | State |
 |---|---|
