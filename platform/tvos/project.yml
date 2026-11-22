@@ -23,6 +23,8 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: OpenUnleashed/Info.plist
+        # layered app icon + Top Shelf from the project's own mark (platform/tvos/make_brand_assets.py)
+        ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
         SWIFT_OBJC_BRIDGING_HEADER: OpenUnleashed/OpenUnleashed-Bridging-Header.h
         TARGETED_DEVICE_FAMILY: "3"
         "LIBRARY_SEARCH_PATHS[sdk=appletvsimulator*]": $(SRCROOT)/../../target/tvos/aarch64-apple-tvos-sim/release

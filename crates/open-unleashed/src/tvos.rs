@@ -83,6 +83,15 @@ pub extern "C" fn ou_app_foreground() {
     FOREGROUND.store(true, Ordering::Release);
 }
 
+/// Screen saver (enhancements-plan.md §2.7): a race, a replay or the intro keeps the TV awake; the menus don't.
+static NO_SLEEP: AtomicBool = AtomicBool::new(false);
+
+/// The shell (every few seconds): whether to keep the idle timer off now.
+#[unsafe(no_mangle)]
+pub extern "C" fn ou_wants_no_sleep() -> bool {
+    NO_SLEEP.load(Ordering::Relaxed)
+}
+
 /// The shell: end the app (from the Game Data screen).
 #[unsafe(no_mangle)]
 pub extern "C" fn ou_request_quit() {
@@ -287,6 +296,7 @@ impl ApplicationHandler for Boot {
                         a.set_stream_paused(false);
                     }
                 }
+                NO_SLEEP.store(app.vehicle.is_some() || app.intro.is_some(), Ordering::Relaxed);
                 app.about_to_wait(event_loop);
                 // winit's UIKit backend delivers redraws only between run-loop iterations: a redraw the
                 // engine requests from inside its frame (as on the desktop) is lost there, so the next

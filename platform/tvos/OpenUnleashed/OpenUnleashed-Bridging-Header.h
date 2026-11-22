@@ -23,5 +23,7 @@ void ou_text_entered(const char *text);
 /// App life cycle (from the scene delegate).
 void ou_app_background(void);
 void ou_app_foreground(void);
+/// A race / replay / intro is running: keep the screen saver off.
+bool ou_wants_no_sleep(void);
 /// End the app (from the Game Data screen).
 void ou_request_quit(void);
