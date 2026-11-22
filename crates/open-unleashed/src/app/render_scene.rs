@@ -709,6 +709,8 @@ impl App {
                 return None;
             }
             let (colour, density) = self.track.sky_bin.as_ref()?.fog_at(sky, cam_slice, lap)?;
+            // Extras › Draw distance: `exp(−density·d)` reaches the same value k times further out
+            let density = density / nfs_game::extras::get().graphics.draw_distance_factor();
             Some(nfs_renderer::Fog { colour, density })
         };
         (self.scene.sky_fog, self.scene.fog) = (fog(true), fog(false));
@@ -1199,6 +1201,11 @@ impl App {
         }
         let fov_of = |h: f32| nfs_game::camera::fov_y_window(nfs_game::camera::half_angle(h, ws, view));
         self.camera.fov_y_radians = fov_of(nfs_game::camera::mode_half_angle());
+        // PORT-DEVIATION (Extras › Graphics › Field of view): the player's own views, on top of the Hor+ value
+        if self.vehicle.is_some() {
+            let add = nfs_game::extras::get().graphics.fov_offset(matches!(view, 0x00 | 0x01));
+            self.camera.fov_y_radians = (self.camera.fov_y_radians + add.to_radians()).clamp(0.3, 2.4);
+        }
         // the slot's near plane `+0x5C` (`camera::near_plane`, applied with the far plane below):
         // SetSlotView's 0.5 unless 0x462B80 (TVCam, SplineCam) has zoomed
         let mut slot_near = nfs_game::camera::DEFAULT_NEAR;

@@ -19,6 +19,7 @@ pub(crate) struct ExtrasUi {
 #[derive(Clone, Copy)]
 enum Applies {
     Now,
+    NextRace,
     NextStart,
 }
 
@@ -81,6 +82,48 @@ fn pages() -> Vec<Page> {
             },
         ],
         reset: |s| s.display = Default::default(),
+    },
+    Page {
+        title: "Graphics",
+        rows: vec![
+            Row {
+                label: "Texture filtering",
+                help: "Sharper road and ground textures at shallow angles. Original = trilinear.",
+                applies: Applies::NextStart,
+                shown: true,
+                values: &["Original", "Anisotropic 4x", "Anisotropic 8x", "Anisotropic 16x"],
+                get: |s| s.graphics.filtering as usize,
+                set: |s, v| s.graphics.filtering = v as u8,
+            },
+            Row {
+                label: "Draw distance",
+                help: "Beyond the original's longest, with the fog pushed out to match. Check tracks for pop-in.",
+                applies: Applies::NextRace,
+                shown: true,
+                values: &["Original", "125 percent", "150 percent", "200 percent"],
+                get: |s| s.graphics.draw_distance as usize,
+                set: |s, v| s.graphics.draw_distance = v as u8,
+            },
+            Row {
+                label: "Field of view, chase views",
+                help: "Added to the original's widescreen-correct field of view.",
+                applies: Applies::Now,
+                shown: true,
+                values: &["-5 degrees", "0", "+5 degrees", "+10 degrees"],
+                get: |s| s.graphics.fov_chase as usize,
+                set: |s, v| s.graphics.fov_chase = v as u8,
+            },
+            Row {
+                label: "Field of view, in-car views",
+                help: "Bumper and driver views.",
+                applies: Applies::Now,
+                shown: true,
+                values: &["-5 degrees", "0", "+5 degrees", "+10 degrees"],
+                get: |s| s.graphics.fov_incar as usize,
+                set: |s, v| s.graphics.fov_incar = v as u8,
+            },
+        ],
+        reset: |s| s.graphics = Default::default(),
     },
     Page {
         title: "Controller",
@@ -270,6 +313,7 @@ impl App {
             let r = &page.rows[ui.row - 1];
             let when = match r.applies {
                 Applies::Now => "applies now",
+                Applies::NextRace => "applies from the next race",
                 Applies::NextStart => "applies at the next start",
             };
             format!("{} ({when})", r.help)
