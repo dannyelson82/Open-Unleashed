@@ -129,6 +129,8 @@ enum Kind {
     Text(Field),
     /// Test connection (Enter / A)
     Test,
+    /// Test effects: plays every rumble and trigger effect in turn (Enter / A)
+    HapticsTest,
 }
 
 /// The menu's place.
@@ -281,6 +283,36 @@ fn pages() -> Vec<Page> {
         title: "Controller",
         rows: vec![
             Row {
+                label: "Rumble",
+                help: "Enhanced: road surfaces, gear shifts and the rev limiter on top of the original's force feedback (whose levels stay in Options).",
+                applies: Applies::Now,
+                shown: true,
+                kind: Kind::Choice,
+                values: &["Original", "Enhanced"],
+                get: |s| s.controller.rumble.min(1) as usize,
+                set: |s, v| s.controller.rumble = v as u8,
+            },
+            Row {
+                label: "Trigger effects",
+                help: "Xbox: trigger rumble for ABS and wheelspin. DualSense: brake resistance, ABS and wheelspin felt in the triggers.",
+                applies: Applies::Now,
+                shown: true,
+                kind: Kind::Choice,
+                values: &["Off", "Subtle", "Strong"],
+                get: |s| s.controller.trigger_effects.min(2) as usize,
+                set: |s, v| s.controller.trigger_effects = v as u8,
+            },
+            Row {
+                label: "Test effects",
+                help: "Plays each effect in turn on the connected controller: a crash, a gear shift, both trigger motors, both adaptive triggers.",
+                applies: Applies::Now,
+                shown: true,
+                kind: Kind::HapticsTest,
+                values: &[],
+                get: |_| 0,
+                set: |_, _| {},
+            },
+            Row {
                 label: "Head-look (AirPods)",
                 help: "Turn your head to look around inside the car (bumper and driver views). Needs AirPods with head tracking.",
                 applies: Applies::Now,
@@ -429,6 +461,44 @@ fn pages() -> Vec<Page> {
     .collect()
 }
 
+impl App {
+    /// Extras › Controller › Test effects, once a frame while it plays (about 4 s): a crash pulse, a gear-shift
+    /// thump, the left then the right trigger motor, the left then the right adaptive trigger; then all off.
+    pub(crate) fn haptics_test_tick(&mut self) {
+        let Some(t0) = self.haptics_test else { return };
+        let t = t0.elapsed().as_secs_f32();
+        let step = |a: f32, b: f32| t >= a && t < b;
+        let pads = &mut self.gamepads;
+        if step(0.0, 0.05) {
+            pads.rumble_pulse(0.8, 400);
+        } else if step(0.7, 0.75) {
+            pads.rumble_pulse(0.4, 60);
+        }
+        if step(1.0, 1.6) {
+            pads.trigger_rumble(0.8, 0.0);
+        } else if step(1.6, 2.2) {
+            pads.trigger_rumble(0.0, 0.8);
+        } else {
+            pads.trigger_rumble(0.0, 0.0);
+        }
+        #[cfg(any(target_os = "macos", target_os = "tvos"))]
+        {
+            use nfs_input::dualsense_apple::TriggerMode as M;
+            let vib = M::Vibration { start: 0.1, amplitude: 0.7, hz: 14.0 };
+            if step(2.4, 3.2) {
+                pads.adaptive_triggers(vib, M::Off);
+            } else if step(3.2, 4.0) {
+                pads.adaptive_triggers(M::Off, vib);
+            }
+        }
+        if t >= 4.0 {
+            self.haptics_test = None;
+            self.gamepads.triggers_off();
+            tracing::info!("Extras: haptics test done");
+        }
+    }
+}
+
 /// Apply what takes effect at once (called after every change and at start-up).
 pub(crate) fn apply_now(s: &ExtrasSettings) {
     // HD textures: from the next textures loaded (the next race / screen)
@@ -538,6 +608,9 @@ impl App {
                 } else if let Some(Kind::Text(field)) = page.rows.get(ui.row - 1).map(|r| r.kind) {
                     // start typing: in place on the Mac, the on-screen keyboard on tvOS (`text_request`)
                     set_edit(Some((field, field.value(&extras::get()).to_string())));
+                    self.fe_sound(9);
+                } else if let Some(Kind::HapticsTest) = page.rows.get(ui.row - 1).map(|r| r.kind) {
+                    self.haptics_test = Some(std::time::Instant::now());
                     self.fe_sound(9);
                 } else if let Some(Kind::Test) = page.rows.get(ui.row - 1).map(|r| r.kind) {
                     if !matches!(test_state(), Test::Running) {
@@ -699,6 +772,7 @@ impl App {
                         }
                     }
                 },
+                Kind::HapticsTest => if self.haptics_test.is_some() { "playing...".to_string() } else { String::new() },
                 Kind::Test => match test_state() {
                     Test::Idle => String::new(),
                     Test::Running => "testing...".to_string(),

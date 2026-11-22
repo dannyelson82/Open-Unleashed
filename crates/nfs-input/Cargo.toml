@@ -16,3 +16,10 @@ sdl3-sys.workspace = true
 # only SDL_INIT_GAMEPAD / HAPTIC are started).
 [target.'cfg(target_os = "tvos")'.dependencies]
 sdl3-sys = { version = "0.7", features = ["build-from-source-static", "debug-impls", "no-sdl-audio", "no-sdl-gpu", "no-sdl-render", "no-sdl-camera", "no-sdl-dialog", "no-sdl-tray"] }
+
+# PORT-DEVIATION (Extras › Controller › Trigger effects): the DualSense's adaptive triggers, which SDL does not expose
+# on Apple platforms — Apple's GameController framework directly (`dualsense_apple.rs`)
+[target.'cfg(any(target_os = "macos", target_os = "tvos"))'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSEnumerator"] }
+objc2-game-controller = { version = "0.3", default-features = false, features = ["std", "GCController", "GCDevice", "GCExtendedGamepad", "GCPhysicalInputProfile", "GCDualSenseGamepad", "GCDualSenseAdaptiveTrigger", "GCControllerButtonInput", "GCControllerElement"] }

@@ -144,6 +144,7 @@ All off / original by default; switched in **Extras** (pause menu › extras), s
 | Anisotropic filtering, draw distance (+fog), FOV offsets | Graphics | `nfs-renderer` (`set_anisotropy`), `race_stages.rs`, `render_scene.rs` |
 | Anti-aliasing: Off / FXAA / MSAA 4× (next start) | Graphics | `nfs-renderer`: `FxaaPass`; MSAA = the 66 mesh pipelines built a second time at 4 samples, the 3-D pass drawn into multisampled targets and resolved into the frame (not for a front-end frame whose sprites test the 3-D depth; no alpha-to-coverage) |
 | HD textures: Original / HD (next race) | Graphics | `nfs_assets::hd` (see "HD texture packs") |
+| Rumble: Original / Enhanced; Trigger effects: Off / Subtle / Strong; Test effects | Controller | `nfs_game::haptics` (pure), `app/force_feedback.rs::haptics_drive` (after the original's driver, never below its levels), `nfs_input::gamepad` (`trigger_rumble`), `nfs_input::dualsense_apple` (GameController adaptive triggers; released on pause / race end / exit) |
 | Steering curve, speed-sensitive steering, countersteer, ABS | Driving assists | `nfs_game::assists` (applied to the local packet: replays/network exact) |
 | Pause when headphones disconnect; output follows the default device | Audio | `nfs-audio` `route_check`, `app/lifecycle.rs` |
 | Head-look with AirPods (Mac) | Controller | `nfs_game::headlook`, `app/headlook.rs` |

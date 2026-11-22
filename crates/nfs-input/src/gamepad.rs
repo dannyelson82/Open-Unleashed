@@ -88,6 +88,8 @@ pub struct Gamepads {
     ff_hotplug: bool,
     /// set by [`Gamepads::poll`] when any device was connected; taken by [`Gamepads::take_pad_hotplug`]
     pad_hotplug: bool,
+    /// PORT-DEVIATION (trigger effects): the last trigger-rumble pair sent and when
+    trig_sent: Option<(u16, u16, std::time::Instant)>,
 }
 
 /// The last SDL error, for the log.
@@ -257,6 +259,17 @@ impl Devices {
         }
     }
 
+    /// PORT-DEVIATION (Extras › Controller › Trigger effects): `SDL_RumbleGamepadTriggers` on every pad that has
+    /// trigger motors. False when none has.
+    pub(crate) fn rumble_triggers(&mut self, left: u16, right: u16, ms: u32) -> bool {
+        let mut any = false;
+        for d in self.list.iter().filter(|d| d.can_rumble_triggers()) {
+            // SAFETY: the handle is open for as long as the device is in the list
+            any |= unsafe { SDL_RumbleGamepadTriggers(d.pad, left, right, ms) };
+        }
+        any
+    }
+
     /// The first device with an SDL haptic device (a wheel, …).
     fn haptic_device(&mut self) -> Option<(&str, &mut crate::ff::HapticWheel)> {
         self.list.iter_mut().find_map(|d| d.haptic.as_mut().map(|h| (d.name.as_str(), h)))
@@ -265,6 +278,9 @@ impl Devices {
 
 impl Drop for Devices {
     fn drop(&mut self) {
+        // PORT-DEVIATION: a DualSense's adaptive triggers released at exit (they would stay set otherwise)
+        #[cfg(any(target_os = "macos", target_os = "tvos"))]
+        crate::dualsense_apple::reset();
         self.list.clear();
         // SAFETY: balances the `SDL_Init` / `SDL_InitSubSystem` of `Devices::new`
         unsafe {
@@ -281,6 +297,12 @@ impl Device {
     fn can_rumble(&self) -> bool {
         // SAFETY: the joystick is open; the property name is SDL's own constant
         unsafe { sdl3_sys::properties::SDL_GetBooleanProperty(SDL_GetJoystickProperties(self.joy), SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN, false) }
+    }
+
+    /// `SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN`: an Xbox pad's trigger motors.
+    fn can_rumble_triggers(&self) -> bool {
+        // SAFETY: as above
+        !self.pad.is_null() && unsafe { sdl3_sys::properties::SDL_GetBooleanProperty(SDL_GetJoystickProperties(self.joy), SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN, false) }
     }
 }
 
@@ -441,7 +463,7 @@ impl Gamepads {
                 None
             }
         };
-        Self { devices, stick_latch: [false; 2], rumbler: Default::default(), rumble_test: None, records_buf: Vec::new(), haptic_armed: false, ff_hotplug: false, pad_hotplug: false }
+        Self { devices, stick_latch: [false; 2], rumbler: Default::default(), rumble_test: None, records_buf: Vec::new(), haptic_armed: false, ff_hotplug: false, pad_hotplug: false, trig_sent: None }
     }
 
     /// Whether a device that can rumble or has SDL haptic effects was connected since the last call
@@ -475,6 +497,45 @@ impl Gamepads {
         if let Some(d) = self.devices.as_mut() {
             self.rumbler.pulse(d, level, ms);
         }
+    }
+
+    /// PORT-DEVIATION (Extras › Controller › Trigger effects): an Xbox pad's trigger motors, 0…1 each, held until the
+    /// next call. Rate-limited like the body motors (a change at most every `ff::MIN_INTERVAL`, a start or stop at once).
+    pub fn trigger_rumble(&mut self, left: f32, right: f32) {
+        let Some(d) = self.devices.as_mut() else { return };
+        let (l, r) = (crate::ff::quantise(left), crate::ff::quantise(right));
+        let now = std::time::Instant::now();
+        let due = match self.trig_sent {
+            None => l != 0 || r != 0,
+            Some((sl, sr, t)) if sl == l && sr == r => now.saturating_duration_since(t) >= std::time::Duration::from_millis(500) && (l != 0 || r != 0),
+            Some((sl, sr, t)) => (sl == 0) != (l == 0) || (sr == 0) != (r == 0) || now.saturating_duration_since(t) >= crate::ff::MIN_INTERVAL,
+        };
+        if !due {
+            return;
+        }
+        // held a second; renewed every half second while it lasts
+        if d.rumble_triggers(l, r, if l == 0 && r == 0 { 0 } else { 1000 }) || (l == 0 && r == 0) {
+            self.trig_sent = if l == 0 && r == 0 { None } else { Some((l, r, now)) };
+        }
+    }
+
+    /// PORT-DEVIATION (Extras › Controller › Trigger effects): a DualSense's adaptive triggers (Apple platforms; a no-op
+    /// elsewhere).
+    #[cfg(any(target_os = "macos", target_os = "tvos"))]
+    pub fn adaptive_triggers(&mut self, left: crate::dualsense_apple::TriggerMode, right: crate::dualsense_apple::TriggerMode) {
+        crate::dualsense_apple::set(left, right);
+    }
+
+    /// Every trigger effect off: trigger motors stopped, adaptive triggers released.
+    pub fn triggers_off(&mut self) {
+        if self.trig_sent.is_some() {
+            if let Some(d) = self.devices.as_mut() {
+                d.rumble_triggers(0, 0, 0);
+            }
+            self.trig_sent = None;
+        }
+        #[cfg(any(target_os = "macos", target_os = "tvos"))]
+        crate::dualsense_apple::reset();
     }
 
     /// Stop the sustained motors.
