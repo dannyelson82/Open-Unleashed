@@ -592,13 +592,22 @@ impl App {
             }
             if self.photo.hint {
                 v.push(self.photo_status_line());
-                for k in [S_KEYS_MOVE, S_KEYS_ZOOM, S_KEYS_SHOT, S_KEYS_PAD] {
+                // controller glyphs (`nfs_input::glyphs`): a pad user sees the pad's line only
+                let keys: &[usize] = if matches!(nfs_input::glyphs::last(), nfs_input::glyphs::LastDevice::Pad(_)) { &[S_KEYS_PAD] } else { &[S_KEYS_MOVE, S_KEYS_ZOOM, S_KEYS_SHOT, S_KEYS_PAD] };
+                for &k in keys {
                     v.push(self.photo_text(k));
                 }
             }
             v
         } else if self.photo_entry().is_some() && !self.hud_hidden {
-            vec![self.photo_text(S_ENTER)]
+            // a pad has no F11 / K: photo mode is the pause menu's item (controller glyphs)
+            match nfs_input::glyphs::last() {
+                nfs_input::glyphs::LastDevice::Pad(_) if !self.paused => {
+                    vec![format!("{}: pause, then {}", nfs_input::glyphs::last_name(nfs_input::glyphs::Button::Start), self.photo_text(S_TITLE))]
+                }
+                nfs_input::glyphs::LastDevice::Pad(_) => return,
+                nfs_input::glyphs::LastDevice::Keyboard => vec![self.photo_text(S_ENTER)],
+            }
         } else {
             return;
         };

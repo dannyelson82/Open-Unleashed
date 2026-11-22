@@ -107,6 +107,8 @@ struct Device {
     pad: *mut SDL_Gamepad,
     /// SDL's gamepad buttons for the port's `South`, `East`, `North`, `West` ([`face_buttons`])
     face: [SDL_GamepadButton; 4],
+    /// the pad's family, for the hints' button names (`glyphs.rs`)
+    family: crate::glyphs::PadFamily,
     /// the force-feedback device of a non-pad joystick SDL can drive ([`crate::ff::HapticWheel`])
     haptic: Option<crate::ff::HapticWheel>,
     name: String,
@@ -229,7 +231,8 @@ impl Devices {
                 wheel = ty == SDL_JOYSTICK_TYPE_WHEEL,
                 "joystick connected"
             );
-            self.list.push(Device { id, joy, pad, face, haptic, name });
+            let family = if pad.is_null() { crate::glyphs::PadFamily::Generic } else { pad_family(SDL_GetGamepadType(pad)) };
+            self.list.push(Device { id, joy, pad, face, family, haptic, name });
         }
     }
 
@@ -294,6 +297,24 @@ const DEFAULT_FACE: [SDL_GamepadButton; 4] = [SDL_GAMEPAD_BUTTON_SOUTH, SDL_GAME
 /// A). SDL3's buttons are positional (`SOUTH` is the bottom one whatever it reads), so each of `A B
 /// Y X` is looked up by its label to keep a Switch-style pad's bindings and the front end's A / B
 /// where they were; PlayStation's ✕ ○ △ □ are `A B Y X`; a pad without labels keeps the positions.
+/// The hints' button-name family of an SDL gamepad type (`glyphs.rs`).
+fn pad_family(t: SDL_GamepadType) -> crate::glyphs::PadFamily {
+    use crate::glyphs::PadFamily as F;
+    if t == SDL_GAMEPAD_TYPE_XBOX360 || t == SDL_GAMEPAD_TYPE_XBOXONE {
+        F::Xbox
+    } else if t == SDL_GAMEPAD_TYPE_PS3 || t == SDL_GAMEPAD_TYPE_PS4 || t == SDL_GAMEPAD_TYPE_PS5 {
+        F::PlayStation
+    } else if t == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO
+        || t == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT
+        || t == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT
+        || t == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR
+    {
+        F::Nintendo
+    } else {
+        F::Generic
+    }
+}
+
 pub fn face_buttons(labels: [SDL_GamepadButtonLabel; 4]) -> [SDL_GamepadButton; 4] {
     use SDL_GamepadButtonLabel as L;
     let positions = [SDL_GAMEPAD_BUTTON_SOUTH, SDL_GAMEPAD_BUTTON_EAST, SDL_GAMEPAD_BUTTON_WEST, SDL_GAMEPAD_BUTTON_NORTH];
@@ -585,6 +606,10 @@ impl Gamepads {
                 // the front end's pad keys (D10): a standard pad's d-pad, A and B, and the left
                 // stick past 0.6 of its travel (latched, one key per push)
                 let b = unsafe { ev.gbutton };
+                // controller glyphs: a button press makes this pad's family the last device
+                if let Some(i) = d.pad_index(b.which) {
+                    crate::glyphs::note(crate::glyphs::LastDevice::Pad(d.list[i].family));
+                }
                 if let Some(i) = d.pad_index(b.which)
                     && let Some(k) = menu_button(SDL_GamepadButton(i32::from(b.button)), &d.list[i].face)
                 {
