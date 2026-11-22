@@ -24,6 +24,7 @@ final class GameDataViewController: UIViewController {
     private let setButton = UIButton(type: .system)
     private let downloadButton = UIButton(type: .system)
     private let playButton = UIButton(type: .system)
+    private let hdButton = UIButton(type: .system)
     private let progress = UIProgressView(progressViewStyle: .default)
     private let progressLabel = UILabel()
     private let fileLabel = UILabel()
@@ -52,7 +53,8 @@ final class GameDataViewController: UIViewController {
 
         for (b, sel) in [(serverButton, #selector(editServer)), (findButton, #selector(findServers)),
                          (testButton, #selector(testConnection)), (setButton, #selector(chooseSet)),
-                         (downloadButton, #selector(startDownload)), (playButton, #selector(playWithoutUpdate))] {
+                         (downloadButton, #selector(startDownload)), (playButton, #selector(playWithoutUpdate)),
+                         (hdButton, #selector(hdTextures))] {
             b.addTarget(self, action: sel, for: .primaryActionTriggered)
             b.titleLabel?.font = .systemFont(ofSize: 34, weight: .medium)
         }
@@ -66,7 +68,8 @@ final class GameDataViewController: UIViewController {
         let serverRow = UIStackView(arrangedSubviews: [serverButton, findButton, testButton])
         serverRow.axis = .horizontal
         serverRow.spacing = 40
-        let actionRow = UIStackView(arrangedSubviews: [setButton, downloadButton, playButton])
+        hdButton.isHidden = true
+        let actionRow = UIStackView(arrangedSubviews: [setButton, downloadButton, playButton, hdButton])
         actionRow.axis = .horizontal
         actionRow.spacing = 40
 
@@ -114,7 +117,14 @@ final class GameDataViewController: UIViewController {
         setButton.setTitle("Data: \(Self.setName(set))\(info.map { "  (\(Self.mb($0.size)))" } ?? "")", for: .normal)
         downloadButton.setTitle(busy ? "Cancel" : (update != nil ? "Update" : "Download"), for: .normal)
         playButton.isHidden = update == nil || busy
-        [serverButton, findButton, testButton, setButton].forEach { $0.isEnabled = !busy }
+        // the optional HD texture pack (Porsche, when the server has a `porsche/hd` set)
+        if Shell.game == .porsche, let hd = sets.first(where: { $0.id == "porsche/hd" }) {
+            hdButton.isHidden = false
+            hdButton.setTitle(GameStore.hdInstalled ? "HD textures ✓" : "HD textures (\(Self.mb(hd.size)))", for: .normal)
+        } else {
+            hdButton.isHidden = true
+        }
+        [serverButton, findButton, testButton, setButton, hdButton].forEach { $0.isEnabled = !busy }
     }
 
     static func setName(_ id: String) -> String {
@@ -254,6 +264,51 @@ final class GameDataViewController: UIViewController {
                 show(error: error)
                 refresh()
             }
+        }
+    }
+
+    // MARK: HD texture pack (optional, Porsche)
+
+    @objc private func hdTextures() {
+        guard !busy, let hd = sets.first(where: { $0.id == "porsche/hd" }) else { return }
+        let a = UIAlertController(title: "HD textures", message: "Higher-resolution copies of the game's textures, made from your own copy, from your server (\(Self.mb(hd.size))). Turn them on in Extras › Graphics › Textures.", preferredStyle: .actionSheet)
+        a.addAction(UIAlertAction(title: GameStore.hdInstalled ? "Check for updates" : "Download", style: .default) { [weak self] _ in self?.downloadHD() })
+        if FileManager.default.fileExists(atPath: GameStore.hdDir.path) {
+            a.addAction(UIAlertAction(title: "Remove from this Apple TV", style: .destructive) { [weak self] _ in
+                try? FileManager.default.removeItem(at: GameStore.hdDir)
+                self?.refresh()
+            })
+        }
+        a.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(a, animated: true)
+    }
+
+    private func downloadHD() {
+        busy = true
+        errorLabel.text = nil
+        progress.isHidden = false
+        progress.progress = 0
+        progressLabel.text = "Connecting to \(ServerSettings.address)…"
+        refresh()
+        Task { @MainActor in
+            GameStore.rootOverride = GameStore.hdDir
+            defer { GameStore.rootOverride = nil }
+            do {
+                try FileManager.default.createDirectory(at: GameStore.hdDir, withIntermediateDirectories: true)
+                let (c, _) = try await ServerClient.connect(address: ServerSettings.address, token: ServerSettings.token)
+                let d = GameDownloader(client: c, set: "porsche/hd")
+                downloader = d
+                d.onProgress = { [weak self] p in DispatchQueue.main.async { self?.render(p) } }
+                try await d.run()
+                progressLabel.text = "HD textures installed. Turn them on in Extras › Graphics › Textures."
+            } catch {
+                progressLabel.text = nil
+                show(error: error)
+            }
+            fileLabel.text = nil
+            progress.isHidden = true
+            busy = false
+            refresh()
         }
     }
 

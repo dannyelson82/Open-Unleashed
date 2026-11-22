@@ -34,7 +34,13 @@ enum StoreError: LocalizedError {
 }
 
 enum GameStore {
-    static var root: URL { Shell.gameDir }
+    /// Where the set being installed goes: the game's data folder, or (for the time of an HD pack download) the
+    /// folder an add-on set lives in (`Caches/games/porsche/hd`, where the engine looks for the pack).
+    static var root: URL { rootOverride ?? Shell.gameDir }
+    static var rootOverride: URL?
+    /// The Porsche HD texture pack (the server's `porsche/hd` set; `nfs_assets::hd::pack_dir`).
+    static var hdDir: URL { GameID.porsche.root.appendingPathComponent("hd", isDirectory: true) }
+    static var hdInstalled: Bool { FileManager.default.fileExists(atPath: hdDir.appendingPathComponent(".nfsh/verified").path) }
     static var meta: URL { root.appendingPathComponent(".nfsh", isDirectory: true) }
     static var manifestFile: URL { meta.appendingPathComponent("manifest.json") }
     static var verifiedFile: URL { meta.appendingPathComponent("verified") }
