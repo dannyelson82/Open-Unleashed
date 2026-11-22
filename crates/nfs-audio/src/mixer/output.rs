@@ -138,6 +138,39 @@ pub struct AudioOutput {
     pub(super) _stream: Option<cpal::Stream>,
     pub(super) tx: Arc<Tx>,
     pub rate: u32,
+    /// PLATFORM GLUE (route changes, `airpods-plan.md` A): where the mixer state goes back to when the stream is
+    /// dropped, so a new device's stream takes the same voices, streams and reverb
+    pub(super) home: Arc<Mutex<Option<Core>>>,
+    /// the stream's error callback saw the device fail (e.g. it went away)
+    pub(super) broken: Arc<std::sync::atomic::AtomicBool>,
+    /// the device the stream plays on
+    pub device_name: String,
+}
+
+/// The mixer state inside the stream's callback; handed back to `home` when the stream (and the callback) is
+/// dropped. The callback itself never locks — the mutex is touched only on that drop, after the stream stopped.
+pub(super) struct CoreSlot {
+    pub(super) core: Option<Core>,
+    pub(super) home: Arc<Mutex<Option<Core>>>,
+}
+
+impl Drop for CoreSlot {
+    fn drop(&mut self) {
+        if let Some(c) = self.core.take()
+            && let Ok(mut h) = self.home.lock()
+        {
+            *h = Some(c);
+        }
+    }
+}
+
+/// What a route check did.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RouteChange {
+    pub from: String,
+    pub to: String,
+    /// the new route is up (false: no device now — the mix waits and the next check tries again)
+    pub ok: bool,
 }
 
 impl AudioOutput {
@@ -146,7 +179,7 @@ impl AudioOutput {
             DUMP.get_or_init(|| Mutex::new(std::fs::File::create(&path).expect("NFS_AUDIO_DUMP")));
             let (tx, _) = Tx::new(44100, true);
             tracing::warn!(path, "audio: offline dump (NFS_AUDIO_DUMP), no device");
-            return Ok(Self { _stream: None, tx, rate: 44100 });
+            return Ok(Self::offline_with(tx));
         }
         // TEST GLUE: scripted / test runs are silent — `NFS_MUTE=1`, or any `NFS_NO_FOCUS` run (the scripted
         // runs' marker) unless `NFS_SOUND=1` asks for the device (the audio tasks). No device is opened: the
@@ -156,39 +189,96 @@ impl AudioOutput {
         if !var("NFS_SOUND") && (var("NFS_MUTE") || var("NFS_NO_FOCUS")) {
             let (tx, _) = Tx::new(44100, true);
             tracing::info!("audio: muted test run (NFS_MUTE / NFS_NO_FOCUS; NFS_SOUND=1 for the device), no device");
-            return Ok(Self { _stream: None, tx, rate: 44100 });
+            return Ok(Self::offline_with(tx));
         }
         let host = cpal::default_host();
         let device = host.default_output_device().ok_or_else(|| anyhow::anyhow!("no audio output device"))?;
         let supported = device.default_output_config()?;
         let rate = supported.sample_rate();
+        let (tx, core) = Tx::new(rate, false);
+        let home = Arc::new(Mutex::new(core));
+        let broken = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let mut out = Self { _stream: None, tx, rate, home, broken, device_name: String::new() };
+        out.start_on(&device).map_err(|e| anyhow::anyhow!("{e}"))?;
+        Ok(out)
+    }
+
+    #[cfg(test)]
+    pub(super) fn for_test(tx: Arc<Tx>, rate: u32) -> Self {
+        Self { rate, ..Self::offline_with(tx) }
+    }
+
+    fn offline_with(tx: Arc<Tx>) -> Self {
+        Self { _stream: None, tx, rate: 44100, home: Arc::new(Mutex::new(None)), broken: Arc::new(std::sync::atomic::AtomicBool::new(false)), device_name: String::new() }
+    }
+
+    /// Open `device` with the mixer state waiting in `home`. A smaller device buffer lowers the output latency and
+    /// changes nothing in the mix: the driver passes ([`Pump`]) and the bridge's queue run on the stream's own
+    /// clock, whatever size the callback asks for (`the_mix_does_not_depend_on_the_callback_size`).
+    fn start_on(&mut self, device: &cpal::Device) -> Result<(), String> {
+        let supported = device.default_output_config().map_err(|e| e.to_string())?;
+        let rate = supported.sample_rate();
         let channels = supported.channels() as usize;
-        // a smaller device buffer lowers the output latency and changes nothing in the mix: the
-        // driver passes ([`Pump`]) and the bridge's queue run on the stream's own clock, whatever
-        // size the callback asks for (`the_mix_does_not_depend_on_the_callback_size`)
         let mut config: cpal::StreamConfig = supported.config();
         let mut attempts = vec![cpal::BufferSize::Default];
         if let Some(n) = device_buffer_frames(&supported) {
             attempts.insert(0, cpal::BufferSize::Fixed(n));
         }
-        let mut last = None;
+        let name = device.description().map(|d| d.name().to_string()).unwrap_or_default();
+        let mut last = String::from("no attempt");
         for size in attempts {
             config.buffer_size = size;
-            let (tx, core) = Tx::new(rate, false);
-            let core = core.expect("a device mixer has its callback half");
-            match Self::open(&device, &config, channels, core) {
+            let Some(core) = self.home.lock().ok().and_then(|mut h| h.take()) else { return Err("the mixer state is not home".into()) };
+            match Self::open(device, &config, channels, core, self.home.clone(), self.broken.clone()) {
                 Ok(stream) => {
-                    stream.play()?;
-                    tracing::info!(rate, channels, buffer = ?config.buffer_size, "audio output started");
-                    return Ok(Self { _stream: Some(stream), tx, rate });
+                    stream.play().map_err(|e| e.to_string())?;
+                    tracing::info!(rate, channels, buffer = ?config.buffer_size, device = %name, "audio output started");
+                    self._stream = Some(stream);
+                    self.rate = rate;
+                    self.device_name = name;
+                    self.broken.store(false, Ordering::Release);
+                    return Ok(());
                 }
                 Err(e) => {
+                    // the failed stream's callback (and with it the mixer state) went back home
                     tracing::warn!(error = %e, buffer = ?config.buffer_size, "audio stream refused");
-                    last = Some(e);
+                    last = e.to_string();
                 }
             }
         }
-        Err(last.expect("an attempt was made").into())
+        Err(last)
+    }
+
+    /// PLATFORM GLUE (`airpods-plan.md` A/B): has the output route changed — the default device is another one, or
+    /// the stream reported its device failed? Then reopen on the default device **with the same mixer state**
+    /// (every playing voice, stream and reverb carries on). Cheap when nothing changed; call every ~2 s, and at
+    /// once after a platform route notice (`force`). An offline (muted / dump) output never reroutes.
+    pub fn route_check(&mut self, force: bool) -> Option<RouteChange> {
+        if self.tx.offline.is_some() || (self._stream.is_none() && self.device_name.is_empty() && self.home.lock().map_or(true, |h| h.is_none())) {
+            return None;
+        }
+        let host = cpal::default_host();
+        let dev = host.default_output_device();
+        let now_name = dev.as_ref().and_then(|d| d.description().ok()).map(|d| d.name().to_string()).unwrap_or_default();
+        let broken = self.broken.load(Ordering::Acquire);
+        if !force && !broken && self._stream.is_some() && now_name == self.device_name {
+            return None;
+        }
+        let from = std::mem::take(&mut self.device_name);
+        // drop the old stream: its callback hands the mixer state back to `home`
+        self._stream = None;
+        let ok = match dev {
+            Some(d) => match self.start_on(&d) {
+                Ok(()) => true,
+                Err(e) => {
+                    tracing::warn!(error = %e, "audio: the new route could not be opened — retrying");
+                    false
+                }
+            },
+            None => false,
+        };
+        tracing::info!(from = %from, to = %now_name, ok, "audio route changed");
+        Some(RouteChange { from, to: now_name, ok })
     }
 
     /// TEST GLUE (`NFS_AUDIO_DUMP_TICKS=1`): one game tick of the offline mix, `rate / 64` frames at
@@ -206,16 +296,18 @@ impl AudioOutput {
     #[cfg(test)]
     pub(crate) fn offline() -> Self {
         let (tx, _) = Tx::new(44100, true);
-        Self { _stream: None, tx, rate: 44100 }
+        Self::offline_with(tx)
     }
 
     /// The output stream whose callback is `core`'s: what the game thread queued since the last
     /// run, then the mix — nothing here takes a lock or allocates.
-    pub(super) fn open(device: &cpal::Device, config: &cpal::StreamConfig, channels: usize, mut core: Core) -> Result<cpal::Stream, cpal::Error> {
+    pub(super) fn open(device: &cpal::Device, config: &cpal::StreamConfig, channels: usize, core: Core, home: Arc<Mutex<Option<Core>>>, broken: Arc<std::sync::atomic::AtomicBool>) -> Result<cpal::Stream, cpal::Error> {
         let out_rate = config.sample_rate as f64;
+        let mut slot = CoreSlot { core: Some(core), home };
         device.build_output_stream(
             config.clone(),
             move |out: &mut [f32], info: &cpal::OutputCallbackInfo| {
+                let Some(core) = slot.core.as_mut() else { return };
                 core.drain();
                 let ts = info.timestamp();
                 // saturating to zero when the playback instant is not after the callback's (cpal 0.18)
@@ -226,9 +318,24 @@ impl AudioOutput {
                 core.fill(out, channels, out_rate);
                 core.publish();
             },
-            |e| tracing::error!(error = %e, "audio stream"),
+            move |e| {
+                tracing::error!(error = %e, "audio stream");
+                broken.store(true, Ordering::Release);
+            },
             None,
         )
+    }
+
+    /// PLATFORM GLUE (TVOS.md Stage 6.3): stop / restart the device stream — the app went to the background /
+    /// came back. The mix itself is untouched (every voice keeps its place); an offline (muted) output ignores it.
+    pub fn set_stream_paused(&self, paused: bool) {
+        if let Some(s) = self._stream.as_ref() {
+            let r = if paused { s.pause() } else { s.play() };
+            match r {
+                Ok(()) => tracing::info!(paused, "audio stream"),
+                Err(e) => tracing::warn!(error = %e, paused, "audio stream pause/play failed"),
+            }
+        }
     }
 
     /// What 0x4A66B0 configures for `AUDIOQUALITY` when the sound opens (both start-ups 0x4A6840 /
@@ -244,18 +351,6 @@ impl AudioOutput {
     /// timer (0x4AE010), `fesfx` reloaded (0x4A8B80), `MusicPlay(NULL, 0)` (0x4AE4D0(0, 0),
     /// 0x4A6B1E). The first call configures the opened output (0x4A6840's open) and answers `false`.
     /// *(Until REG-AUDIO2 a change was applied under the running mix, the voices left playing.)*
-    /// PLATFORM GLUE (TVOS.md Stage 6.3): stop / restart the device stream — the app went to the background /
-    /// came back. The mix itself is untouched (every voice keeps its place); an offline (muted) output ignores it.
-    pub fn set_stream_paused(&self, paused: bool) {
-        if let Some(s) = self._stream.as_ref() {
-            let r = if paused { s.pause() } else { s.play() };
-            match r {
-                Ok(()) => tracing::info!(paused, "audio stream"),
-                Err(e) => tracing::warn!(error = %e, paused, "audio stream pause/play failed"),
-            }
-        }
-    }
-
     pub fn set_audio_quality(&self, audio_quality: u8) -> bool {
         let budget = voice_budget(audio_quality);
         let rate = mix_rate(audio_quality);

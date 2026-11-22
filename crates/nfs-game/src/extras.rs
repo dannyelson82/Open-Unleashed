@@ -100,6 +100,20 @@ pub struct Network {
     pub save_profile: String,
 }
 
+/// Audio (`airpods-plan.md`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Audio {
+    /// pause a single-player race when headphones disconnect / are taken out (plan E; default on)
+    pub pause_on_headphones_gone: bool,
+}
+
+impl Default for Audio {
+    fn default() -> Self {
+        Self { pause_on_headphones_gone: true }
+    }
+}
+
 /// Graphics (`enhancements-plan.md` §3). Indices into the Extras rows' values; 0 = the original everywhere.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -168,11 +182,12 @@ pub struct ExtrasSettings {
     pub assists: Assists,
     pub graphics: Graphics,
     pub network: Network,
+    pub audio: Audio,
 }
 
 impl Default for ExtrasSettings {
     fn default() -> Self {
-        Self { version: VERSION, display: Display::default(), controller: Controller::default(), assists: Assists::default(), graphics: Graphics::default(), network: Network::default() }
+        Self { version: VERSION, display: Display::default(), controller: Controller::default(), assists: Assists::default(), graphics: Graphics::default(), network: Network::default(), audio: Audio::default() }
     }
 }
 

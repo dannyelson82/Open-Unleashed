@@ -25,5 +25,7 @@ void ou_app_background(void);
 void ou_app_foreground(void);
 /// A race / replay / intro is running: keep the screen saver off.
 bool ou_wants_no_sleep(void);
+/// The audio route changed; true when the old device became unavailable (headphones gone).
+void ou_audio_route_changed(bool old_device_unavailable);
 /// End the app (from the Game Data screen).
 void ou_request_quit(void);
