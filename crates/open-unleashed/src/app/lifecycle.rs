@@ -13,6 +13,8 @@ impl App {
     /// (0x4151E3 → 0x461740), the first row, no question up.
     pub(crate) fn enter_pause(&mut self) {
         self.paused = true;
+        // PORT-DEVIATION: no trigger effect stays on under the pause menu
+        self.haptics_off();
         self.orbit = Orbit::default();
         self.pause_sel = 0;
         self.pause_confirm = None;

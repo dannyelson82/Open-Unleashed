@@ -714,6 +714,7 @@ impl ApplicationHandler for App {
                 crate::tvos::text_pad(self);
                 // PORT-DEVIATION (Extras from the main menu): View / Play-Pause opens it; while it is up it takes the pad
                 self.extras_fe_pad();
+                self.haptics_test_tick();
                 // the audio output follows the default device / route (`lifecycle.rs`)
                 self.audio_route_tick();
                 if self.gamepads.take_pad_hotplug() {
@@ -815,6 +816,8 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested if event_loop.exiting() => {}
             WindowEvent::RedrawRequested => {
                 self.gamepads.poll(&mut self.input);
+                // Extras › Controller › Test effects
+                self.haptics_test_tick();
                 // tvOS: the on-screen keyboard's A / Y, and nothing of the pad while it is up (TVOS.md)
                 #[cfg(target_os = "tvos")]
                 crate::tvos::text_pad(self);

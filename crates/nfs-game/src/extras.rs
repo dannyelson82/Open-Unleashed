@@ -83,13 +83,34 @@ impl HeadLookStrength {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Controller {
     /// Mac only: AirPods head tracking turns the in-car view (off = the original)
     pub head_look: bool,
     pub head_look_strength: HeadLookStrength,
     pub head_look_pitch: bool,
+    /// a pad's rumble: 0 the original's force feedback alone, 1 enhanced (`crate::haptics`: surfaces, shifts,
+    /// limiter on top of it)
+    pub rumble: u8,
+    /// trigger effects (Xbox trigger rumble, DualSense adaptive triggers): 0 off, 1 subtle, 2 strong
+    pub trigger_effects: u8,
+}
+
+impl Default for Controller {
+    /// the original on the Mac; on tvOS, where a pad is the only way to race, enhanced rumble and subtle triggers
+    /// (`enhancements-plan.md` §5)
+    fn default() -> Self {
+        let tv = cfg!(target_os = "tvos");
+        Self { head_look: false, head_look_strength: HeadLookStrength::default(), head_look_pitch: false, rumble: u8::from(tv), trigger_effects: u8::from(tv) }
+    }
+}
+
+impl Controller {
+    /// Trigger effects as a strength: 0, 0.5, 1.
+    pub fn trigger_strength(&self) -> f32 {
+        [0.0, 0.5, 1.0][self.trigger_effects.min(2) as usize]
+    }
 }
 
 /// The NFS Haven server (`docs/nfs-haven-server.md`): address (name or IP, optional `:port`), password (`token`), save sync.

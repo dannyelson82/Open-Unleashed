@@ -325,6 +325,7 @@ impl App {
     /// [`Self::leave_race`] with the front end's `[0x657E34]` (aborted) chosen by the caller: the pause
     /// menu's quit sets it (0x426182), the network race's Esc leave (0x41523A) does not.
     pub(crate) fn leave_race_as(&mut self, aborted: bool) -> bool {
+        self.haptics_off();
         let Some(menu) = self.fe.menu_template.take() else {
             return false;
         };

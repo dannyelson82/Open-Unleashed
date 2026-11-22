@@ -500,6 +500,8 @@ impl App {
             photo: Default::default(),
             extras_ui: None,
             fe_hud: None,
+            haptics: nfs_game::haptics::Haptics::new(),
+            haptics_test: None,
             net_notice_space: false,
             net_lag_box: false,
             num_laps: launch.laps,

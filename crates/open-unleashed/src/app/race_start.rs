@@ -719,6 +719,8 @@ impl App {
         self.enter_race_mode();
         // PORT-DEVIATION (HD texture packs): the overlay's count is this race's uploads
         nfs_assets::hd::reset_counts();
+        // PORT-DEVIATION (enhanced haptics): a fresh layer; the starting gear is no shift
+        self.haptics.reset(self.vehicle.as_ref().map_or(1, |v| v.gear));
         // the launch dump 0x4B4DA0 (0x4B5179): `[0x657CA0]` = the `Audio.MusicLevel` accessor
         self.snd.registry_music_level = self.snd.audio_settings.music_level;
         // `Replay_startRace` 0x413EA0 + `0x414EB0`: rewind the stream and seed the shared RNG from

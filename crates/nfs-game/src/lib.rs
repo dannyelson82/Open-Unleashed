@@ -3,6 +3,7 @@
 //! Race logic (checkpoints, laps, positions) follows M5.
 pub mod assists;
 pub mod extras;
+pub mod haptics;
 pub mod headlook;
 pub mod ai;
 pub mod aidrive;

@@ -83,6 +83,13 @@ impl App {
         self.ff = Some(ForceFeedback::new(enabled, false));
     }
 
+    /// PORT-DEVIATION: every trigger effect off and the enhanced layer's motors stopped (a pause, the end of a race,
+    /// the app going to the background); the original's stop-all ([`Self::ff_stop_all`]) is separate.
+    pub(crate) fn haptics_off(&mut self) {
+        self.gamepads.triggers_off();
+        ORIGINAL.with(|o| o.set((0.0, 0.0)));
+    }
+
     /// 0x412030 / 0x412090 / 0x4120F0, the pause's stop-all.
     pub(crate) fn ff_stop_all(&mut self) {
         if let Some(ff) = self.ff.as_mut() {
@@ -138,6 +145,23 @@ pub(crate) fn di_call(c: &FfCommand) -> DiCall {
     }
 }
 
+thread_local! {
+    /// The original's last body-motor levels (strong, weak) as `ff_output` set them: the enhanced layer never goes
+    /// below them (`haptics_drive`).
+    static ORIGINAL: std::cell::Cell<(f32, f32)> = const { std::cell::Cell::new((0.0, 0.0)) };
+}
+
+fn sustain(pads: &mut nfs_input::gamepad::Gamepads, motor: Motor, level: f32) {
+    ORIGINAL.with(|o| {
+        let (s, w) = o.get();
+        o.set(match motor {
+            Motor::Strong => (level, w),
+            Motor::Weak => (s, level),
+        });
+    });
+    pads.rumble_sustain(motor, level);
+}
+
 /// Send the platform calls to the armed haptic device, or map them onto the pad's rumble (A2).
 pub(crate) fn ff_output(pads: &mut nfs_input::gamepad::Gamepads, cmds: &[FfCommand], total: i32) {
     if pads.haptic_armed() {
@@ -151,15 +175,72 @@ pub(crate) fn ff_output(pads: &mut nfs_input::gamepad::Gamepads, cmds: &[FfComma
             tracing::debug!(?c, "force feedback command");
         }
         match *c {
-            FfCommand::Stop(FfEffect::Road) => pads.rumble_sustain(Motor::Strong, 0.0),
-            FfCommand::Stop(FfEffect::Engine) => pads.rumble_sustain(Motor::Weak, 0.0),
+            FfCommand::Stop(FfEffect::Road) => sustain(pads, Motor::Strong, 0.0),
+            FfCommand::Stop(FfEffect::Engine) => sustain(pads, Motor::Weak, 0.0),
             FfCommand::Stop(FfEffect::Collision | FfEffect::Grip) => {}
-            FfCommand::Periodic { effect: FfEffect::Road, magnitude, gain, .. } => pads.rumble_sustain(Motor::Strong, pad_level(magnitude, gain, total)),
-            FfCommand::Periodic { effect: FfEffect::Engine, magnitude, gain, .. } => pads.rumble_sustain(Motor::Weak, level(magnitude, gain, total)),
+            FfCommand::Periodic { effect: FfEffect::Road, magnitude, gain, .. } => sustain(pads, Motor::Strong, pad_level(magnitude, gain, total)),
+            FfCommand::Periodic { effect: FfEffect::Engine, magnitude, gain, .. } => sustain(pads, Motor::Weak, level(magnitude, gain, total)),
             FfCommand::Periodic { .. } => {}
             FfCommand::Spring { .. } => {}
             FfCommand::Jolt { magnitude, duration_us, gain, .. } => pads.rumble_pulse(pad_level(magnitude, gain, total), ((duration_us.max(0) / 1000) as u32).max(MIN_PULSE_MS)),
         }
+    }
+}
+
+/// **PORT-DEVIATION (Extras › Controller › Rumble: Enhanced / Trigger effects, `nfs_game::haptics`)**: once a game
+/// tick after the original's driver, from the same car state. Body motors: the enhanced layer's levels, never below
+/// the original's; trigger motors and DualSense adaptive triggers when trigger effects are on. Nothing in a replay;
+/// a pad only (a wheel keeps the original's effects alone).
+pub(crate) fn haptics_drive(h: &mut nfs_game::haptics::Haptics, pads: &mut nfs_input::gamepad::Gamepads, v: &nfs_physics::vehicle::Vehicle, specs: &nfs_physics::specs::CarSpecs, replay: bool) {
+    let x = nfs_game::extras::get().controller;
+    let enhanced = x.rumble == 1 && !pads.haptic_armed();
+    let trig = x.trigger_strength();
+    if replay || (!enhanced && trig <= 0.0) {
+        return;
+    }
+    let rear = [&v.wheels[2], &v.wheels[3]];
+    let brake = f32::from(v.brake_raw) / 255.0;
+    let speed_kmh = v.speed_est.abs() * 3.6;
+    let locked = v.wheels.iter().any(|w| w.locked);
+    let c = nfs_game::haptics::HapticIn {
+        speed_kmh,
+        surface: v.surface_nibble() as u32,
+        rpm: v.rpm,
+        redline: specs.redline,
+        limiter: v.ignition_cut != 0,
+        gear: v.gear,
+        locked,
+        // the ABS assist works the brake whenever a wheel would lock under a firm pedal
+        abs: nfs_game::extras::get().assists.abs && brake > 0.3 && speed_kmh > 15.0 && (locked || v.wheels.iter().any(|w| w.slip > 0.3)),
+        wheelspin: ((rear.iter().map(|w| w.slip).fold(0.0f32, f32::max) - 0.15) / 0.5).clamp(0.0, 1.0),
+        throttle: f32::from(v.throttle_raw) / 255.0,
+        brake,
+        airborne: v.airborne_count != 0,
+    };
+    let o = h.tick(&c, trig);
+    if enhanced {
+        let (s, w) = ORIGINAL.with(|o| o.get());
+        pads.rumble_sustain(Motor::Strong, s.max(o.strong));
+        pads.rumble_sustain(Motor::Weak, w.max(o.weak));
+        if let Some((level, ms)) = o.pulse {
+            pads.rumble_pulse(level, ms);
+        }
+    }
+    if trig > 0.0 {
+        pads.trigger_rumble(o.trigger_left, o.trigger_right);
+        #[cfg(any(target_os = "macos", target_os = "tvos"))]
+        pads.adaptive_triggers(adaptive(o.adaptive_left), adaptive(o.adaptive_right));
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "tvos"))]
+fn adaptive(t: nfs_game::haptics::TriggerFx) -> nfs_input::dualsense_apple::TriggerMode {
+    use nfs_game::haptics::TriggerFx as F;
+    use nfs_input::dualsense_apple::TriggerMode as M;
+    match t {
+        F::Off => M::Off,
+        F::Resistance { start, strength } => M::Resistance { start, strength },
+        F::Vibration { start, amplitude, hz } => M::Vibration { start, amplitude, hz },
     }
 }
 

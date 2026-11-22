@@ -613,6 +613,10 @@ pub(crate) struct App {
     /// PORT-DEVIATION: the HUD's fonts loaded for the front end, so Extras can be drawn over the menus (loaded on
     /// first use; the race has its own `hud`)
     pub(crate) fe_hud: Option<Hud>,
+    /// PORT-DEVIATION (Extras › Controller › Rumble / Trigger effects): the enhanced haptics layer's state
+    pub(crate) haptics: nfs_game::haptics::Haptics,
+    /// Extras › Controller › Test effects: when the test started
+    pub(crate) haptics_test: Option<Instant>,
     /// the box up is `[0x60C9FC]` (Spacebar byte 1, 0x4250BF) — the pause action's 18190 — not
     /// `[0x60C9C0]` (byte 0, 0x4251D5): Space closes it (0x42A3D0) and its hints show both keys
     pub(crate) net_notice_space: bool,

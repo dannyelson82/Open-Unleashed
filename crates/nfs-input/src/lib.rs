@@ -8,6 +8,8 @@
 //! physics'.
 
 pub mod bindings;
+#[cfg(any(target_os = "macos", target_os = "tvos"))]
+pub mod dualsense_apple;
 pub mod ff;
 pub mod gamepad;
 pub mod glyphs;
