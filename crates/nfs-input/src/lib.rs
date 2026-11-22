@@ -10,6 +10,7 @@
 pub mod bindings;
 pub mod ff;
 pub mod gamepad;
+pub mod glyphs;
 
 use std::collections::HashSet;
 use winit::event::{ElementState, KeyEvent};
@@ -281,6 +282,10 @@ impl InputState {
     }
     /// A physical key going down or up (`key_event` minus the winit event, which tests cannot build).
     fn key_changed(&mut self, code: KeyCode, state: ElementState) {
+        // controller glyphs: a key press makes the keyboard the last device
+        if state == ElementState::Pressed {
+            crate::glyphs::note(crate::glyphs::LastDevice::Keyboard);
+        }
         if let Some(sc) = scancode(code) {
             match state {
                 ElementState::Pressed => self.keys_down.insert(sc),
