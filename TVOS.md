@@ -86,6 +86,16 @@ start needs them. Why not a Swift-owned `UIApplicationMain`: winit 0.30 must cal
   iOS-only UIKit calls at runtime (status bar, orientation, multi-touch) — checked in the Simulator.
 - **Chosen: (b)**, smallest change, macOS untouched. Revisit when 0.31 is stable.
 
+## Game data updates
+
+At launch, with a complete verified download and a server set, the shell (`Shell.updateAvailable`) fetches the server's
+manifest for the chosen set and compares it with `Caches/game/.ou/manifest.json` (`GameStore.differences`): files whose
+SHA-256 differs or that are new, and files no longer listed. It waits at most ~4 s; offline or slow, the game starts with
+what's there. If anything differs, the Game Data screen says how many files / MB changed and offers **Update** (the normal
+download, which keeps every file whose hash already matches, so only the changed files are fetched) or **Play**.
+Tested in the Simulator: 3.2 → 3.5 patch (7 files, 1 MB), then `nfs5.exe` added (1 file, 2 MB); the next launch went
+straight into the game.
+
 ## Sideloading with atvloadly (Stage 8)
 [atvloadly](https://github.com/bitxeno/atvloadly) installs and keeps refreshing sideloaded apps on an Apple TV. It
 runs in Docker on Linux — here on the Unraid server.

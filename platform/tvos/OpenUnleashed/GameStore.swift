@@ -47,6 +47,15 @@ enum GameStore {
         return try? JSONDecoder().decode(Manifest.self, from: d)
     }
 
+    /// What a download of `server` would change in the verified local copy: files whose content differs or that
+    /// are new (count and bytes to fetch), plus files the server no longer lists. All zero = up to date.
+    static func differences(local: Manifest, server: Manifest) -> (files: Int, bytes: Int64, removed: Int) {
+        let have = Dictionary(local.files.map { ($0.path, $0.sha256) }, uniquingKeysWith: { a, _ in a })
+        let fetch = server.files.filter { have[$0.path] != $0.sha256 }
+        let wanted = Set(server.files.map { $0.path })
+        return (fetch.count, fetch.reduce(0) { $0 + $1.size }, local.files.filter { !wanted.contains($0.path) }.count)
+    }
+
     /// Launch check: a verified manifest whose files are all present with the right sizes.
     /// Returns the missing/changed paths (empty = ready), or nil when there's no verified download at all.
     static func check() -> [String]? {

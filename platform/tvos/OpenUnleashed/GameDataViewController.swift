@@ -1,6 +1,8 @@
 // OpenUnleashed for Apple TV — the Game Data screen (TVOS.md, Stage 4.3). GPL-3.0-or-later.
 //
-// Shown when Caches/game doesn't hold a complete, verified download. Fully usable with the Siri Remote or a
+// Shown when Caches/game doesn't hold a complete, verified download, or at launch when the server has newer data
+// for the chosen set (a patch, an updated mod set): then Update fetches only the changed files and Play starts
+// with the files already here. Fully usable with the Siri Remote or a
 // game controller (tvOS focus engine): Server (address + token, Find on network, Test), data set choice
 // (original / mod sets, with sizes; "Original files" is always one press away), Download with overall and
 // per-file progress, MB/s, resume and SHA-256 verification, and clear errors.
@@ -8,6 +10,8 @@ import UIKit
 
 final class GameDataViewController: UIViewController {
     var errorText: String?
+    /// Set when the server has newer data than the verified local copy (files and bytes to fetch, files removed).
+    var update: (files: Int, bytes: Int64, removed: Int)?
     /// Called when the data is complete and verified.
     var onReady: (() -> Void)?
 
@@ -19,6 +23,7 @@ final class GameDataViewController: UIViewController {
     private let testButton = UIButton(type: .system)
     private let setButton = UIButton(type: .system)
     private let downloadButton = UIButton(type: .system)
+    private let playButton = UIButton(type: .system)
     private let progress = UIProgressView(progressViewStyle: .default)
     private let progressLabel = UILabel()
     private let fileLabel = UILabel()
@@ -47,12 +52,13 @@ final class GameDataViewController: UIViewController {
 
         for (b, sel) in [(serverButton, #selector(editServer)), (findButton, #selector(findServers)),
                          (testButton, #selector(testConnection)), (setButton, #selector(chooseSet)),
-                         (downloadButton, #selector(startDownload))] {
+                         (downloadButton, #selector(startDownload)), (playButton, #selector(playWithoutUpdate))] {
             b.addTarget(self, action: sel, for: .primaryActionTriggered)
             b.titleLabel?.font = .systemFont(ofSize: 34, weight: .medium)
         }
         findButton.setTitle("Find on network", for: .normal)
         testButton.setTitle("Test connection", for: .normal)
+        playButton.setTitle("Play", for: .normal)
 
         progress.isHidden = true
         progress.progressTintColor = UIColor(red: 0.85, green: 0.1, blue: 0.1, alpha: 1)
@@ -60,7 +66,7 @@ final class GameDataViewController: UIViewController {
         let serverRow = UIStackView(arrangedSubviews: [serverButton, findButton, testButton])
         serverRow.axis = .horizontal
         serverRow.spacing = 40
-        let actionRow = UIStackView(arrangedSubviews: [setButton, downloadButton])
+        let actionRow = UIStackView(arrangedSubviews: [setButton, downloadButton, playButton])
         actionRow.axis = .horizontal
         actionRow.spacing = 40
 
@@ -93,6 +99,10 @@ final class GameDataViewController: UIViewController {
         if let e = errorText {
             statusLabel.text = "The game could not start with the downloaded data."
             errorLabel.text = e
+        } else if let u = update, !busy {
+            var t = "Your server has updated game data: \(u.files) file(s) changed (\(Self.mb(u.bytes)))"
+            if u.removed > 0 { t += ", \(u.removed) removed" }
+            statusLabel.text = t + ".\nUpdate downloads only those files. Play starts with the files already on this Apple TV."
         } else if have == nil {
             statusLabel.text = "The original game data (your own copy) is downloaded once from your OpenUnleashed server and kept on this Apple TV.\nIf tvOS clears its storage, this screen comes back and only the missing files are fetched again."
         } else {
@@ -102,7 +112,8 @@ final class GameDataViewController: UIViewController {
         let set = ServerSettings.dataSet
         let info = sets.first { $0.id == set }
         setButton.setTitle("Data: \(Self.setName(set))\(info.map { "  (\(Self.mb($0.size)))" } ?? "")", for: .normal)
-        downloadButton.setTitle(busy ? "Cancel" : "Download", for: .normal)
+        downloadButton.setTitle(busy ? "Cancel" : (update != nil ? "Update" : "Download"), for: .normal)
+        playButton.isHidden = update == nil || busy
         [serverButton, findButton, testButton, setButton].forEach { $0.isEnabled = !busy }
     }
 
@@ -230,6 +241,7 @@ final class GameDataViewController: UIViewController {
                 progressLabel.text = "Game data complete and verified."
                 fileLabel.text = nil
                 busy = false
+                update = nil
                 refresh()
                 onReady?()
             } catch {
@@ -241,6 +253,12 @@ final class GameDataViewController: UIViewController {
                 refresh()
             }
         }
+    }
+
+    /// Keep the current files this time (the check runs again at the next launch).
+    @objc private func playWithoutUpdate() {
+        guard !busy else { return }
+        onReady?()
     }
 
     private func render(_ p: DownloadProgress) {

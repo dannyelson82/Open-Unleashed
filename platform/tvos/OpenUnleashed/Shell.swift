@@ -56,9 +56,43 @@ final class Shell {
             if UIApplication.shared.isIdleTimerDisabled != want { UIApplication.shared.isIdleTimerDisabled = want }
         }
         if Shell.gameDataReady {
-            ou_data_ready()
+            guard GameStore.localManifest() != nil else {
+                ou_data_ready()
+                return
+            }
+            // the server may have newer data (a patch, an updated mod set): ask it, but never hold the game up
+            // for long — offline or slow, the game starts with what's here
+            Task { @MainActor in
+                if let u = await Shell.updateAvailable() {
+                    NSLog("OpenUnleashed: the server has updated game data (%d file(s), %lld bytes)", u.files, u.bytes)
+                    self.showGameData(error: nil, update: u)
+                } else {
+                    ou_data_ready()
+                }
+            }
         } else {
             showGameData(error: nil)
+        }
+    }
+
+    /// The server's manifest for the chosen set differs from the verified local copy: what an update would
+    /// fetch. `nil` when up to date, without a server answer within ~4 s, or without a verified download.
+    static func updateAvailable() async -> (files: Int, bytes: Int64, removed: Int)? {
+        guard let local = GameStore.localManifest(), !ServerSettings.address.isEmpty else { return nil }
+        return await withTaskGroup(of: (files: Int, bytes: Int64, removed: Int)?.self) { g in
+            g.addTask {
+                guard let (c, _) = try? await ServerClient.connect(address: ServerSettings.address, token: ServerSettings.token),
+                      let (server, _) = try? await c.manifest(set: ServerSettings.dataSet) else { return nil }
+                let d = GameStore.differences(local: local, server: server)
+                return d.files + d.removed > 0 ? d : nil
+            }
+            g.addTask {
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                return nil
+            }
+            let first = await g.next() ?? nil
+            g.cancelAll()
+            return first
         }
     }
 
@@ -89,10 +123,11 @@ final class Shell {
         host.present(a, animated: true)
     }
 
-    private func showGameData(error: String?) {
+    private func showGameData(error: String?, update: (files: Int, bytes: Int64, removed: Int)? = nil) {
         let window = gateWindow ?? (SceneDelegate.scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds))
         let vc = GameDataViewController()
         vc.errorText = error
+        vc.update = update
         vc.onReady = { [weak self] in
             // hand the screen to the engine's window
             self?.gateWindow?.isHidden = true
