@@ -41,6 +41,34 @@ Clean rename, as asked (nothing was installed anywhere yet, so no compatibility 
   full download from the new server into `Caches/games/porsche/data`, intro movie plays, save sync lands under
   `porsche` with the device name. CI smoke test covers two games, mod overlay, saves, PUID 99.
 
+## nfs-haven-server imports (2026-11-22, 0.3.0; design: PlanHaven note "nfs-haven-server: import from ISOs and patches")
+Pipeline: `inbox/` → recognised **by contents** → moved to `sources/<game>/` (read-only, SHA-256 in `sources.json`) →
+the game's recipe builds in `staging/` → verified → **swapped into `games/<game>/original` in one step** (a directory
+exchange, `renameat2(RENAME_EXCHANGE)` on Linux / `renamex_np(RENAME_SWAP)` on macOS; the old set stays until then;
+a failed import changes nothing) → manifests rebuild at once. Status page **Imports**: inbox (with "not recognised"),
+sources per game with **Re-import**, jobs with logs; API `/v1/imports…`. Code: `tools/nfs-haven-server/src/import/`
+(`disc.rs` ISO 9660 + Joliet read in place from raw 2352-byte images, cue/bin or ISO; `le.rs` ReNFS's `NFS_DOS.EXE`
+loader + FNV-1a, ported from `exe.c`; `patch.rs` known updates; `mod.rs` the pipeline).
+
+**With your real files, on a local server** (copies in the inbox as APFS clones; your originals' checksums unchanged):
+
+| | Recognised as | Took | Result |
+|---|---|---:|---|
+| `NFSSE.img` (raw, no cue) | The Need for Speed SE CD "NFSSEBBC", 2,224 files | 8 s (incl. 5 s settle) | `nfsse/original`: 2,224 files, 567.5 MB — **identical to the 7-Zip extraction** (only the CD's empty `GAMEDATA/SAVEGAME` folder isn't recreated: sets hold files). `NFS_DOS.EXE` image sum **0x21ef7c33** (the 17 June 1996 build, the 1997 EA CD) — accepted |
+| Porsche `.bin` + `.cue` + the 3.5 download `.zip` | disc "NFS V" (1,718 files) + "Porsche Unleashed update 3.5" | 9 s | `porsche/original`: 1,594 files, 530,924,030 bytes — **every file's SHA-256 identical to the set made by hand on the Mac** (engine's file rules from the disc, the 9 update files found by checksum among the installer's streams, `nfs5.exe` from the update's exe) |
+| a `.txt` | — | — | stays in the inbox, "not recognised" |
+| Re-import nfsse (API) | — | 3 s | rebuilt and swapped, log readable |
+
+Tests: server 13/13 (new: disc reader on raw/plain/cue images with Joliet; a Porsche disc by the engine's rules,
+sources read-only with the data file's checksum, unknown file kept, re-import swaps a fresh copy and leaves no
+staging; an NFS SE CD with a wrong program refused with the old set kept; an update's files found among junk streams
+by checksum). CI smoke: a generated Joliet ISO dropped into the running container's inbox becomes `porsche/original`
+(staging and games on different mounts: the copy-then-exchange path). **Published** `ghcr.io/dannyelson82/nfs-haven-server`
+`latest` + **`0.3.0`** (tag `nfs-haven-server-v0.3.0`). Unraid template / compose / docs: **Games is now read-write**;
+new **Inbox** (always shown), **Sources** and **Staging** (advanced) under `/mnt/user/appdata/nfs-haven-server/`.
+Not yet: Most Wanted (needs the 1.3 update + the speed.exe question), a web upload on the status page, "build inputs"
+sets for Mac builds, InstallShield / `.7z` sources (no game needs them yet).
+
 ## Game data transfer speed (2026-11-22)
 Measured in the tvOS Simulator against the local nfs-haven-server (`porsche/original`, 1,594 files, 530.9 MB), fresh
 install each time, two runs each, by the server's loopback address and by the Mac's LAN address (10.0.0.186) — both
@@ -255,6 +283,9 @@ Choices made without asking (per your instruction); each is easy to change.
 56. **DualSense adaptive triggers through Apple's GameController on the Mac too** (the plan's choice). On the Mac SDL may drive a DualSense through its own HIDAPI driver; if the triggers do nothing there, SDL's own `SDL_SendGamepadEffect` path is the fallback to try.
 
 57. **5.1 scope**: Stereo (original) / "5.1 when available" (no separate 7.1 or Auto: the app can only use what the route gives; 7.1's back pair stays silent). Defaults: tvOS 5.1-when-available, Mac stereo. Sounds given no position (the player's own car, the front end) have angle 0 and play from the **centre**; music and stereo effects stay on L / R; no LFE feed, no "music in all speakers" yet. A route change after start (a receiver switched on later) is not re-read until the next start.
+
+58. **Imports run in the same nfs-haven-server image**, not a sidecar: everything the two games need is done in Rust inside the server (raw-sector and cue/bin images read in place, ISO 9660 + Joliet, `.zip`, the update's deflate streams, ReNFS's program check) — no 7-Zip, bchunk or unshield in the image, which grew by three small crates. A sidecar makes sense later for Most Wanted, whose installer logic is NFS Most Wanted Native's Python.
+59. **Imports rebuild a game's `original` set from all its kept sources** (the newest disc + every known update), so dropping an update later just re-imports; only `games/<game>/original` is ever replaced (mods / hd untouched). Updates are known by checksum only: an unknown "patch" is "not recognised" rather than guessed at.
 
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
