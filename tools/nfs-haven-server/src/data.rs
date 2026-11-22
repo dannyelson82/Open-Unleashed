@@ -46,6 +46,8 @@ pub struct Sets {
 #[derive(Default)]
 pub struct Data {
     pub inner: RwLock<Sets>,
+    /// look at the folders now (an import just published a set)
+    pub kick: tokio::sync::Notify,
 }
 
 impl Data {
@@ -242,7 +244,10 @@ pub fn spawn_scanner(st: Shared) {
                 }
                 last = fp;
             }
-            tokio::time::sleep(st.cfg.rescan).await;
+            tokio::select! {
+                _ = tokio::time::sleep(st.cfg.rescan) => {}
+                _ = st.data.kick.notified() => {}
+            }
         }
     });
 }

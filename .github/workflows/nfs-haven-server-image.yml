@@ -61,7 +61,7 @@ jobs:
           set -eu
           # a stand-in games folder (never real game files in CI)
           G=/tmp/nfsh/games/porsche
-          mkdir -p $G/original/GameData/Track $G/original/FEData $G/mods/test/GameData/Track /tmp/nfsh/games/nfsse/original /tmp/nfsh/data
+          mkdir -p $G/original/GameData/Track $G/original/FEData $G/mods/test/GameData/Track /tmp/nfsh/games/nfsse/original /tmp/nfsh/data /tmp/nfsh/inbox /tmp/nfsh/sources /tmp/nfsh/staging
           printf 'track' > $G/original/GameData/Track/a.bin
           printf 'fe' > $G/original/FEData/b.bin
           printf '3.5' > $G/original/version.txt
@@ -69,7 +69,8 @@ jobs:
           printf 'exe' > /tmp/nfsh/games/nfsse/original/NFS_DOS.EXE
           chmod -R a+rwX /tmp/nfsh
           docker run -d --name nfsh -p 8642:8642 -e NFSH_TOKEN=ci-token \
-            -v /tmp/nfsh/games:/games:ro -v /tmp/nfsh/data:/data nfs-haven-server:ci
+            -v /tmp/nfsh/games:/games -v /tmp/nfsh/data:/data -v /tmp/nfsh/inbox:/inbox \
+            -v /tmp/nfsh/sources:/sources -v /tmp/nfsh/staging:/staging nfs-haven-server:ci
           for _ in $(seq 1 30); do
             status="$(docker inspect -f '{{.State.Health.Status}}' nfsh)"
             [ "$status" = healthy ] && break
@@ -92,6 +93,20 @@ jobs:
           printf 'save' | curl -fsS -H "$H" -X PUT --data-binary @- http://127.0.0.1:8642/v1/saves/porsche/files/SaveData/0.sav
           test "$(printf 'x' | curl -s -o /dev/null -w '%{http_code}' -H "$H" -X PUT --data-binary @- http://127.0.0.1:8642/v1/saves/porsche/files/SaveData/0.sav)" = 412
           curl -fsS "http://127.0.0.1:8642/?token=ci-token" | grep -q 'NFS Haven server'
+          # an import: a made-up Porsche disc (Joliet ISO) dropped into the inbox becomes porsche/original
+          sudo apt-get install -y -qq genisoimage > /dev/null
+          D=/tmp/fakedisc; mkdir -p $D/GameData/Track $D/FEData
+          printf 'imported' > $D/GameData/Track/c.bin; printf 'fe2' > $D/FEData/d.bin; printf '3.2' > $D/version.txt; printf 'x' > $D/Porsche.exe
+          genisoimage -quiet -J -V "NFS V" -o /tmp/nfsh/inbox/porsche.iso $D
+          chmod a+rw /tmp/nfsh/inbox/porsche.iso
+          for _ in $(seq 1 30); do curl -fsS -H "$H" http://127.0.0.1:8642/v1/imports | grep -q '"state":"done"' && break; sleep 2; done
+          curl -fsS -H "$H" http://127.0.0.1:8642/v1/imports
+          curl -fsS -H "$H" http://127.0.0.1:8642/v1/imports | grep -q '"state":"done"'
+          for _ in $(seq 1 15); do curl -fsS -H "$H" http://127.0.0.1:8642/v1/data/porsche/original/manifest | grep -q 'GameData/Track/c.bin' && break; sleep 1; done
+          test "$(curl -fsS -H "$H" http://127.0.0.1:8642/v1/data/porsche/original/file/GameData/Track/c.bin)" = imported
+          if curl -fsS -H "$H" http://127.0.0.1:8642/v1/data/porsche/original/manifest | grep -q 'Porsche.exe'; then echo "Porsche.exe must not be in the set"; exit 1; fi
+          test ! -e /tmp/nfsh/inbox/porsche.iso && test -e /tmp/nfsh/sources/porsche/porsche.iso
+          curl -fsS "http://127.0.0.1:8642/?token=ci-token" | grep -q '<h2>Imports</h2>'
           # runs as PUID 99, not root; saves land in /data owned by it
           docker top nfsh -eo pid,uid,args
           test "$(docker top nfsh -eo pid,uid,args | awk '$3 == "nfs-haven-server" {print $2; exit}')" = 99

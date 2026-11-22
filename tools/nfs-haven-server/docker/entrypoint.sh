@@ -1,6 +1,6 @@
 #!/bin/sh
 # nfs-haven-server entrypoint: starts as root only to apply PUID/PGID/UMASK and own /data, then drops privileges.
-# The games folder is mounted read-only and never changed.
+# Imports write into /games and take files from /inbox; nothing else of yours is changed.
 set -eu
 
 PUID="${PUID:-99}"
@@ -22,9 +22,14 @@ if [ "$(id -u)" = "0" ]; then
   groupmod --non-unique --gid "$PGID" nfsh
   usermod --non-unique --uid "$PUID" --gid "$PGID" nfsh
   # only the server's own folder (saves, caches); fixed recursively only when PUID changed
-  if [ "$(stat -c %u /data)" != "$PUID" ]; then
-    chown -R "$PUID:$PGID" /data
-  fi
+  # the server's own folders (saves and caches, kept sources, staging): fixed recursively only when PUID changed.
+  # /games and /inbox are yours (often a share): left as they are — the server user needs write access to them for
+  # imports (it publishes sets into /games and takes files out of /inbox)
+  for d in /data /sources /staging; do
+    if [ -d "$d" ] && [ "$(stat -c %u "$d")" != "$PUID" ]; then
+      chown -R "$PUID:$PGID" "$d"
+    fi
+  done
   umask "$UMASK"
   exec setpriv --reuid="$PUID" --regid="$PGID" --init-groups --inh-caps=-all --no-new-privs "$@"
 fi

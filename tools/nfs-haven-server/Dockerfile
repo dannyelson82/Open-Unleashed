@@ -25,7 +25,7 @@ RUN apt-get update \
 # Unprivileged user; the entrypoint changes its IDs to PUID/PGID at start (Unraid: 99/100).
 RUN groupadd --gid 100 --non-unique nfsh \
  && useradd --uid 99 --gid 100 --non-unique --no-create-home --home-dir /data --shell /usr/sbin/nologin nfsh \
- && install -d -m 0755 /data /games
+ && install -d -m 0755 /data /games /inbox /sources /staging
 
 COPY --from=build /nfs-haven-server /usr/local/bin/nfs-haven-server
 COPY tools/nfs-haven-server/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -33,6 +33,9 @@ COPY tools/nfs-haven-server/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 ENV NFSH_PORT=8642 \
     NFSH_GAMES_DIR=/games \
     NFSH_DATA_DIR=/data \
+    NFSH_INBOX_DIR=/inbox \
+    NFSH_SOURCES_DIR=/sources \
+    NFSH_STAGING_DIR=/staging \
     PUID=99 PGID=100 UMASK=022 TZ=Etc/UTC
 
 EXPOSE 8642
