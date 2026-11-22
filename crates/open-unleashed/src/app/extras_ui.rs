@@ -159,6 +159,19 @@ fn pages() -> Vec<Page> {
         reset: |s| s.controller = Default::default(),
     },
     Page {
+        title: "Audio",
+        rows: vec![Row {
+            label: "Pause when headphones disconnect",
+            help: "A single-player race pauses when AirPods or other headphones go away mid-race.",
+            applies: Applies::Now,
+            shown: true,
+            values: &["Off", "On"],
+            get: |s| usize::from(s.audio.pause_on_headphones_gone),
+            set: |s, v| s.audio.pause_on_headphones_gone = v == 1,
+        }],
+        reset: |s| s.audio = Default::default(),
+    },
+    Page {
         title: "Driving assists",
         rows: vec![
             Row {

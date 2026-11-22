@@ -705,6 +705,8 @@ impl ApplicationHandler for App {
                 // tvOS: the on-screen keyboard's A / Y, and nothing of the pad while it is up (TVOS.md)
                 #[cfg(target_os = "tvos")]
                 crate::tvos::text_pad(self);
+                // the audio output follows the default device / route (`lifecycle.rs`)
+                self.audio_route_tick();
                 if self.gamepads.take_pad_hotplug() {
                     self.pad_layout_if_untouched();
                     // TVOS.md Stage 5.5: the last pad going away mid-race pauses it
@@ -807,6 +809,8 @@ impl ApplicationHandler for App {
                 // tvOS: the on-screen keyboard's A / Y, and nothing of the pad while it is up (TVOS.md)
                 #[cfg(target_os = "tvos")]
                 crate::tvos::text_pad(self);
+                // the audio output follows the default device / route (`lifecycle.rs`)
+                self.audio_route_tick();
                 if self.gamepads.take_pad_hotplug() {
                     self.pad_layout_if_untouched();
                     // TVOS.md Stage 5.5: the last pad going away mid-race pauses it

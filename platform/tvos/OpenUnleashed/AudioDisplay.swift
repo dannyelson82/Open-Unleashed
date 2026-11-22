@@ -12,12 +12,36 @@ enum AudioSetup {
             try s.setCategory(.playback, mode: .default, options: [])
             try s.setSupportsMultichannelContent(true)
             try s.setActive(true)
+            AudioRoutes.watch()
         } catch {
             NSLog("OpenUnleashed: audio session setup failed: %@", error.localizedDescription)
         }
         NSLog("OpenUnleashed: audio route %@, %d/%d output channels, latency %.0f ms",
               s.currentRoute.outputs.map { "\($0.portName) (\($0.portType.rawValue))" }.joined(separator: ", "),
               s.outputNumberOfChannels, s.maximumOutputNumberOfChannels, s.outputLatency * 1000)
+    }
+}
+
+enum AudioRoutes {
+    private static var observer: NSObjectProtocol?
+
+    /// AVAudioSession route changes → the engine reopens its output on the new route; "old device unavailable"
+    /// (AirPods out / disconnected) also pauses a single-player race (`airpods-plan.md` B, E).
+    static func watch() {
+        guard observer == nil else { return }
+        observer = NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { n in
+            let raw = (n.userInfo?[AVAudioSessionRouteChangeReasonKey] as? NSNumber)?.uintValue ?? 0
+            let reason = AVAudioSession.RouteChangeReason(rawValue: raw) ?? .unknown
+            let s = AVAudioSession.sharedInstance()
+            NSLog("OpenUnleashed: audio route change (%lu) → %@, %d channels", raw,
+                  s.currentRoute.outputs.map { $0.portName }.joined(separator: ", "), s.outputNumberOfChannels)
+            switch reason {
+            case .newDeviceAvailable, .oldDeviceUnavailable, .override, .routeConfigurationChange, .categoryChange:
+                ou_audio_route_changed(reason == .oldDeviceUnavailable)
+            default:
+                break
+            }
+        }
     }
 }
 

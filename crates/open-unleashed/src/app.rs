@@ -5,6 +5,8 @@ use crate::*;
 mod debug_menu;
 mod text_entry;
 mod lifecycle;
+#[cfg(target_os = "tvos")]
+pub(crate) use lifecycle::{route_force as lifecycle_route_force, route_old_gone as lifecycle_route_old_gone};
 pub(crate) mod overlay;
 pub(crate) mod extras_ui;
 #[cfg(target_os = "macos")]

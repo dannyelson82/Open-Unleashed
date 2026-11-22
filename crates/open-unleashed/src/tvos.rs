@@ -92,6 +92,16 @@ pub extern "C" fn ou_wants_no_sleep() -> bool {
     NO_SLEEP.load(Ordering::Relaxed)
 }
 
+/// The shell: the audio route changed (AVAudioSession). `old_device_unavailable` = headphones went away (AirPods
+/// out / disconnected): the race pauses (`airpods-plan.md` E). The output reopens on the new route at once.
+#[unsafe(no_mangle)]
+pub extern "C" fn ou_audio_route_changed(old_device_unavailable: bool) {
+    if old_device_unavailable {
+        crate::app::lifecycle_route_old_gone();
+    }
+    crate::app::lifecycle_route_force();
+}
+
 /// The shell: end the app (from the Game Data screen).
 #[unsafe(no_mangle)]
 pub extern "C" fn ou_request_quit() {

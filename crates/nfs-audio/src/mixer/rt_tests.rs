@@ -294,7 +294,7 @@ fn step(a: &mut dyn Api, i: usize, live: &mut Vec<VoiceId>, clips: &[Arc<Clip>; 
 fn the_callback_allocates_nothing() {
     let (tx, core) = Tx::new(44100, false);
     let mut core = core.unwrap();
-    let mut out = AudioOutput { _stream: None, tx, rate: 44100 };
+    let mut out = AudioOutput::for_test(tx, 44100);
     let clips = clips();
     let stream = StreamSource::new(22050, 2);
     stream.push(&(0..40000).map(|i| ((i % 200) as i16 - 100) * 60).collect::<Vec<_>>());
@@ -328,7 +328,7 @@ fn the_callback_allocates_nothing() {
 fn the_queue_mixes_what_the_direct_calls_mix() {
     let (tx, core) = Tx::new(44100, false);
     let mut core = core.unwrap();
-    let mut out = AudioOutput { _stream: None, tx, rate: 44100 };
+    let mut out = AudioOutput::for_test(tx, 44100);
     // the old mixer made its reverb on the first send; the new one has a fresh one from the start
     let (_, rcore) = Tx::new(44100, false);
     let mut direct = Direct { core: rcore.unwrap(), cfg_next_id: 0, cfg_quality: None };
@@ -357,7 +357,7 @@ fn the_queue_mixes_what_the_direct_calls_mix() {
 fn a_status_call_sees_the_calls_the_callback_has_not_yet_applied() {
     let (tx, core) = Tx::new(44100, false);
     let mut core = core.unwrap();
-    let out = AudioOutput { _stream: None, tx, rate: 44100 };
+    let out = AudioOutput::for_test(tx, 44100);
     let clips = clips();
     let id = out.play_word(clips[0].clone(), 1.0, 4096, 0x40, 0x4000, true);
     assert!(out.is_playing(id), "started, queued");
@@ -382,7 +382,7 @@ fn a_status_call_sees_the_calls_the_callback_has_not_yet_applied() {
 fn the_callback_does_not_free_the_last_owner_of_a_clip() {
     let (tx, core) = Tx::new(44100, false);
     let mut core = core.unwrap();
-    let out = AudioOutput { _stream: None, tx, rate: 44100 };
+    let out = AudioOutput::for_test(tx, 44100);
     let mut buf = vec![0.0f32; 1024];
     let mut run = |core: &mut Core| {
         counted(|| {
@@ -444,7 +444,7 @@ fn the_mix_does_not_depend_on_the_callback_size() {
         stream.push(&(0..40000).map(|i| ((i % 200) as i16 - 100) * 60).collect::<Vec<_>>());
         let (tx, core) = Tx::new(48000, false);
         let mut core = core.unwrap();
-        let mut out = AudioOutput { _stream: None, tx, rate: 48000 };
+        let mut out = AudioOutput::for_test(tx, 48000);
         let mut live = Vec::new();
         for i in 0..40 {
             step(&mut out, i, &mut live, &clips, &stream);
@@ -477,7 +477,7 @@ fn the_mix_does_not_depend_on_the_callback_size() {
 fn a_played_stream_leaves_the_mix() {
     let (tx, core) = Tx::new(44100, false);
     let mut core = core.unwrap();
-    let out = AudioOutput { _stream: None, tx, rate: 44100 };
+    let out = AudioOutput::for_test(tx, 44100);
     let (done, live) = (StreamSource::new(22050, 2), StreamSource::new(22050, 2));
     done.push(&[100; 2000]);
     live.push(&[100; 2000]);
@@ -510,7 +510,7 @@ fn fnv(h: &mut u64, buf: &[f32]) {
 fn scripted_mix_hash(quality: Option<u8>, steps: usize) -> u64 {
     let (tx, core) = Tx::new(44100, false);
     let mut core = core.unwrap();
-    let mut out = AudioOutput { _stream: None, tx, rate: 44100 };
+    let mut out = AudioOutput::for_test(tx, 44100);
     let clips = clips();
     let stream = StreamSource::new(22050, 2);
     stream.push(&(0..90000).map(|i| ((i % 200) as i16 - 100) * 60).collect::<Vec<_>>());
@@ -535,7 +535,7 @@ fn scripted_mix_hash(quality: Option<u8>, steps: usize) -> u64 {
 fn mix_block_timing() {
     let (tx, core) = Tx::new(44100, false);
     let mut core = core.unwrap();
-    let out = AudioOutput { _stream: None, tx, rate: 44100 };
+    let out = AudioOutput::for_test(tx, 44100);
     out.set_audio_quality(3);
     let wave: Vec<i16> = (0..8000).map(|i| ((i % 97) as i16 - 48) * 100).collect();
     let looped = Arc::new(Clip { samples: wave, loop_range: Some((100, 7000)), priority: 10, ..Default::default() });
@@ -579,7 +579,7 @@ const PINNED_MIX: [u64; 5] = [0x43b06fd19d77e42a, 0x5611313e9eae8adc, 0x61c9988f
 fn a_quality_change_reopens_the_sound_and_the_service_keeps_ticking() {
     let (tx, core) = Tx::new(48000, false);
     let mut core = core.unwrap();
-    let out = AudioOutput { _stream: None, tx, rate: 48000 };
+    let out = AudioOutput::for_test(tx, 48000);
     let mut buf = vec![0.0f32; 256 * 2];
     // one device callback of 256 frames at 48 kHz, as the macOS output asks
     let mut run = |core: &mut Core, secs: f64| {
@@ -631,4 +631,16 @@ fn a_quality_change_reopens_the_sound_and_the_service_keeps_ticking() {
     out.release(v);
     run(&mut core, 0.2);
     assert!(!out.is_playing(v), "the release ran out at 32000 Hz");
+}
+
+/// `airpods-plan.md` A: dropping a stream's callback (the `CoreSlot`) hands the mixer state back, so a new
+/// device's stream continues with the same voices.
+#[test]
+fn a_dropped_stream_hands_the_mixer_back() {
+    let (_tx, core) = Tx::new(48000, false);
+    let home = Arc::new(Mutex::new(None));
+    let slot = super::output::CoreSlot { core, home: home.clone() };
+    assert!(home.lock().unwrap().is_none(), "the callback owns it while the stream lives");
+    drop(slot);
+    assert!(home.lock().unwrap().is_some(), "back home when the stream goes");
 }
