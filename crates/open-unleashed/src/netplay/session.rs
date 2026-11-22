@@ -71,6 +71,7 @@ impl NetPlay {
         let id = if net.role == Role::Host { 0 } else { u8::MAX }; // a client's id arrives with its 'a'
         let mut n = Self {
             net,
+            server_reg: None,
             id,
             remotes: HashMap::new(),
             driven: Vec::new(),
@@ -119,6 +120,12 @@ impl NetPlay {
             tick_override: None,
             voice: Default::default(),
         };
+        // PLATFORM GLUE (`server_lobby.rs`): a hosted session is also listed on the OpenUnleashed server, when one
+        // is set (the front end's CREATE and `--net host` alike)
+        if n.is_host() {
+            let port = spec.strip_prefix("host").and_then(|r| r.strip_prefix(':')).and_then(|p| p.parse().ok()).unwrap_or(nfs_net::PORT);
+            n.server_reg = crate::server_lobby::Registration::register(game_name, who, port);
+        }
         // the host's own player is the room's first, id 0: in the original the host's game
         // joins the room object like any other (0x48BB50 hands out the lowest clear bit of
         // `room+0xCC0`, and the room is empty)
@@ -413,6 +420,10 @@ impl NetPlay {
 
     /// Drain the socket. Returns the events worth logging; the car states are kept internally.
     pub fn poll(&mut self, tick: u64) -> Vec<String> {
+        // the server lobby's player count follows the session (host only; `server_lobby.rs`)
+        if let Some(r) = self.server_reg.as_ref() {
+            r.set_players(self.remotes.len() as u32 + 1);
+        }
         let mut log = Vec::new();
         // 0x48FB9F…0x48FBA5 (link event 1): `net+0x148 = GetTickCount()` while the connection is not
         // yet complete (`+0xBE == 0`), so the first request carries a large number

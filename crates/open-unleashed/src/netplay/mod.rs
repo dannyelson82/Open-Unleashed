@@ -178,6 +178,9 @@ pub fn parse_typed_address(s: &str) -> Option<SocketAddr> {
 
 pub struct NetPlay {
     pub net: Net,
+    /// PLATFORM GLUE: the hosted session's entry in the OpenUnleashed server's lobby (`server_lobby.rs`); dropped
+    /// with the session, which removes it there
+    pub(crate) server_reg: Option<crate::server_lobby::Registration>,
     /// Our own player id: the host is 0, a client is its slot + 1.
     pub id: u8,
     /// Which opponent seat each remote id drives.

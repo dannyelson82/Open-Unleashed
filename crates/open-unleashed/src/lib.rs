@@ -35,6 +35,7 @@ mod intro_run;
 mod netlobby;
 mod netplay;
 mod parts_shop;
+mod server_lobby;
 mod sync;
 #[cfg(target_os = "tvos")]
 mod tvos;
