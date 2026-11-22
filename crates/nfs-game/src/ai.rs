@@ -448,18 +448,58 @@ impl AiDriver {
     pub fn target_speed(&mut self, table: &SliceTable, race: &RaceProgress, v: &Vehicle, specs: &CarSpecs) -> f32 {
         let s0 = race.slice;
         let sl0 = &table.slices[s0];
-        let fwd0 = sl0.forward;
         let wf = ((sl0.width_a + sl0.width_b) / self.wf_div).min(1.0);
         let speed = Self::speed_est(v);
+        let lookahead = self.lookahead_at(speed);
+        // §10.4: pick a branch once per junction, then let every road preview follow it
+        self.choose_branch(table, s0, lookahead);
+        let (vt, c3f) = self.bend_target(table, s0, lookahead, self.link, v, specs);
+        // personal speed factor per bend class (slow > 20, medium 10..20, fast ≤ 10)
+        self.update_speed_factor(c3f);
+        let mut vt = vt * self.speed_factor * wf;
+        // catch-up (0x40BF42…0x40BFC4, re-read 2026-09-26): an opponent that is **ahead** of the
+        // human by **more** than the lap band, while the human's average pace is **over** 35, is
+        // held back. Each test jumps past the multiply on `test ah,0x41 / jne`, i.e. when C0 or C3
+        // is set: 0x40BF85 skips when `|own − P| <= band`, 0x40BFAA when `pace <= 35`, and
+        // 0x40BFB7 (the signed `own − P` still on the stack, against 0) when `own − P <= 0`.
+        // *(The notes and the port had all three the other way round — "within the band, pace
+        // under 35, either side".)* Not in a network race (`[0x6573E8] == 3`, 0x40BF47), which
+        // runs no AI opponents in this port.
+        if let Some((player_progress, pace)) = self.catchup {
+            let d = race.progress - player_progress;
+            let k = self.skill as usize;
+            if d.abs() > Self::LAP_BAND[k] && pace > 35.0 && d > 0.0 {
+                vt *= Self::BAND_MULT[k];
+            }
+        }
+        vt
+    }
+
+    /// **PORT-DEVIATION (braking assist, `nfs_game::assists`)**: the speed this car's `.ais` would take the road
+    /// ahead at — [`Self::target_speed`]'s bend, damage and surface steps, without its random draws (no branch
+    /// choice, no personal speed factor, no catch-up), so asking it never moves the race's random stream. For the
+    /// local player's assist only (a separate `AiDriver` built from the player's own car).
+    pub fn corner_speed(&self, table: &SliceTable, slice: usize, v: &Vehicle, specs: &CarSpecs) -> f32 {
+        let sl0 = &table.slices[slice];
+        let wf = ((sl0.width_a + sl0.width_b) / self.wf_div).min(1.0);
+        let lookahead = self.lookahead_at(Self::speed_est(v));
+        self.bend_target(table, slice, lookahead, self.link, v, specs).0 * wf
+    }
+
+    /// The lookahead in slices for a speed (0x40B6D0…0x40B700).
+    fn lookahead_at(&self, speed: f32) -> i32 {
         // round-to-nearest (fistp, ties to even), lookahead in slices, heading loop inclusive (§10.5)
         let idx = ((speed * 0.2 * self.k_lookahead).min(23.0).round_ties_even() as usize).min(23);
         // `L = fistp(f[idx])` (0x40B700); a lookahead under 2 runs no heading step at all
         // (0x40B938 `cmp L, 2 / jl` skips the loop) — the port used to force one at k = 2
-        let lookahead = self.data.lookahead[idx].round_ties_even() as i32;
+        self.data.lookahead[idx].round_ties_even() as i32
+    }
+
+    /// 0x40B650's pure part: the bend speed for the road `lookahead` slices ahead of `s0` (following `link`), after
+    /// the steering-damage and surface factors, and the bend index `c3f` the speed factor is keyed on.
+    fn bend_target(&self, table: &SliceTable, s0: usize, lookahead: i32, link: Option<usize>, v: &Vehicle, specs: &CarSpecs) -> (f32, f32) {
+        let fwd0 = table.slices[s0].forward;
         let (mut max_l, mut max_r) = (0f32, 0f32);
-        // §10.4: pick a branch once per junction, then let every road preview follow it
-        self.choose_branch(table, s0, lookahead);
-        let link = self.link;
         for k in 2..=lookahead {
             let s = table.add_graph(s0, k, link);
             let sl = &table.slices[s];
@@ -499,25 +539,7 @@ impl AiDriver {
             (true, true) => (&GRIP_WET[surface], 0.5),
         };
         vt *= row[class].clamp(lo, 1.0);
-        // personal speed factor per bend class (slow > 20, medium 10..20, fast ≤ 10)
-        self.update_speed_factor(c3f);
-        let mut vt = vt * self.speed_factor * wf;
-        // catch-up (0x40BF42…0x40BFC4, re-read 2026-09-26): an opponent that is **ahead** of the
-        // human by **more** than the lap band, while the human's average pace is **over** 35, is
-        // held back. Each test jumps past the multiply on `test ah,0x41 / jne`, i.e. when C0 or C3
-        // is set: 0x40BF85 skips when `|own − P| <= band`, 0x40BFAA when `pace <= 35`, and
-        // 0x40BFB7 (the signed `own − P` still on the stack, against 0) when `own − P <= 0`.
-        // *(The notes and the port had all three the other way round — "within the band, pace
-        // under 35, either side".)* Not in a network race (`[0x6573E8] == 3`, 0x40BF47), which
-        // runs no AI opponents in this port.
-        if let Some((player_progress, pace)) = self.catchup {
-            let d = race.progress - player_progress;
-            let k = self.skill as usize;
-            if d.abs() > Self::LAP_BAND[k] && pace > 35.0 && d > 0.0 {
-                vt *= Self::BAND_MULT[k];
-            }
-        }
-        vt
+        (vt, c3f)
     }
 
     /// Steering / throttle / brake 0x40BFE0. `ahead` = up to two cars directly ahead in race order.

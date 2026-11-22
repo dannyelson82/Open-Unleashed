@@ -3,6 +3,13 @@
 use crate::*;
 use nfs_physics::vehicle::{ContactKind, RaceState};
 
+thread_local! {
+    /// The braking assist's `.ais` driver for the player's car and its specs, with the track / car key it was built
+    /// for (`None` inside: that car has no `.ais`, nothing to ask). See [`App::ensure_assist_ai`].
+    #[allow(clippy::type_complexity)]
+    static ASSIST_AI: std::cell::RefCell<Option<(String, Option<(nfs_game::ai::AiDriver, nfs_physics::specs::CarSpecs)>)>> = const { std::cell::RefCell::new(None) };
+}
+
 impl App {
     /// **One 32 Hz sample of the controller**, the packer 0x412E70's output as the car reads it
     /// (`replay.md` §2, `Car_applyInput` 0x4991E0): the steering (negated under `MIRROR`, 0x4992D6), the
@@ -11,7 +18,7 @@ impl App {
     /// it back from `car+0xD8B` for every human car, in the exchange, in a live race and in a playback.
     /// The scripted drive (`follow_road`, autotest only, not the original's) steers the car itself.
     /// The Extras › Driving assists on one packet (state kept between ticks).
-    fn apply_assists(axes: nfs_game::assists::Axes, v: &Vehicle) -> nfs_game::assists::Axes {
+    fn apply_assists(axes: nfs_game::assists::Axes, v: &Vehicle, slices: Option<&SliceTable>, race: Option<&RaceProgress>) -> nfs_game::assists::Axes {
         thread_local! {
             static STATE: std::cell::Cell<nfs_game::assists::AssistState> = std::cell::Cell::new(Default::default());
         }
@@ -20,7 +27,15 @@ impl App {
             return axes;
         }
         let body = v.orientation * v.velocity;
-        let car = nfs_game::assists::CarState { forward: body.z, lateral: body.x, any_locked: v.wheels.iter().any(|w| w.locked) };
+        // the braking assist's corner speed: the player's own car's `.ais` asked about the road ahead (never its
+        // random draws: `AiDriver::corner_speed`)
+        let corner_speed = match (s.brake_assist > 0, slices, race) {
+            (true, Some(t), Some(r)) => ASSIST_AI.with(|a| {
+                a.borrow().as_ref().and_then(|(_, d)| d.as_ref()).map(|(d, specs)| d.corner_speed(t, r.slice, v, specs))
+            }),
+            _ => None,
+        };
+        let car = nfs_game::assists::CarState { forward: body.z, lateral: body.x, any_locked: v.wheels.iter().any(|w| w.locked), corner_speed };
         STATE.with(|c| {
             let mut st = c.get();
             let out = nfs_game::assists::apply(axes, &car, &s, &mut st);
@@ -84,7 +99,7 @@ impl App {
         // PORT-DEVIATION (driving assists, `nfs_game::assists`): the local player's packet only — this is the
         // live sample, which the physics, the replay recorder and the network all take, so a replay plays back
         // exactly what was driven. Off by default; never on the scripted drive.
-        let axes = if follow_road { axes } else { Self::apply_assists(axes, v) };
+        let axes = if follow_road { axes } else { Self::apply_assists(axes, v, slices, race) };
         Controls {
             throttle: axes.throttle,
             brake: axes.brake,
@@ -700,6 +715,29 @@ impl App {
         }
     }
 
+    /// The braking assist's driver: the player's car's own `.ais` (as [`Self::make_player_ai`] builds one), kept per
+    /// track / direction / car and only asked for `corner_speed` — it never drives and never draws a random number.
+    fn ensure_assist_ai(&self) {
+        if nfs_game::extras::get().assists.brake_assist == 0 {
+            return;
+        }
+        let id = self.player_car_id.unwrap_or(self.car_id);
+        let key = format!("{}|{}|{}|{}", self.track.name, self.backwards, id, self.sim_name);
+        if ASSIST_AI.with(|a| a.borrow().as_ref().is_some_and(|(k, _)| *k == key)) {
+            return;
+        }
+        let built = (|| {
+            let sim = CarAssets::load_sim(&self.paths, if self.sim_name.is_empty() { "default" } else { &self.sim_name }).ok()?;
+            let family = self.fe_car_catalog().into_iter().find(|e| e.id == id).map(|e| e.sim_family).unwrap_or_default();
+            let ais = CarAssets::load_ais(&self.paths, &family).ok()?;
+            let mut d = nfs_game::ai::AiDriver::new(ais, &sim.unknown_tail);
+            d.set_track(&self.track.name, self.backwards, &family);
+            Some((d, self.specs.clone()))
+        })();
+        tracing::info!(track = %self.track.name, car = id, ok = built.is_some(), "braking assist: corner speeds from the car's own .ais");
+        ASSIST_AI.with(|a| *a.borrow_mut() = Some((key, built)));
+    }
+
     /// **TEST GLUE** `NFS_AUTOPILOT=ai`: an opponent's driver for the player's car — its `.ais`, its `.sim` tail and
     /// the steering family of its `nfs5.car` record, as `race_stages` builds one for an opponent (default skill)
     fn make_player_ai(&self) -> Option<Box<nfs_game::ai::AiDriver>> {
@@ -716,6 +754,7 @@ impl App {
 
     /// **The 32 Hz block's controller latch** (see [`Self::simulate`]): the car's flags for the tick, the countdown speech, the controller sample the car reads (this machine's own, the exchange's, the replay's), and the lamp bytes. Moved out of `simulate` unchanged; the sample goes to `st.controls`.
     fn tick_controls(&mut self, ctx: &TickCtx, st: &mut TickState) {
+        self.ensure_assist_ai();
         if self.player_ai.is_none() && self.follow_road && nfs_game::config::cfg().nfs_autopilot.as_str() == Some("ai") {
             self.player_ai = self.make_player_ai();
         }
