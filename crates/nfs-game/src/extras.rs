@@ -92,7 +92,7 @@ pub struct Controller {
     pub head_look_pitch: bool,
 }
 
-/// The OpenUnleashed server (`server-plan.md`): address (name or IP, optional `:port`), token, save sync.
+/// The NFS Haven server (`docs/nfs-haven-server.md`): address (name or IP, optional `:port`), password (`token`), save sync.
 /// Kept per device in `network.json` (see the module note). On tvOS the app shell's Server setting
 /// (UserDefaults, the copy that survives a Caches purge) is passed in at start and mirrored here.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -102,7 +102,7 @@ pub struct Network {
     pub token: String,
     /// sync the saves with the server (off until a server is set)
     pub sync_saves: bool,
-    /// the save namespace on the server (one per household by default)
+    /// the save namespace on the server (default `porsche`: one namespace per game)
     pub save_profile: String,
 }
 

@@ -115,7 +115,7 @@ impl Lobby {
     fn new_id(&self) -> String {
         let n = self.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let t = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos());
-        ou_manifest::sha256_hex(format!("{t}:{n}:{}", std::process::id()).as_bytes())[..16].to_string()
+        nfs_haven_manifest::sha256_hex(format!("{t}:{n}:{}", std::process::id()).as_bytes())[..16].to_string()
     }
 
     pub fn sweep(&self) {

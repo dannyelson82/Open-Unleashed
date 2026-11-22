@@ -1,4 +1,4 @@
-// OpenUnleashed for Apple TV — the app shell's entry point. GPL-3.0-or-later.
+// NFS Haven for Apple TV — the app shell's entry point. GPL-3.0-or-later.
 //
 // winit's UIKit backend owns the process (it calls UIApplicationMain), so `main` only prepares the
 // environment and hands over to the engine; the shell's UI runs from the `launched` callback.

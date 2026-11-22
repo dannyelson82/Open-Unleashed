@@ -25,7 +25,7 @@ CARGO_TARGET_DIR=target/tvos cargo rustc --release --target aarch64-apple-tvos  
 # tvOS: everything (cargo → XcodeGen → xcodebuild → install + launch)
 scripts/build-tvos.sh sim            # Simulator
 scripts/build-tvos.sh sim --data     # Simulator, copying ./game-data into the app's Caches/game (testing only)
-OU_TEAM_ID=XXXXXXXXXX OU_BUNDLE_ID=com.you.openunleashed scripts/build-tvos.sh device
+NFSH_TEAM_ID=XXXXXXXXXX scripts/build-tvos.sh device
 ```
 The tvOS build uses its own target dir (`target/tvos`) so it can run in parallel with the macOS build.
 
@@ -42,7 +42,7 @@ order of the steps is unchanged (the event loop is still made at the same point 
 ### tvOS start-up (`crates/open-unleashed/src/tvos.rs`)
 winit's UIKit backend owns the process (`UIApplicationMain`, never returns), and on tvOS the game data is only
 downloaded *after* UIKit is up. So on tvOS:
-1. the Swift shell's `main` sets `NFS5_GAME_PATH=Caches/game`, `NFS5_DATA_DIR=Caches/save` and calls
+1. the Swift shell's `main` sets `NFS5_GAME_PATH=Caches/games/porsche/data`, `NFS5_DATA_DIR=Caches/games/porsche/save` and calls
    `ou_main(&callbacks)`;
 2. the event loop starts at once with a `Boot` handler that needs no game data;
 3. on the first `resumed` the shell's `launched` callback checks the data and shows its own screen (a separate
@@ -59,7 +59,7 @@ start needs them. Why not a Swift-owned `UIApplicationMain`: winit 0.30 must cal
 | What | Desktop | tvOS |
 |---|---|---|
 | game data | `NFS5_GAME_PATH`, `game/`, … | `NFS5_GAME_PATH` = `Library/Caches/game` (also a fallback candidate) |
-| saves / settings / log (`data_dir()`) | per-OS app data folder | `NFS5_DATA_DIR`, else `Library/Caches/save` |
+| saves / settings / log (`data_dir()`) | per-OS app data folder | `NFS5_DATA_DIR`, else `Library/Caches/games/porsche/save` |
 | photo mode stills | `~/Pictures/PorscheUnleashed` | `Library/Caches/photos` |
 
 ### Platform branches added
@@ -102,8 +102,8 @@ runs in Docker on Linux — here on the Unraid server.
 
 **Build the .ipa** (on the Mac; unsigned — atvloadly signs it with its own Apple ID while installing):
 ```sh
-scripts/export-ipa.sh                       # → target/tvos/OpenUnleashed.ipa (~5.5 MB, no game files)
-OU_BUNDLE_ID=com.you.openunleashed scripts/export-ipa.sh
+scripts/export-ipa.sh                       # → target/tvos/NFSHaven.ipa (~5.5 MB, no game files)
+NFSH_BUNDLE_ID=com.dannyelson.nfshaven scripts/export-ipa.sh   # (the default)
 ```
 
 **Install atvloadly on Unraid** (Docker › Add Container, or compose):
@@ -119,7 +119,7 @@ OU_BUNDLE_ID=com.you.openunleashed scripts/export-ipa.sh
    (enter the PIN shown on the TV).
 2. Add an Apple ID in atvloadly — use a **dedicated Apple ID** and keep its 2FA device at hand (the code is asked
    for); **app-specific passwords are not supported**.
-3. Upload `OpenUnleashed.ipa`, install, and turn on automatic refresh.
+3. Upload `NFSHaven.ipa`, install, and turn on automatic refresh.
 
 **Limits and gotchas:**
 - A free Apple ID: apps are signed for **7 days** (atvloadly refreshes them); up to **10 app IDs registered**, **3
@@ -127,7 +127,7 @@ OU_BUNDLE_ID=com.you.openunleashed scripts/export-ipa.sh
 - **Re-pair after every tvOS update**, and brand-new tvOS versions are often unsupported at first — **turn off
   automatic tvOS updates** (Settings › System › Software Updates).
 - atvloadly **changes the bundle ID** when it signs, which would break CloudKit — irrelevant here: saves sync through
-  the OpenUnleashed server, never iCloud.
+  the NFS Haven server, never iCloud.
 
 **What survives a refresh / reinstall** (to confirm on the device): a refresh re-signs and reinstalls the same app,
 which keeps its data container — the downloaded game data in `Library/Caches/game` (unless tvOS purged it) and the
@@ -146,9 +146,9 @@ All off / original by default; switched in **Extras** (pause menu › extras), s
 | Pause when headphones disconnect; output follows the default device | Audio | `nfs-audio` `route_check`, `app/lifecycle.rs` |
 | Head-look with AirPods (Mac) | Controller | `nfs_game::headlook`, `app/headlook.rs` |
 | Button names follow the last device (Xbox / PlayStation / …) | automatic | `nfs_input::glyphs` |
-| Save sync + lobby through ou-server | Network (server, password, test; Mac: sync saves) — kept per device in `network.json`; on tvOS also the Game Data screen's Server, the same setting (the shell's callback `server_changed`) | `sync.rs`, `server_lobby.rs`, `extras_ui.rs` |
+| Save sync + lobby through nfs-haven-server | Network (server, password, test; Mac: sync saves) — kept per device in `network.json`; on tvOS also the Game Data screen's Server, the same setting (the shell's callback `server_changed`) | `sync.rs`, `server_lobby.rs`, `extras_ui.rs` |
 
-tvOS-only: Game Data screen (download from ou-server), on-screen keyboard for text fields, B / Menu = back, Siri
+tvOS-only: Game Data screen (download from nfs-haven-server), on-screen keyboard for text fields, B / Menu = back, Siri
 Remote Menu never leaves the app, pointer hidden, pause on background, no screen saver during races, layered icon +
 Top Shelf, save mirror in NSUserDefaults.
 

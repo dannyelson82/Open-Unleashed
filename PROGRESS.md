@@ -9,15 +9,37 @@ _Last updated: 2026-11-21 (session paused: usage limit)_
 
 ## Morning summary
 - **Works on the Mac and in the tvOS Simulator** from your disc's data: front end, races, Game Data download from
-  ou-server (verified, resumable), save sync + multiplayer lobby through ou-server, Extras menu (HUD size, graphics,
+  nfs-haven-server (verified, resumable), save sync + multiplayer lobby through nfs-haven-server, Extras menu (HUD size, graphics,
   driving assists, FXAA, audio route handling, Mac head-look), lifecycle (pause on Home), on-screen keyboard, app icon + Top Shelf.
-- **ou-server** is published (`ghcr.io/dannyelson82/ou-server:latest`, public); add it on Unraid with
-  `packaging/unraid/ou-server.xml` (data under `/mnt/user/appdata/ou-server`).
+- **nfs-haven-server** is published (`ghcr.io/dannyelson82/nfs-haven-server:latest`, public); add it on Unraid with
+  `packaging/unraid/nfs-haven-server.xml` (data under `/mnt/user/appdata/nfs-haven-server`).
 - **Needs you**: the Apple TV (everything marked 📺), a pad for feel/rumble, AirPods for head-look and route tests (🙋),
   and the "Decisions to review" below.
 - **Not started / partly**: split-screen, HDR, 5.1 surround mixer, enhanced rumble + DualSense triggers, MSAA,
   HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, ~~Mac UI for the server~~ (done: Extras › Network)
   address, MSAA.
+
+## NFS Haven rename (2026-11-22)
+Clean rename, as asked (nothing was installed anywhere yet, so no compatibility names are kept):
+- **Server**: `ou-server` → **`nfs-haven-server`** (crate/binary `tools/nfs-haven-server`, version 0.2.0; shared
+  crate `crates/nfs-haven-manifest`), image **`ghcr.io/dannyelson82/nfs-haven-server`** (workflow
+  `nfs-haven-server-image.yml`; tags `latest`/`edge`, `nfs-haven-server-vX.Y.Z`, short SHA), Unraid template
+  **`packaging/unraid/nfs-haven-server.xml`** (container `nfs-haven-server`, appdata
+  `/mnt/user/appdata/nfs-haven-server/{games,data}`), env **`NFSH_*`**, header `X-NFSH-Device`, Bonjour
+  **`_nfs-haven._tcp`**, status page "NFS Haven server". The old `ou-server` workflow is gone, so nothing publishes
+  `ghcr.io/dannyelson82/ou-server` any more (the package and its last images still exist on GitHub; delete it under
+  Packages when you like — not done here, it can't be undone).
+- **Games layout** (`nfs-haven-plan.md` Phase 5): `/games/<id>/original`, `/games/<id>/mods/<name>`, `/games/<id>/hd`;
+  set ids `porsche/original`, `porsche/mod-<name>`, `porsche/hd`; API `/v1/data/{game}/{set}/…`; `/v1/info` lists
+  `games`. Porsche lives in `games/porsche/original`. A new game = a new folder (served whole until it has rules).
+  Saves: one namespace per game (`porsche`).
+- **App**: display name **NFS Haven**, bundle ID **`com.dannyelson.nfshaven`** (tvOS and the Mac app), settings keys
+  and launch arguments `nfsh.*` / `-nfsh.*`, data in `Caches/games/porsche/{data,save,photos}`, build variables
+  `NFSH_BUNDLE_ID` / `NFSH_TEAM_ID` / `NFSH_SIM_NAME`, `.ipa` → `target/tvos/NFSHaven.ipa`.
+- **Checked**: server tests (8, incl. a second game folder served whole; manifest crate 4), local `nfs-haven-server` on the games
+  layout (530 MB `porsche/original`), and in the Simulator the old app removed, **NFS Haven** installed fresh:
+  full download from the new server into `Caches/games/porsche/data`, intro movie plays, save sync lands under
+  `porsche` with the device name. CI smoke test covers two games, mod overlay, saves, PUID 99.
 
 ## Test suite (2026-11-21)
 `NFS5_GAME_PATH=game-data cargo test --release --workspace --no-fail-fast`: **1,394 passed, 13 failed, 7 ignored.** The 13
@@ -65,16 +87,16 @@ mission 0M01, Boxster, mid-race). The tvOS app always starts races from the menu
   executable as **`nfs5.exe`**: the engine only reads the movie decoder's tables from it (never runs it), so **the intro
   movies now play** (golden movie-frame test passes; seen in the tvOS Simulator). The 3.2 originals of the replaced
   files are in `game-data-v3.2-backup/` (git-ignored, like all `game-data-*`).
-- **For Unraid:** copy the updated `game-data/` (incl. `nfs5.exe`) into `/mnt/user/appdata/ou-server/game` and restart the
+- **For Unraid:** copy the updated `game-data/` (incl. `nfs5.exe`) into `/mnt/user/appdata/nfs-haven-server/games/porsche/original` and restart the
   container. The Apple TV app then offers the update at its next launch (see TVOS.md, "Game data updates").
 
 ## Placeholders
 Filled in: `<UNRAID_IP_OR_HOSTNAME>` = **the server's LAN address / tower.local**, `<TAILSCALE_NAME>` = **the server's Tailscale name**
-(used in `docs/ou-server.md`; the game's Server setting will default to `tower.local`).
+(used in `docs/nfs-haven-server.md`; the game's Server setting will default to `tower.local`).
 
 Left for later (as asked): `<MY_APPLE_ID_OR_TEAM>`,
-Apple TV paired `<yes/no>`, controller `<Xbox / PlayStation / other>`, bundle ID `<com.yourname.openunleashed>`
-(a stand-in `org.openunleashed.tvos` is used until then).
+Apple TV paired `<yes/no>`, controller `<Xbox / PlayStation / other>`. Bundle ID: **`com.dannyelson.nfshaven`**
+(given 2026-11-22; display name **NFS Haven**).
 
 ## Decisions to review
 Choices made without asking (per your instruction); each is easy to change.
@@ -83,17 +105,17 @@ Choices made without asking (per your instruction); each is easy to change.
 3. **Engine split** into `lib.rs` + thin `main.rs` so tvOS links the same code as a static library.
 4. **Disc**: `Porsche.exe` (SafeDisc) not copied as `nfs5.exe`. *Superseded by 34*: the 3.5 patch's unprotected executable is now `nfs5.exe`, so the intro movies play.
 5. **Fork name** `dannyelson82/Open-Unleashed` (public, like every fork of a public repo); Unraid template URLs point at its `tvos-port` branch.
-6. **Image tags**: `latest` + `edge` are published from pushes to `tvos-port` (and `main`), `X.Y.Z` from `ou-server-vX.Y.Z` tags, plus the short SHA — so the Unraid template's `:latest` works without a release.
+6. **Image tags**: `latest` + `edge` are published from pushes to `tvos-port` (and `main`), `X.Y.Z` from `nfs-haven-server-vX.Y.Z` tags, plus the short SHA — so the Unraid template's `:latest` works without a release.
 7. **Save API paths** use `/files/`, `/versions/`, `/version/{id}/`, `/restore/{id}/` segments before the file path (the plan's shorter paths clash with file paths containing `/`).
 8. **Lobby** accepts `?via=tailnet|lan` from the client, because behind Docker NAT the server may not see the device's real address.
-9. **Stand-in bundle ID** `org.openunleashed.tvos` until `<com.yourname.openunleashed>` is given; Simulator default "Apple TV 4K (4th generation)".
+9. **Bundle ID** `com.dannyelson.nfshaven` (yours, 2026-11-22; was a stand-in `org.openunleashed.tvos`); Simulator default "Apple TV 4K (4th generation)".
 10. **Local Docker**: Colima (Homebrew, no admin rights) instead of Docker Desktop.
 11. **Game Data screen in UIKit** (app shell, Swift) rather than drawn by the engine — the engine can't start without the data; focus engine gives Siri Remote + controller navigation for free.
 12. **Launch check = sizes + a "verified" marker** of the last complete download (no hashing ~0.5 GB per launch); full SHA-256 only while downloading.
 13. **ATS**: `NSAllowsLocalNetworking` + a narrow `ts.net` exception (plain HTTP inside WireGuard) so the tailnet name works even without `tailscale serve` HTTPS; HTTPS is still tried first for `*.ts.net`.
 14. **Save mirror by polling** (every 15 s + on background, size/mtime stamp) instead of a hook in the engine's save code — no engine change; worst case a save made < 15 s before tvOS purges Caches *and* kills the app is lost locally (the server sync will cover it).
 15. **Default server address** `tower.local`; token must be entered once.
-16. **tvOS command line**: the engine ignores `-ou.*` UserDefaults launch arguments (they're the shell's).
+16. **tvOS command line**: the engine ignores `-nfsh.*` UserDefaults launch arguments (they're the shell's).
 17. **B / Menu = back on tvOS only**: the original's front end reads no pad; the Mac keeps that (authentic), tvOS needs a back button.
 18. **Siri Remote Menu never leaves the app** (Apple's guideline wants Menu at the top level to go Home; for a sideloaded personal build the game's own "back"/exit question is more useful). Home (TV button) still leaves.
 19. **On-screen keyboard opens by itself** when a text field becomes active (once per field); a chat box only on Y, since it is always focused.
@@ -106,7 +128,7 @@ Choices made without asking (per your instruction); each is easy to change.
 26. **Head-look**: bumper/driver views only (the plan's "also in chase views" left out for now); recentre = race start, unpause, pad L3+R3 (no keyboard key bound); positive head yaw = view left — to confirm with AirPods.
 27. **Traction control "On" left out**: it's a physics flag (`vehicle.tcs`) set at race start that replays and network peers don't know about, so it would make them diverge. Needs the flag recorded in the replay/launch data first (or an input-side throttle limiter once wheel-slip units are checked).
 28. **Assists default off on both platforms** (the plan suggests a soft curve + medium speed steering on tvOS; decide with a pad on the TV).
-29. **Save-sync conflict rules**: at start, both sides changed while apart → the server's copy is active, the local one is kept as a `.bak` file beside it (plan's rule). During play, another device saved since → **this device's copy wins** (it's the game being played; replacing the save under the running game could be overwritten again anyway) and the other device's copy stays on the server as a restorable version. One server namespace `household` for all game profiles.
+29. **Save-sync conflict rules**: at start, both sides changed while apart → the server's copy is active, the local one is kept as a `.bak` file beside it (plan's rule). During play, another device saved since → **this device's copy wins** (it's the game being played; replacing the save under the running game could be overwritten again anyway) and the other device's copy stays on the server as a restorable version. One server namespace per game (`porsche`) for all of that game's profiles (was `household` before the NFS Haven rename).
 30. **Sync is on by default on tvOS** once a server is set (it's the same server as the game data); **opt-in on the Mac** (Extras › Network › Sync saves).
 31. **Lobby games join through the original's own list**: the server's games are probed unicast with the original's `'w'` probe instead of adding rows by hand — they appear with real name, version and ping, no "via server" marker, and a host found both ways shows once when its LAN address is the server's first (LAN requester); a tailnet requester may see a LAN host twice (100.x and LAN). Lobby is on whenever a server is set (independent of save sync).
 32. **FXAA as the anti-aliasing option**, default **Off** on both platforms: a small pass of its own over the 3-D image (before the flare overlay and HUD, so text stays sharp). MSAA 4× not done yet; pick a default after seeing both on the TV.
@@ -117,7 +139,15 @@ Choices made without asking (per your instruction); each is easy to change.
 36. **Server settings are per device**: Extras › Network (server, token, sync saves) lives in `network.json`, not in `extras.json`, because save sync shares `extras.json` between devices (the token shouldn't travel with the saves, and the Mac and the Apple TV may use different names). An older `extras.json` with a `network` section is read once. *Note:* the rest of `extras.json` (HUD size, graphics, assists…) **is** still shared between the Mac and the Apple TV through save sync — probably also better per device; not changed yet.
 37. **Extras › Network in the game on both platforms**; on tvOS it writes through to the app shell's Server setting (one setting, two places to edit it). While the Extras menu is open it takes the whole keyboard (so typing "p" or "k" in a field doesn't pause or open photo mode); text rows start with the current text (Mac: Backspace to clear, Cmd+V pastes the clipboard's first line).
 
-38. **"Token" is called "Password" everywhere you see it** (game, Apple TV screens, Unraid template, docs). Underneath it is still the same shared secret: `OU_TOKEN` in the container, `token` in `network.json`, a Bearer header, `?token=` on the status page — unchanged, so nothing set up already breaks.
+38. **"Token" is called "Password" everywhere you see it** (game, Apple TV screens, Unraid template, docs). Underneath it is still the same shared secret: `NFSH_TOKEN` in the container (was `OU_TOKEN`), `token` in `network.json`, a Bearer header, `?token=` on the status page — unchanged, so nothing set up already breaks.
+
+39. **Clean rename, no aliases** (your instruction overrides `nfs-haven-plan.md`'s "keep the old names for one release"): no `OU_*` env, no `_ou-server._tcp`, no old set ids, no `ou-server` image tags.
+40. **Bundle ID `com.dannyelson.nfshaven`** (yours; the plan said to keep the old one so an installed app updates in place — nothing is installed, so a fresh ID is fine). Internally the Xcode target, its folder and the `.app` inside the `.ipa` are still called `OpenUnleashed` (only you'd ever see that); the Home screen name is NFS Haven.
+41. **The Mac app is "NFS Haven" too** (`packaging/brand.sh`, the window title in `brand.rs`, bundle ID the same as tvOS). Its game settings folder stays `~/Library/Application Support/PorscheUnleashed` (the engine's own, per game).
+42. **Saves: one namespace per game**, `porsche` (was `household`); the save API itself is unchanged.
+43. **Games without rules of their own are served whole** (every non-hidden file of `original/`); Porsche keeps its file rules. nfsse gets rules when ReNFS arrives.
+44. **Server version 0.2.0** of its own (it had the engine's 0.1.5); first image tagged `nfs-haven-server-v0.2.0` as the plan says.
+45. **Still in the Open-Unleashed fork** for now: the plan's separate `nfs-haven` repository (launcher, ReNFS) starts after the Apple TV test, as the plan's header says.
 
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
@@ -128,7 +158,7 @@ Choices made without asking (per your instruction); each is easy to change.
 | 2 tvOS cross-compile | ✅ unaffected | ✅ static lib builds (winit 0.30 patched, SDL3 video on for tvOS) | ✅ device static lib (`aarch64-apple-tvos`) builds, and the unsigned device-SDK Xcode build links; signing + install need the team ID and the Apple TV |
 | 3 App shell (Xcode/XcodeGen, `scripts/build-tvos.sh`) | — | ✅ builds, installs, launches on "Apple TV 4K (4th generation)" Simulator, tvOS 27.2 | 📺 |
 | 3 Engine runs | ✅ | ✅ **front end renders** (main menu + profile prompt) and **a race runs** (`alps 993 --opponents 3`: in-car view, HUD, mirror, race clock) from your disc's data copied into the Simulator app's Caches/game; audio output opens (CoreAudio 48 kHz stereo); SDL joystick layer starts | 📺 |
-| 4 Game Data screen (Swift: `GameDataViewController`, `GameStore`, `ServerClient`, `Bonjour`) | — | ✅ fresh install → screen → downloads all 1,593 files (529 MB) from ou-server at ~79 MB/s with overall/per-file progress, SHA-256 per file, then the engine starts (main menu). Killed mid-download (306 MB + 76.5 MB partial) → relaunch completes and verifies. Server/token in UserDefaults, Find on network (Bonjour), Test connection, data-set choice (original/mod sets), clear errors (unreachable / token / disk full / hash mismatch) | 📺 LAN + Tailscale download from tower |
+| 4 Game Data screen (Swift: `GameDataViewController`, `GameStore`, `ServerClient`, `Bonjour`) | — | ✅ fresh install → screen → downloads all 1,593 files (529 MB) from the server at ~79 MB/s with overall/per-file progress, SHA-256 per file, then the engine starts (main menu). Killed mid-download (306 MB + 76.5 MB partial) → relaunch completes and verifies. Server/token in UserDefaults, Find on network (Bonjour), Test connection, data-set choice (original/mod sets), clear errors (unreachable / token / disk full / hash mismatch) | 📺 LAN + Tailscale download from tower |
 | 4 Launch check | — | ✅ verified manifest + per-file size check (no hashing on launch) | 📺 |
 | 4 Caches purge → re-download only missing files | — | ⛔ not run: deleting part of the Simulator's Caches was blocked by a safety check (variable path); the code path is the same size check as the launch check. To try: delete a few files under the app's `Library/Caches/game/GameData/Music/` and relaunch | 📺 |
 | 4 Save mirror to NSUserDefaults (`SaveMirror.swift`) | — | 🟡 written (every 15 s + on background, ≤ 400 KB, restore-missing before the engine starts); not exercised yet — no career save exists yet | 📺 |
@@ -141,18 +171,18 @@ Choices made without asking (per your instruction); each is easy to change.
 | 5 "Connect a controller" notice | — | 🟡 drawn in a race when no racing pad is connected (Siri Remote excluded); not visible in the Simulator, which provides a virtual "Gamepad" | 📺 |
 | 6.1 AVAudioSession (playback, multichannel declared) | — | ✅ set before the engine opens audio (Simulator: Speaker, 2/2 channels) | 📺 channel count with your TV/receiver/AirPods |
 | 6.2 Intro movies | ✅ skipped cleanly (no `nfs5.exe`) | ✅ same | — |
-| 7.1 Frame-time overlay (`NFS_FPS_OVERLAY=1`, tvOS `-ou.fpsOverlay YES`) | ✅ | ✅ shows fps / avg / worst / budget (Simulator 60.0 fps — not representative) | 📺 real numbers |
+| 7.1 Frame-time overlay (`NFS_FPS_OVERLAY=1`, tvOS `-nfsh.fpsOverlay YES`) | ✅ | ✅ shows fps / avg / worst / budget (Simulator 60.0 fps — not representative) | 📺 real numbers |
 | 7.2 60 Hz display criteria | — | 🟡 requested on scene activation (only acts with Match Frame Rate on) | 📺 |
-| 7.3 Render resolution (`-ou.renderScale 1/1.5/2`) | — | ✅ surface 1760×960 / 2640×1440 / 3520×1920. Note: the window is 1760×960 points, not 1920×1080 — a TV safe-area inset in winit's window? To check (safe-area enhancement) | 📺 pick the default by measuring |
+| 7.3 Render resolution (`-nfsh.renderScale 1/1.5/2`) | — | ✅ surface 1760×960 / 2640×1440 / 3520×1920. Note: the window is 1760×960 points, not 1920×1080 — a TV safe-area inset in winit's window? To check (safe-area enhancement) | 📺 pick the default by measuring |
 | 7.4–7.5 Shader stutter, Instruments profiling | — | — | 📺 |
-| 8 `.ipa` for atvloadly (`scripts/export-ipa.sh`) | — | ✅ unsigned device build → `target/tvos/OpenUnleashed.ipa` (5.5 MB, checked: no game files) | 📺 install via atvloadly; check refresh keeps Caches + UserDefaults |
+| 8 `.ipa` for atvloadly (`scripts/export-ipa.sh`) | — | ✅ unsigned device build → `target/tvos/NFSHaven.ipa` (5.5 MB, checked: no game files) | 📺 install via atvloadly; check refresh keeps Caches + UserDefaults |
 | 8 atvloadly docs (TVOS.md) | ✅ | — | — |
 
 ### Stage 9 — enhancements
 | Item | macOS | tvOS Simulator | Apple TV |
 |---|---|---|---|
 | 0 Extras menu + `extras.json` (`nfs_game::extras`, `app/extras_ui.rs`) | ✅ pause menu's last item "extras"; pages/rows with value, explanation, "applies now/at next start", reset page; arrows/d-pad; saved + reloaded (tests); `extras.json` is in the tvOS save mirror | ✅ (same code; settings file read at start) | 📺 pad/remote navigation |
-| 0 Extras › Network (server, password, sync saves, test connection) | ✅ scripted run: typed address + token, Sync on, Test → "Connected: Mac test, ou-server 0.1.5"; wrong password → "the server refused the password"; long Tailscale name fits; settings in `network.json`, none in `extras.json`. Also fixed: in the Extras menu the Mac keyboard's left/right had moved rows instead of changing values (the pause menu's mapping), and long help lines ran past the panel (now wrapped). 🙋 **check by hand**: real typing + Cmd+V (the scripted run feeds the same buffer, not real key events) | ✅ same page without Sync saves; Test → OK; the change reached the shell's setting (app container plist = `127.0.0.1:8642` / token). 🙋 the on-screen keyboard for these rows (same prompt as the other text fields) | 📺 |
+| 0 Extras › Network (server, password, sync saves, test connection) | ✅ scripted run: typed address + token, Sync on, Test → "Connected: Mac test, ou-server 0.1.5" (now "nfs-haven-server 0.2.0"); wrong password → "the server refused the password"; long Tailscale name fits; settings in `network.json`, none in `extras.json`. Also fixed: in the Extras menu the Mac keyboard's left/right had moved rows instead of changing values (the pause menu's mapping), and long help lines ran past the panel (now wrapped). 🙋 **check by hand**: real typing + Cmd+V (the scripted run feeds the same buffer, not real key events) | ✅ same page without Sync saves; Test → OK; the change reached the shell's setting (app container plist = `127.0.0.1:8642` / token). 🙋 the on-screen keyboard for these rows (same prompt as the other text fields) | 📺 |
 | 0 Extras from the main menu (pad View / F12 / Siri Remote Play/Pause) | ⬜ the front end has no HUD font object yet — needs its own text path | ⬜ | 📺 |
 | 2.1 Layered app icon + Top Shelf (+ Wide) from the project's own mark (`platform/tvos/make_brand_assets.py`, committed asset catalog) | — | ✅ icon on the Simulator's Home screen; 3 layers (opaque back, road, mark), App Store icon, Top Shelf images | 📺 parallax on focus, Top Shelf in the top row |
 | 2.7 No screen saver during race / replay / intro (menus can still sleep) | — | 🟡 wired (shell polls `ou_wants_no_sleep()` every 3 s) | 📺 15-minute race without screen saver |
@@ -179,10 +209,10 @@ Choices made without asking (per your instruction); each is easy to change.
 Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, enhancement 2.6); no app icon yet (placeholder); the
 "start-up movies" are skipped (no `nfs5.exe` on the disc — see above).
 
-## OpenUnleashed server (`tools/ou-server`, `docs/ou-server.md`)
+## NFS Haven server (`tools/nfs-haven-server`, `docs/nfs-haven-server.md`; was ou-server)
 | Part | State |
 |---|---|
-| `crates/ou-manifest` (shared) + `tools/make-manifest` | ✅ your data: 1,593 files, 528.8 MB, ~2 s; the server's manifest is byte-identical |
+| `crates/nfs-haven-manifest` (shared) + `tools/make-manifest` | ✅ your data: 1,593 files, 528.8 MB, ~2 s; the server's manifest is byte-identical |
 | Phase 1 — info + data sets (`original`, `mod-<name>` overlays, `hd`), manifests with hash cache, files with Range/If-Range/ETag | ✅ tested on the Mac: resumed download of the largest file (117.6 MB) verifies against its SHA-256; 416 past end; path escapes 400; files outside the manifest 404 |
 | Phase 2 — saves (`If-Match`/412, versions: last N + one per day for 30 days, restore) | ✅ server side; tested (Mac/TV conflict keeps both, restore works) |
 | Phase 2 client (`open-unleashed/src/sync.rs`, both platforms) | ✅ two fake "devices" on the Mac against the local server: A's save uploads; B (empty) pulls it at start; both changed while apart → server's copy active + local kept as `.local-<time>.bak` + server keeps the other as a version; another device saved during play → this device's copy current, the other kept as a server version. Offline: retried every 5 s. On tvOS on automatically with the Game Data server; on the Mac opt-in (`extras.json` › `network`: `server`, `token`, `sync_saves`) | 
@@ -190,10 +220,10 @@ Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, e
 | Phase 3 client (`open-unleashed/src/server_lobby.rs`) | ✅ a hosted session (front end CREATE or `--net host`) registers with every local address, heartbeats every 5 s (players, racing), is removed when it ends; the games list also probes the server's games unicast, so they show up in the original's list with real name/ping and JOIN works unchanged. Test: host on port 9500 → server lists it; `--net-browse` finds it **only** with the server set ("HOSTMAC's race 192.168.1.50:9500 ping 29") | 
 | Status page (`/?token=…`): sets, saves + versions with download/restore, games, devices | ✅ |
 | Auth (Bearer / `?token=`), PUID/PGID drop, `--healthcheck` | ✅ |
-| Tests | ✅ `cargo test -p ou-manifest -p ou-server`: 11 passed |
-| Docker image (`tools/ou-server/Dockerfile`, context = repo root) | ✅ built and run locally (Colima, arm64): healthy, runs as UID 99, real game data mounted read-only, mod overlay + save verified |
-| GitHub Actions → `ghcr.io/dannyelson82/ou-server` (`.github/workflows/ou-server-image.yml`, same pattern/pinned actions as ReelHaven) | ✅ **published**: fork `github.com/dannyelson82/Open-Unleashed` (branch `tvos-port`), run 44932561662 green (build, smoke test, Trivy, publish); tags `latest`, `edge`, `sha-5a34ce2`; package **public** (Unraid pulls without login). First run failed only on a test bug (process-name match) — fixed |
-| Unraid template `packaging/unraid/ou-server.xml` (all under `/mnt/user/appdata/ou-server`) | ✅ written, XML-checked; you add the container yourself |
+| Tests | ✅ `cargo test -p nfs-haven-manifest -p nfs-haven-server`: 11 passed |
+| Docker image (`tools/nfs-haven-server/Dockerfile`, context = repo root) | ✅ built and run locally (Colima, arm64): healthy, runs as UID 99, real game data mounted read-only, mod overlay + save verified |
+| GitHub Actions → `ghcr.io/dannyelson82/nfs-haven-server` (`.github/workflows/nfs-haven-server-image.yml`, same pattern/pinned actions as ReelHaven) | ✅ **published**: fork `github.com/dannyelson82/Open-Unleashed` (branch `tvos-port`), run 44932561662 green (build, smoke test, Trivy, publish); tags `latest`, `edge`, `sha-5a34ce2`; package **public** (Unraid pulls without login). First run failed only on a test bug (process-name match) — fixed |
+| Unraid template `packaging/unraid/nfs-haven-server.xml` (all under `/mnt/user/appdata/nfs-haven-server`) | ✅ written, XML-checked; you add the container yourself |
 | Compose file, Bonjour (avahi service file), Tailscale (a/b, `tailscale serve` HTTPS) docs | ✅ |
 | Phase 4 (dedicated host, EA lobby revival) | ⬜ research only, not started |
 

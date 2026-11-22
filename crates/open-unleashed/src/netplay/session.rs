@@ -120,7 +120,7 @@ impl NetPlay {
             tick_override: None,
             voice: Default::default(),
         };
-        // PLATFORM GLUE (`server_lobby.rs`): a hosted session is also listed on the OpenUnleashed server, when one
+        // PLATFORM GLUE (`server_lobby.rs`): a hosted session is also listed on the NFS Haven server, when one
         // is set (the front end's CREATE and `--net host` alike)
         if n.is_host() {
             let port = spec.strip_prefix("host").and_then(|r| r.strip_prefix(':')).and_then(|p| p.parse().ok()).unwrap_or(nfs_net::PORT);

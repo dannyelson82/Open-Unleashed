@@ -3,7 +3,7 @@
 //! descriptions say which game it runs ("for Need for Speed: Porsche Unleashed (2000)").
 
 /// The window title and the caption of the start-up error box.
-pub const TITLE: &str = "OpenUnleashed";
+pub const TITLE: &str = "NFS Haven";
 
 /// **PLATFORM GLUE** (not in the original): the window's icon — the title bar and the task switcher on Windows, the
 /// window list on Linux / X11 (macOS takes the app bundle's icon and ignores it). The picture is

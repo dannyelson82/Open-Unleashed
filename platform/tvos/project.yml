@@ -2,16 +2,16 @@
 # The engine is the Rust static library `libopen_unleashed.a`, built by cargo before Xcode runs.
 name: OpenUnleashed
 options:
-  bundleIdPrefix: org.openunleashed
+  bundleIdPrefix: com.dannyelson
   deploymentTarget:
     tvOS: "17.0"
 settings:
   base:
     # stand-in until <com.yourname.openunleashed> is known (PROGRESS.md)
-    PRODUCT_BUNDLE_IDENTIFIER: ${OU_BUNDLE_ID}
+    PRODUCT_BUNDLE_IDENTIFIER: ${NFSH_BUNDLE_ID}
     SWIFT_VERSION: "5.0"
     CODE_SIGN_STYLE: Automatic
-    DEVELOPMENT_TEAM: ${OU_TEAM_ID}
+    DEVELOPMENT_TEAM: ${NFSH_TEAM_ID}
     ENABLE_BITCODE: NO
     DEAD_CODE_STRIPPING: YES
 targets:

@@ -1,9 +1,9 @@
 [package]
-name = "ou-manifest"
+name = "nfs-haven-manifest"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Game-data manifests shared by tools/make-manifest and the OpenUnleashed server"
+description = "Game-data manifests shared by tools/make-manifest and nfs-haven-server"
 
 [dependencies]
 serde = { workspace = true }

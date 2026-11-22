@@ -162,7 +162,7 @@ fn main() -> Result<()> {
     }
     let root = PathBuf::from(&args[1]);
     let out = args.iter().position(|a| a == "--out").and_then(|i| args.get(i + 1)).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("target/texture-pack"));
-    let files = ou_manifest::list_files(&root, ou_manifest::SetKind::Original).context("game folder")?;
+    let files = nfs_haven_manifest::list_files(&root, nfs_haven_manifest::SetKind::Original).context("game folder")?;
     let mut rows = Vec::new();
     for rel in &files {
         let l = rel.to_ascii_lowercase();

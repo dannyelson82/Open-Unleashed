@@ -1,20 +1,20 @@
-// OpenUnleashed for Apple TV — the save mirror (TVOS.md, Stage 4.4). GPL-3.0-or-later.
+// NFS Haven for Apple TV — the save mirror (TVOS.md, Stage 4.4). GPL-3.0-or-later.
 //
 // Caches (where the engine keeps its saves) may be purged by tvOS; NSUserDefaults is the only truly persistent
 // storage (~500 KB for an app). So the save files are mirrored into UserDefaults whenever they change (checked
 // every 15 s and when the app goes to the background), if they fit, and restored from there before the engine
-// starts when Caches lost them. Replays and photos are not mirrored. The OpenUnleashed server sync (Stage 9 item 7)
+// starts when Caches lost them. Replays and photos are not mirrored. The NFS Haven server sync (Stage 9 item 7)
 // builds on this: `SaveMirror.files()` is the seam.
 import Foundation
 
 enum SaveMirror {
-    static let key = "ou.saves.mirror"
-    static let stampKey = "ou.saves.mirrorStamp"
+    static let key = "nfsh.saves.mirror"
+    static let stampKey = "nfsh.saves.mirrorStamp"
     /// Stay well under the ~500 KB UserDefaults budget (settings use some too).
     static let budget = 400_000
 
     /// The save files the engine wrote: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, `career.json`,
-    /// `extras.json` (relative to Caches/save).
+    /// `extras.json` (relative to Caches/games/porsche/save).
     static func files() -> [String: URL] {
         let root = Shell.saveDir
         var out: [String: URL] = [:]

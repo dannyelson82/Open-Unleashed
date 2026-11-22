@@ -16,9 +16,9 @@ members = [
     "tools/track-viewer",
     "tools/car-viewer",
     "tools/format-dumper",
-    "crates/ou-manifest",
+    "crates/nfs-haven-manifest",
     "tools/make-manifest",
-    "tools/ou-server",
+    "tools/nfs-haven-server",
     "tools/texture-pack",
 ]
 

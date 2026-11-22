@@ -4,7 +4,7 @@
 //! copies) with `versions/<file>/index.json`, and `meta.json` (per file: SHA-256, size, last writer, time).
 //! A `PUT` must name the copy it replaces (`If-Match: "<sha256>"`); anything else is a conflict (412) and nothing
 //! is overwritten — the client keeps both. Every write keeps the previous copy as a version: the last
-//! `OU_SAVE_VERSIONS`, plus the newest copy of each of the last 30 days.
+//! `NFSH_SAVE_VERSIONS`, plus the newest copy of each of the last 30 days.
 
 use crate::{Shared, error};
 use axum::{
@@ -56,7 +56,7 @@ pub fn profile_ok(p: &str) -> bool {
 /// The files the save service keeps: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, and the port's
 /// `career.json`, `extras.json`, `settings.json`. Replays and photos stay on the device.
 pub fn file_ok(f: &str) -> bool {
-    if !ou_manifest::safe_rel_path(f) || f.len() > 128 {
+    if !nfs_haven_manifest::safe_rel_path(f) || f.len() > 128 {
         return false;
     }
     let lower = f.to_ascii_lowercase();
@@ -173,7 +173,7 @@ impl Saves {
             self.push_version(&pdir, file, &cur)?;
         }
         write_atomic(&pdir.join("current").join(file), bytes)?;
-        let fm = FileMeta { sha256: ou_manifest::sha256_hex(bytes), size: bytes.len() as u64, writer: writer.to_string(), time: now_ms() };
+        let fm = FileMeta { sha256: nfs_haven_manifest::sha256_hex(bytes), size: bytes.len() as u64, writer: writer.to_string(), time: now_ms() };
         meta.files.insert(file.to_string(), fm.clone());
         write_atomic(&pdir.join("meta.json"), &serde_json::to_vec_pretty(&meta).unwrap())?;
         Ok(fm)
@@ -232,8 +232,8 @@ fn file_response(bytes: Vec<u8>, fm: &FileMeta) -> Response {
     let mut h = HeaderMap::new();
     h.insert(header::ETAG, HeaderValue::from_str(&etag(&fm.sha256)).unwrap());
     h.insert(header::CONTENT_TYPE, HeaderValue::from_static("application/octet-stream"));
-    h.insert("x-ou-writer", HeaderValue::from_str(&fm.writer).unwrap_or(HeaderValue::from_static("")));
-    h.insert("x-ou-time", HeaderValue::from(fm.time));
+    h.insert("x-nfsh-writer", HeaderValue::from_str(&fm.writer).unwrap_or(HeaderValue::from_static("")));
+    h.insert("x-nfsh-time", HeaderValue::from(fm.time));
     (StatusCode::OK, h, bytes).into_response()
 }
 
@@ -254,11 +254,11 @@ async fn put_file(State(st): State<Shared>, Path((profile, file)): Path<(String,
     if let Some(r) = check(&profile, Some(&file)) {
         return r;
     }
-    let writer: String = headers.get("x-ou-device").and_then(|v| v.to_str().ok()).unwrap_or("unknown").chars().take(64).collect();
+    let writer: String = headers.get("x-nfsh-device").and_then(|v| v.to_str().ok()).unwrap_or("unknown").chars().take(64).collect();
     let if_match = headers.get(header::IF_MATCH).and_then(|v| v.to_str().ok()).map(str::trim);
     let _guard = st.saves.lock.lock().await;
     let cur = st.saves.meta(&profile).files.get(&file).cloned();
-    let new_sha = ou_manifest::sha256_hex(&body);
+    let new_sha = nfs_haven_manifest::sha256_hex(&body);
     let conflict = |cur: Option<&FileMeta>| {
         let mut h = HeaderMap::new();
         if let Some(c) = cur {
@@ -322,7 +322,7 @@ async fn restore(State(st): State<Shared>, Path((profile, version, file)): Path<
         return error(StatusCode::NOT_FOUND, "no such version");
     };
     let Ok(bytes) = std::fs::read(version_dir(&st.saves.dir(&profile), &file).join(&v.id)) else { return error(StatusCode::NOT_FOUND, "version file missing") };
-    let writer = format!("restore of {} by {}", v.id, headers.get("x-ou-device").and_then(|h| h.to_str().ok()).unwrap_or("status page"));
+    let writer = format!("restore of {} by {}", v.id, headers.get("x-nfsh-device").and_then(|h| h.to_str().ok()).unwrap_or("status page"));
     let saves = &st.saves;
     match tokio::task::block_in_place(|| saves.store(&profile, &file, &bytes, &writer)) {
         Ok(fm) => {

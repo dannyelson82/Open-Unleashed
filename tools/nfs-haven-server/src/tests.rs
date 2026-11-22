@@ -8,7 +8,7 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 fn tmp(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("ou-server-test-{name}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("nfs-haven-server-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -21,9 +21,7 @@ fn cfg(root: &std::path::Path, token: &str) -> Config {
         name: "test".into(),
         save_versions: 3,
         lobby_ttl: Duration::from_millis(300),
-        game_dir: root.join("game"),
-        mods_dir: root.join("mods"),
-        hd_dir: root.join("hd"),
+        games_dir: root.join("games"),
         data_dir: root.join("data"),
         rescan: Duration::from_secs(60),
         save_max_bytes: 1 << 20,
@@ -31,7 +29,7 @@ fn cfg(root: &std::path::Path, token: &str) -> Config {
 }
 
 fn game(root: &std::path::Path) {
-    let g = root.join("game");
+    let g = root.join("games/porsche/original");
     std::fs::create_dir_all(g.join("GameData/CarModel")).unwrap();
     std::fs::create_dir_all(g.join("FEData/Art")).unwrap();
     std::fs::write(g.join("GameData/CarModel/911.crp"), b"0123456789").unwrap();
@@ -75,50 +73,50 @@ async fn data_manifest_files_and_ranges() {
     let st = new_state(cfg(&root, "s3cret"));
     data::rebuild_now(&st);
     let app = router(st);
-    let (s, _, b) = call(&app, Method::GET, "/v1/data/original/manifest", &[AUTH], vec![], "10.0.0.2").await;
+    let (s, _, b) = call(&app, Method::GET, "/v1/data/porsche/original/manifest", &[AUTH], vec![], "10.0.0.2").await;
     assert_eq!(s, StatusCode::OK);
-    let m: ou_manifest::Manifest = serde_json::from_slice(&b).unwrap();
+    let m: nfs_haven_manifest::Manifest = serde_json::from_slice(&b).unwrap();
     assert_eq!(m.files.len(), 3, "GameData, FEData, version.txt — not Porsche.exe");
     // same bytes as make-manifest would write
-    let mut c = ou_manifest::HashCache::default();
-    assert_eq!(String::from_utf8(b).unwrap(), ou_manifest::build(&root.join("game"), ou_manifest::SetKind::Original, "original", &mut c).unwrap().to_json());
-    let (s, h, b) = call(&app, Method::GET, "/v1/data/original/file/GameData/CarModel/911.crp", &[AUTH], vec![], "10.0.0.2").await;
+    let mut c = nfs_haven_manifest::HashCache::default();
+    assert_eq!(String::from_utf8(b).unwrap(), nfs_haven_manifest::build(&root.join("games/porsche/original"), nfs_haven_manifest::SetKind::Original, "porsche/original", &mut c).unwrap().to_json());
+    let (s, h, b) = call(&app, Method::GET, "/v1/data/porsche/original/file/GameData/CarModel/911.crp", &[AUTH], vec![], "10.0.0.2").await;
     assert_eq!((s, b.as_slice()), (StatusCode::OK, &b"0123456789"[..]));
     assert_eq!(h["accept-ranges"], "bytes");
-    let (s, h, b) = call(&app, Method::GET, "/v1/data/original/file/GameData/CarModel/911.crp", &[AUTH, ("range", "bytes=4-")], vec![], "10.0.0.2").await;
+    let (s, h, b) = call(&app, Method::GET, "/v1/data/porsche/original/file/GameData/CarModel/911.crp", &[AUTH, ("range", "bytes=4-")], vec![], "10.0.0.2").await;
     assert_eq!((s, b.as_slice()), (StatusCode::PARTIAL_CONTENT, &b"456789"[..]));
     assert_eq!(h["content-range"], "bytes 4-9/10");
-    let (s, _, b) = call(&app, Method::GET, "/v1/data/original/file/GameData/CarModel/911.crp", &[AUTH, ("range", "bytes=-3")], vec![], "10.0.0.2").await;
+    let (s, _, b) = call(&app, Method::GET, "/v1/data/porsche/original/file/GameData/CarModel/911.crp", &[AUTH, ("range", "bytes=-3")], vec![], "10.0.0.2").await;
     assert_eq!((s, b.as_slice()), (StatusCode::PARTIAL_CONTENT, &b"789"[..]));
-    assert_eq!(call(&app, Method::GET, "/v1/data/original/file/GameData/CarModel/911.crp", &[AUTH, ("range", "bytes=20-")], vec![], "10.0.0.2").await.0, StatusCode::RANGE_NOT_SATISFIABLE);
+    assert_eq!(call(&app, Method::GET, "/v1/data/porsche/original/file/GameData/CarModel/911.crp", &[AUTH, ("range", "bytes=20-")], vec![], "10.0.0.2").await.0, StatusCode::RANGE_NOT_SATISFIABLE);
     // never anything outside the manifest
-    assert_eq!(call(&app, Method::GET, "/v1/data/original/file/Porsche.exe", &[AUTH], vec![], "10.0.0.2").await.0, StatusCode::NOT_FOUND);
-    assert_ne!(call(&app, Method::GET, "/v1/data/original/file/../game/version.txt", &[AUTH], vec![], "10.0.0.2").await.0, StatusCode::OK);
-    assert_eq!(call(&app, Method::GET, "/v1/data/nope/manifest", &[AUTH], vec![], "10.0.0.2").await.0, StatusCode::NOT_FOUND);
+    assert_eq!(call(&app, Method::GET, "/v1/data/porsche/original/file/Porsche.exe", &[AUTH], vec![], "10.0.0.2").await.0, StatusCode::NOT_FOUND);
+    assert_ne!(call(&app, Method::GET, "/v1/data/porsche/original/file/../original/version.txt", &[AUTH], vec![], "10.0.0.2").await.0, StatusCode::OK);
+    assert_eq!(call(&app, Method::GET, "/v1/data/porsche/nope/manifest", &[AUTH], vec![], "10.0.0.2").await.0, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
 async fn mod_sets_overlay_the_original() {
     let root = tmp("mods");
     game(&root);
-    let m = root.join("mods/Turbo Pack/GameData/CarModel");
+    let m = root.join("games/porsche/mods/Turbo Pack/GameData/CarModel");
     std::fs::create_dir_all(&m).unwrap();
     std::fs::write(m.join("911.crp"), b"modded").unwrap();
-    std::fs::create_dir_all(root.join("mods/Turbo Pack/SaveData")).unwrap();
-    std::fs::write(root.join("mods/Turbo Pack/SaveData/0.sav"), b"profile").unwrap();
-    std::fs::create_dir_all(root.join("mods/empty")).unwrap();
+    std::fs::create_dir_all(root.join("games/porsche/mods/Turbo Pack/SaveData")).unwrap();
+    std::fs::write(root.join("games/porsche/mods/Turbo Pack/SaveData/0.sav"), b"profile").unwrap();
+    std::fs::create_dir_all(root.join("games/porsche/mods/empty")).unwrap();
     let st = new_state(cfg(&root, ""));
     data::rebuild_now(&st);
     let app = router(st);
     let (s, _, b) = call(&app, Method::GET, "/v1/data/sets", &[], vec![], "10.0.0.2").await;
     assert_eq!(s, StatusCode::OK);
     let t = String::from_utf8(b).unwrap();
-    assert!(t.contains("mod-Turbo Pack") && t.contains("original") && !t.contains("mod-empty"), "{t}");
-    let (_, _, b) = call(&app, Method::GET, "/v1/data/mod-Turbo%20Pack/file/GameData/CarModel/911.crp", &[], vec![], "10.0.0.2").await;
+    assert!(t.contains("porsche/mod-Turbo Pack") && t.contains("porsche/original") && !t.contains("mod-empty"), "{t}");
+    let (_, _, b) = call(&app, Method::GET, "/v1/data/porsche/mod-Turbo%20Pack/file/GameData/CarModel/911.crp", &[], vec![], "10.0.0.2").await;
     assert_eq!(b, b"modded");
-    let (_, _, b) = call(&app, Method::GET, "/v1/data/mod-Turbo%20Pack/file/FEData/Art/menu.fsh", &[], vec![], "10.0.0.2").await;
+    let (_, _, b) = call(&app, Method::GET, "/v1/data/porsche/mod-Turbo%20Pack/file/FEData/Art/menu.fsh", &[], vec![], "10.0.0.2").await;
     assert_eq!(b, b"menu");
-    let (_, _, b) = call(&app, Method::GET, "/v1/data/original/file/GameData/CarModel/911.crp", &[], vec![], "10.0.0.2").await;
+    let (_, _, b) = call(&app, Method::GET, "/v1/data/porsche/original/file/GameData/CarModel/911.crp", &[], vec![], "10.0.0.2").await;
     assert_eq!(b, b"0123456789", "the original set is untouched");
 }
 
@@ -128,22 +126,22 @@ async fn saves_conflicts_versions_and_restore() {
     let st = new_state(cfg(&root, ""));
     let app = router(st);
     let url = "/v1/saves/Player/files/SaveData/0.sav";
-    let (s, h, _) = call(&app, Method::PUT, url, &[("x-ou-device", "mac")], b"v1".to_vec(), "10.0.0.2").await;
+    let (s, h, _) = call(&app, Method::PUT, url, &[("x-nfsh-device", "mac")], b"v1".to_vec(), "10.0.0.2").await;
     assert_eq!(s, StatusCode::CREATED);
     let e1 = h["etag"].to_str().unwrap().to_string();
     // the Apple TV saves on top of v1 correctly
-    let (s, h, _) = call(&app, Method::PUT, url, &[("x-ou-device", "tv"), ("if-match", &e1)], b"v2".to_vec(), "10.0.0.3").await;
+    let (s, h, _) = call(&app, Method::PUT, url, &[("x-nfsh-device", "tv"), ("if-match", &e1)], b"v2".to_vec(), "10.0.0.3").await;
     assert_eq!(s, StatusCode::OK);
     let e2 = h["etag"].to_str().unwrap().to_string();
     // the Mac, still on v1, conflicts: nothing is overwritten
-    let (s, h, _) = call(&app, Method::PUT, url, &[("x-ou-device", "mac"), ("if-match", &e1)], b"v2-mac".to_vec(), "10.0.0.2").await;
+    let (s, h, _) = call(&app, Method::PUT, url, &[("x-nfsh-device", "mac"), ("if-match", &e1)], b"v2-mac".to_vec(), "10.0.0.2").await;
     assert_eq!(s, StatusCode::PRECONDITION_FAILED);
     assert_eq!(h["etag"].to_str().unwrap(), e2);
     // no If-Match on an existing file is a conflict too
     assert_eq!(call(&app, Method::PUT, url, &[], b"x".to_vec(), "10.0.0.2").await.0, StatusCode::PRECONDITION_FAILED);
     let (s, h, b) = call(&app, Method::GET, url, &[], vec![], "10.0.0.2").await;
     assert_eq!((s, b.as_slice()), (StatusCode::OK, &b"v2"[..]));
-    assert_eq!(h["x-ou-writer"], "tv");
+    assert_eq!(h["x-nfsh-writer"], "tv");
     // versions: v1 kept
     let (_, _, b) = call(&app, Method::GET, "/v1/saves/Player/versions/SaveData/0.sav", &[], vec![], "10.0.0.2").await;
     let v: serde_json::Value = serde_json::from_slice(&b).unwrap();
@@ -223,4 +221,35 @@ fn range_parsing() {
     assert_eq!(parse_range("bytes=10-", 10), Some(Err(())));
     assert_eq!(parse_range("bytes=0-1,4-5", 10), None);
     assert_eq!(parse_range("items=0-1", 10), None);
+}
+
+#[tokio::test]
+async fn any_game_folder_is_a_game() {
+    let root = tmp("games");
+    game(&root);
+    let se = root.join("games/nfsse/original");
+    std::fs::create_dir_all(se.join("SIMDATA")).unwrap();
+    std::fs::write(se.join("NFS_DOS.EXE"), b"exe").unwrap();
+    std::fs::write(se.join("SIMDATA/x.dat"), b"data").unwrap();
+    std::fs::create_dir_all(root.join("games/Bad Name/original")).unwrap();
+    let st = new_state(cfg(&root, ""));
+    data::rebuild_now(&st);
+    let app = router(st.clone());
+    let (_, _, b) = call(&app, Method::GET, "/v1/info", &[], vec![], "10.0.0.2").await;
+    let v: serde_json::Value = serde_json::from_slice(&b).unwrap();
+    assert_eq!(v["games"], serde_json::json!(["nfsse", "porsche"]));
+    assert_eq!(v["server"], "nfs-haven-server");
+    // a game without rules of its own: every file
+    let (s, _, b) = call(&app, Method::GET, "/v1/data/nfsse/original/manifest", &[], vec![], "10.0.0.2").await;
+    assert_eq!(s, StatusCode::OK);
+    let m: nfs_haven_manifest::Manifest = serde_json::from_slice(&b).unwrap();
+    assert_eq!(m.set, "nfsse/original");
+    assert_eq!(m.files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["NFS_DOS.EXE", "SIMDATA/x.dat"]);
+    let (_, _, b) = call(&app, Method::GET, "/v1/data/nfsse/original/file/SIMDATA/x.dat", &[], vec![], "10.0.0.2").await;
+    assert_eq!(b, b"data");
+    // Porsche's rules still apply to Porsche
+    assert_eq!(call(&app, Method::GET, "/v1/data/porsche/original/file/Porsche.exe", &[], vec![], "10.0.0.2").await.0, StatusCode::NOT_FOUND);
+    // the status page names the server
+    let (_, _, b) = call(&app, Method::GET, "/", &[], vec![], "10.0.0.2").await;
+    assert!(String::from_utf8_lossy(&b).contains("NFS Haven server"));
 }

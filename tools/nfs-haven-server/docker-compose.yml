@@ -1,0 +1,22 @@
+# nfs-haven-server with Docker Compose (docs/nfs-haven-server.md). On Unraid use the template
+# packaging/unraid/nfs-haven-server.xml.
+services:
+  nfs-haven-server:
+    image: ghcr.io/dannyelson82/nfs-haven-server:latest
+    container_name: nfs-haven-server
+    restart: unless-stopped
+    ports:
+      - "8642:8642"
+    environment:
+      NFSH_TOKEN: "change-me"          # the Password the app sends
+      NFSH_NAME: "NFS Haven server"
+      NFSH_SAVE_VERSIONS: "20"
+      NFSH_LOBBY_TTL: "15"
+      PUID: "99"
+      PGID: "100"
+      TZ: "Etc/UTC"
+    volumes:
+      # one folder per game: porsche/original/ (GameData/, FEData/, version.txt, fe.txt, nfs5.exe),
+      # porsche/mods/<name>/, porsche/hd/ — later nfsse/original/ …
+      - /mnt/user/appdata/nfs-haven-server/games:/games:ro
+      - /mnt/user/appdata/nfs-haven-server/data:/data      # saves, versions, caches

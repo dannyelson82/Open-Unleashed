@@ -205,8 +205,8 @@ mod tests {
 }
 
 /// PLATFORM GLUE (tvOS, TVOS.md): the app shell's own settings can be given as UserDefaults launch
-/// arguments (`-ou.server.address tower.local`, `-ou.autoDownload YES`, …); they are the shell's, not the
-/// engine's command line — drop each `-ou.*` key and its value. Elsewhere the arguments pass unchanged.
+/// arguments (`-nfsh.server.address tower.local`, `-nfsh.autoDownload YES`, …); they are the shell's, not the
+/// engine's command line — drop each `-nfsh.*` key and its value. Elsewhere the arguments pass unchanged.
 fn strip_shell_defaults(args: Vec<String>) -> Vec<String> {
     if !cfg!(target_os = "tvos") {
         return args;
@@ -214,7 +214,7 @@ fn strip_shell_defaults(args: Vec<String>) -> Vec<String> {
     let mut out = Vec::with_capacity(args.len());
     let mut it = args.into_iter();
     while let Some(a) = it.next() {
-        if a.starts_with("-ou.") {
+        if a.starts_with("-nfsh.") {
             it.next();
             continue;
         }

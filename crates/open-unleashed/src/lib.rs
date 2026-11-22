@@ -131,7 +131,7 @@ fn new_event_loop(scripted: bool) -> Result<EventLoop<()>> {
 /// `None`: a tool mode that has already done its work (`--net-browse`) — nothing to run.
 pub(crate) fn build_app(on_loop: &mut dyn FnMut(bool) -> Result<()>) -> Result<Option<App>> {
     let paths = GamePaths::locate()?;
-    // the OpenUnleashed server's save sync (`sync.rs`): what another device saved comes down before any save is
+    // the NFS Haven server's save sync (`sync.rs`): what another device saved comes down before any save is
     // read; changes go up from a worker thread. Nothing at all without a server set.
     #[cfg(target_os = "tvos")]
     sync::seed_from_shell();

@@ -23,7 +23,7 @@ pub(crate) enum Field {
 impl Field {
     pub(crate) fn title(self) -> &'static str {
         match self {
-            Field::Server => "OpenUnleashed server (name or IP address)",
+            Field::Server => "NFS Haven server (name or IP address)",
             Field::Token => "Server password",
         }
     }
@@ -368,7 +368,7 @@ fn pages() -> Vec<Page> {
         rows: vec![
             Row {
                 label: "Server",
-                help: "Your OpenUnleashed server: tower.local, an IP address or a Tailscale name. Port 8642 unless given.",
+                help: "Your NFS Haven server: tower.local, an IP address or a Tailscale name. Port 8642 unless given.",
                 applies: Applies::NextStart,
                 shown: true,
                 kind: Kind::Text(Field::Server),
@@ -378,7 +378,7 @@ fn pages() -> Vec<Page> {
             },
             Row {
                 label: "Password",
-                help: "The password set in the ou-server container's settings.",
+                help: "The password set in the nfs-haven-server container's settings.",
                 applies: Applies::NextStart,
                 shown: true,
                 kind: Kind::Text(Field::Token),

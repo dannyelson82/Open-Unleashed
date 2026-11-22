@@ -1,12 +1,12 @@
-// OpenUnleashed for Apple TV — the OpenUnleashed server client (docs/ou-server.md). GPL-3.0-or-later.
+// NFS Haven for Apple TV — the NFS Haven server client (docs/nfs-haven-server.md). GPL-3.0-or-later.
 import Foundation
 import UIKit
 
 /// The one "Server" setting (address + token), kept in UserDefaults (the only persistent storage on tvOS).
 enum ServerSettings {
-    static let addressKey = "ou.server.address"
-    static let tokenKey = "ou.server.token"
-    static let setKey = "ou.data.set"
+    static let addressKey = "nfsh.server.address"
+    static let tokenKey = "nfsh.server.token"
+    static let setKey = "nfsh.data.set"
     /// Default for this install: the Unraid server on the LAN (PROGRESS.md).
     static let defaultAddress = "tower.local"
 
@@ -18,9 +18,9 @@ enum ServerSettings {
         get { UserDefaults.standard.string(forKey: tokenKey) ?? "" }
         set { UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespaces), forKey: tokenKey) }
     }
-    /// The chosen data set (`original`, `mod-<name>`).
+    /// The chosen data set (`porsche/original`, `porsche/mod-<name>`).
     static var dataSet: String {
-        get { UserDefaults.standard.string(forKey: setKey) ?? "original" }
+        get { UserDefaults.standard.string(forKey: setKey) ?? "porsche/original" }
         set { UserDefaults.standard.set(newValue, forKey: setKey) }
     }
 
@@ -85,9 +85,9 @@ enum ServerError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unreachable(let a): return "Server unreachable (\(a)). Check the address, that the container runs, and (away from home) that Tailscale is on."
-        case .unauthorized: return "The server refused the password. Enter the password from the ou-server container's settings."
+        case .unauthorized: return "The server refused the password. Enter the password from the nfs-haven-server container's settings."
         case .http(let c, let m): return "Server error \(c): \(m)"
-        case .badResponse: return "The server sent something unexpected (is this an OpenUnleashed server?)."
+        case .badResponse: return "The server sent something unexpected (is this an NFS Haven server?)."
         }
     }
 }
@@ -113,7 +113,7 @@ final class ServerClient {
         var r = URLRequest(url: base.appendingPathComponent(path))
         r.httpMethod = method
         if !token.isEmpty { r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        r.setValue(ServerClient.deviceName, forHTTPHeaderField: "X-OU-Device")
+        r.setValue(ServerClient.deviceName, forHTTPHeaderField: "X-NFSH-Device")
         return r
     }
 
