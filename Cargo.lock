@@ -2805,6 +2805,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "texture-pack"
+version = "0.1.5"
+dependencies = [
+ "anyhow",
+ "nfs-formats",
+ "ou-manifest",
+ "sha2",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"

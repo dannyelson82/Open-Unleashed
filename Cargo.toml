@@ -19,6 +19,7 @@ members = [
     "crates/ou-manifest",
     "tools/make-manifest",
     "tools/ou-server",
+    "tools/texture-pack",
 ]
 
 [workspace.package]

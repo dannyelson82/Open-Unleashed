@@ -1,0 +1,12 @@
+[package]
+name = "texture-pack"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "HD texture pack pipeline (hd-texture-plan.md): scan (inventory + size projection); export/import/fake to come"
+
+[dependencies]
+nfs-formats.workspace = true
+ou-manifest = { path = "../../crates/ou-manifest" }
+anyhow.workspace = true
+sha2 = "0.10"
