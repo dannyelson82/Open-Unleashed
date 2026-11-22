@@ -31,3 +31,6 @@ bool ou_wants_no_sleep(void);
 void ou_audio_route_changed(bool old_device_unavailable);
 /// End the app (from the Game Data screen).
 void ou_request_quit(void);
+
+// The Need for Speed SE: ReNFS run by the app (platform/renfs-host).
+#include "../../renfs-host/renfs_host.h"

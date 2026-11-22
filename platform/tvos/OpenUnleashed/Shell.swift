@@ -9,19 +9,24 @@ final class Shell {
     static var caches: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
     }
-    /// This game's folder: `Caches/games/porsche/` (one folder per game, `nfs-haven-plan.md` Phase 5).
-    static var gameRoot: URL { caches.appendingPathComponent("games/porsche", isDirectory: true) }
-    /// The downloaded game data (`GameData/`, `FEData/`, …: the chosen set, `porsche/original` or a mod set).
-    static var gameDir: URL { gameRoot.appendingPathComponent("data", isDirectory: true) }
-    /// The engine's data folder (`SaveData/`, settings, logs).
-    static var saveDir: URL { gameRoot.appendingPathComponent("save", isDirectory: true) }
+    /// The game this process runs (the launcher's choice; Games.swift).
+    static var game: GameID = .porsche
+    /// This game's folder: `Caches/games/<id>/` (one folder per game, `nfs-haven-plan.md` Phase 5).
+    static var gameRoot: URL { game.root }
+    /// The downloaded game data (the chosen set: `porsche/original` or a mod set, `nfsse/original`).
+    static var gameDir: URL { game.dataDir }
+    /// The engine's own files (Porsche: `SaveData/`, settings, logs; NFS SE: CONFIG.DAT, renfs.cfg, replays).
+    static var saveDir: URL { game.saveDir }
 
     /// Before the engine starts: tell it where the data and the saves live.
     static func prepareEnvironment() {
-        try? FileManager.default.createDirectory(at: gameDir, withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: saveDir, withIntermediateDirectories: true)
-        setenv("NFS5_GAME_PATH", gameDir.path, 1)
-        setenv("NFS5_DATA_DIR", saveDir.path, 1)
+        for g in GameID.allCases {
+            try? FileManager.default.createDirectory(at: g.dataDir, withIntermediateDirectories: true)
+            try? FileManager.default.createDirectory(at: g.saveDir, withIntermediateDirectories: true)
+        }
+        // the Porsche engine's folders (it reads them when it starts, whichever game is picked later)
+        setenv("NFS5_GAME_PATH", GameID.porsche.dataDir.path, 1)
+        setenv("NFS5_DATA_DIR", GameID.porsche.saveDir.path, 1)
         // frame-time overlay (Stage 7.1) until the Extras menu has the switch: `-nfsh.fpsOverlay YES`
         if UserDefaults.standard.bool(forKey: "nfsh.fpsOverlay") { setenv("NFS_FPS_OVERLAY", "1", 1) }
         DisplayMode.exportRenderScale()
@@ -32,7 +37,7 @@ final class Shell {
             setenv("NFSH_DEVICE", UIDevice.current.name, 1)
         }
         AudioSetup.configure()
-        NSLog("OpenUnleashed: game data %@, saves %@", gameDir.path, saveDir.path)
+        NSLog("OpenUnleashed: games in %@", caches.appendingPathComponent("games").path)
     }
 
     /// The data is ready: a complete, verified download (or, for development only, data copied in by
@@ -41,17 +46,72 @@ final class Shell {
         if GameStore.isReady { return true }
         guard UserDefaults.standard.bool(forKey: "nfsh.trustLocalData") else { return false }
         var isDir: ObjCBool = false
-        return ["GameData", "FEData"].allSatisfy {
-            FileManager.default.fileExists(atPath: gameDir.appendingPathComponent($0).path, isDirectory: &isDir) && isDir.boolValue
+        return game.requiredItems.allSatisfy {
+            FileManager.default.fileExists(atPath: gameDir.appendingPathComponent($0).path, isDirectory: &isDir)
         }
     }
 
     private var gateWindow: UIWindow?
+    private var gameWindow: UIWindow?
 
-    /// UIKit is up and the scene is connected (the engine's first `resumed`).
+    /// UIKit is up and the scene is connected (the engine's first `resumed`): the launcher, or straight into the
+    /// game named with the launch argument `-nfsh.game porsche|nfsse` (development, tests).
     func launched() {
         SaveMirror.restoreMissing()
         SaveMirror.startWatching()
+        if let id = UserDefaults.standard.string(forKey: "nfsh.game"), let g = GameID(rawValue: id) {
+            start(g)
+        } else {
+            showLauncher()
+        }
+    }
+
+    private func showLauncher() {
+        let window = gateWindow ?? (SceneDelegate.scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds))
+        let vc = LauncherViewController()
+        vc.onPick = { [weak self] g in self?.start(g) }
+        window.rootViewController = vc
+        window.makeKeyAndVisible()
+        gateWindow = window
+    }
+
+    /// Run `g` in this process (once: the next game needs the app opened again).
+    func start(_ g: GameID) {
+        Shell.game = g
+        UserDefaults.standard.set(g.rawValue, forKey: GameID.lastKey)
+        NSLog("OpenUnleashed: starting %@ (data %@)", g.rawValue, Shell.gameDir.path)
+        switch g {
+        case .porsche: startPorsche()
+        case .nfsse: startNFSSE()
+        }
+    }
+
+    private func startNFSSE() {
+        if Shell.gameDataReady {
+            presentNFSSE()
+        } else {
+            showGameData(error: nil, onReady: { [weak self] in self?.presentNFSSE() })
+        }
+    }
+
+    private func presentNFSSE() {
+        gateWindow?.isHidden = true
+        gateWindow = nil
+        let window = SceneDelegate.scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = NFSSEViewController()
+        window.makeKeyAndVisible()
+        gameWindow = window
+    }
+
+    /// The NFS SE engine refused to start or stopped with a message: show it over the game.
+    func gameMessage(_ text: String) {
+        let host = gameWindow?.rootViewController ?? gateWindow?.rootViewController
+        let a = UIAlertController(title: GameID.nfsse.title, message: text, preferredStyle: .alert)
+        a.addAction(UIAlertAction(title: "OK", style: .default))
+        host?.present(a, animated: true)
+    }
+
+    private func startPorsche() {
         // no screen saver during a race / replay / intro; menus let the TV sleep as usual (§2.7)
         Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
             let want = ou_wants_no_sleep()
@@ -59,6 +119,8 @@ final class Shell {
         }
         if Shell.gameDataReady {
             guard GameStore.localManifest() != nil else {
+                gateWindow?.isHidden = true
+                gateWindow = nil
                 ou_data_ready()
                 return
             }
@@ -69,6 +131,8 @@ final class Shell {
                     NSLog("OpenUnleashed: the server has updated game data (%d file(s), %lld bytes)", u.files, u.bytes)
                     self.showGameData(error: nil, update: u)
                 } else {
+                    self.gateWindow?.isHidden = true
+                    self.gateWindow = nil
                     ou_data_ready()
                 }
             }
@@ -125,12 +189,16 @@ final class Shell {
         host.present(a, animated: true)
     }
 
-    private func showGameData(error: String?, update: (files: Int, bytes: Int64, removed: Int)? = nil) {
+    private func showGameData(error: String?, update: (files: Int, bytes: Int64, removed: Int)? = nil, onReady: (() -> Void)? = nil) {
         let window = gateWindow ?? (SceneDelegate.scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds))
         let vc = GameDataViewController()
         vc.errorText = error
         vc.update = update
         vc.onReady = { [weak self] in
+            if let onReady {
+                onReady()
+                return
+            }
             // hand the screen to the engine's window
             self?.gateWindow?.isHidden = true
             self?.gateWindow = nil
@@ -154,11 +222,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneWillResignActive(_ scene: UIScene) {
         // the race pauses, the audio stream stops (TVOS.md Stage 6.3)
-        ou_app_background()
+        if Shell.game == .nfsse { NFSSEViewController.current?.setBackground(true) } else { ou_app_background() }
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        ou_app_foreground()
+        if Shell.game == .nfsse { NFSSEViewController.current?.setBackground(false) } else { ou_app_foreground() }
         for w in (scene as? UIWindowScene)?.windows ?? [] { DisplayMode.request60Hz(on: w) }
     }
 

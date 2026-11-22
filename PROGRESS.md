@@ -139,6 +139,31 @@ on this Mac, so with no real network latency; the Unraid box over Wi-Fi / Ethern
   your stop condition. Not built, no race; disk used so far: the 2.3 GB copy + 68 MB clone (+ 88 KB of Setup's work).
   Setup wants about 12 GB free while it builds (15 GB free now).
 
+## NFS Haven – NFS SE on Apple TV (2026-11-22)
+
+✅ **The Need for Speed SE runs in the tvOS app** (Simulator): launcher → NFS SE → EA intro → title → Control
+Central → a race (City, cockpit, HUD, clock running). Porsche still starts from the same app (intro checked).
+
+- **ReNFS unchanged** in `engines/renfs` (upstream `7159bb9`, plain copy without `docs/screenshots`; `engines/README.md`).
+- **Host layer** `platform/renfs-host`: ReNFS's files compile against the host's own `SDL.h` (the ~85 SDL 2 calls the
+  port makes, every one renamed `nfsh_SDL_*` so it never meets the Porsche engine's SDL 3). Frames go to the app
+  (BGRA, newest frame), the audio device is pulled by the app, keys / text / mouse / the pad come from the app, the
+  clock stops while the app is in the background, `SDL_QUIT` ends the game. The game runs on its own thread
+  (16 MB stack), `main` renamed `renfs_main`. A Mac harness (`test/build-harness.sh`) runs it windowless and writes
+  frames: title, menus and the name prompt checked, quit returns cleanly.
+- **App**: `Games.swift` (games, folders `Caches/games/<id>/{data,save}`), `LauncherViewController` (one tile per
+  game, last one focused; launch argument `-nfsh.game porsche|nfsse` skips it), the Game Data screen and data set per
+  game (`nfsse/original` from nfs-haven-server), `NFSSEViewController`: Metal presenter (4:3, sharp bilinear), AVAudioEngine
+  for the sound, GCController pad = ReNFS's pad (Menu = Esc), Siri Remote (swipe = arrows, click = Enter, Back = Esc,
+  Play/Pause = keyboard prompt), pad's View/Options = keyboard prompt, hardware keyboard, rumble through Core Haptics,
+  background = pause. Quitting the game closes the app ("open NFS Haven again").
+- Test hook: `-nfsh.seScript "9:enter 12:down …"` (seconds after start, key) as used for the screenshots.
+
+📺 / to do: on the TV (pacing of the 70 Hz races on a 60 Hz TV, rumble, remote feel, sound); the joystick calibration
+screen on first use with a pad (Phase 6 would pre-calibrate); NFS SE saves are only in Caches (not yet mirrored or
+synced to the server: tvOS may purge them); the screen saver is off the whole time NFS SE runs; the Mac app has no
+launcher yet (ReNFS's own desktop build covers the Mac).
+
 ## NFS Haven – Phase 0 (2026-11-22, side job; `nfs-haven-plan.md` Phase 0 only)
 - **Disc image**: `~/Documents/NFSSE.img` (iCloud) copied to `~/Documents/nfs-se-data/NFSSE.img` (outside every git
   repo); the original was only read: SHA-256 `227586bd…57dc701` before, of the copy, and after (identical; in
@@ -292,6 +317,10 @@ Choices made without asking (per your instruction); each is easy to change.
 
 58. **Imports run in the same nfs-haven-server image**, not a sidecar: everything the two games need is done in Rust inside the server (raw-sector and cue/bin images read in place, ISO 9660 + Joliet, `.zip`, the update's deflate streams, ReNFS's program check) — no 7-Zip, bchunk or unshield in the image, which grew by three small crates. A sidecar makes sense later for Most Wanted, whose installer logic is NFS Most Wanted Native's Python.
 59. **Imports rebuild a game's `original` set from all its kept sources** (the newest disc + every known update), so dropping an update later just re-imports; only `games/<game>/original` is ever replaced (mods / hd untouched). Updates are known by checksum only: an unknown "patch" is "not recognised" rather than guessed at.
+60. **NFS SE runs through a host "SDL 2" instead of porting ReNFS to SDL 3** (the plan's Phase 1–2): ReNFS's files stay byte-for-byte upstream (its exactness can't change, upstream updates are a copy), and the app needs no second SDL. Costs: the host's audio stream converter is linear interpolation (SDL 2 filters better) — only in the app; the desktop ReNFS keeps SDL.
+61. **ReNFS is a plain copy, not a git subtree**, without upstream's `docs/screenshots` (pictures of the game) so no EA imagery goes into the fork; the upstream commit is noted in `engines/README.md`.
+62. **Both games stay in the one existing app and process model**: the launcher is a UIKit screen shown before either engine starts (winit is already running, idle); NFS SE draws in its own window. Quitting NFS SE closes the app, as the plan's quit-to-launcher.
+63. **Siri Remote / pad mapping for NFS SE v1**: the pad is exactly ReNFS's pad (A/B both select, Menu = Esc); the remote's Play/Pause and the pad's View button open the keyboard for names (ReNFS can't tell the app when a text field is open without changing its code). The screen saver stays off while NFS SE runs (no "race / menu" state from the game yet).
 
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
