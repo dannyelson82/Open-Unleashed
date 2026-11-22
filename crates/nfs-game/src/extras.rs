@@ -133,11 +133,14 @@ pub struct Network {
 pub struct Audio {
     /// pause a single-player race when headphones disconnect / are taken out (plan E; default on)
     pub pause_on_headphones_gone: bool,
+    /// speakers: 0 stereo (the original), 1 5.1 when the output has the channels (`nfs_audio::mixer::set_surround`)
+    pub speakers: u8,
 }
 
 impl Default for Audio {
+    /// stereo on the Mac; 5.1-when-available on tvOS (a receiver behind the Apple TV is the case it is for)
     fn default() -> Self {
-        Self { pause_on_headphones_gone: true }
+        Self { pause_on_headphones_gone: true, speakers: u8::from(cfg!(target_os = "tvos")) }
     }
 }
 

@@ -144,6 +144,8 @@ pub(crate) fn build_app(on_loop: &mut dyn FnMut(bool) -> Result<()>) -> Result<O
     nfs_renderer::set_anisotropy(nfs_game::extras::get().graphics.anisotropy());
     nfs_renderer::set_fxaa(nfs_game::extras::get().graphics.anti_aliasing == 1);
     nfs_renderer::set_msaa(nfs_game::extras::get().graphics.anti_aliasing == 2);
+    // PORT-DEVIATION (Extras › Audio › Speakers): 5.1 when the output has the channels
+    nfs_audio::mixer::set_surround(nfs_game::extras::get().audio.speakers == 1);
     // PORT-DEVIATION (HD texture packs): Extras › Graphics › Textures
     nfs_assets::hd::set_enabled(nfs_game::extras::get().graphics.textures == 1);
     let cli = cli::Cli::from_env();

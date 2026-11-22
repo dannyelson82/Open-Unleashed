@@ -91,6 +91,10 @@ pub(super) struct Voice {
     /// the caller's pan byte `voice+0x1F` ([`pan_byte`]; 0x40, the request's default from
     /// 0x561960, until one is given) — the patch's pan is applied at the mix ([`voice_pan`])
     pub(super) pan: u8,
+    /// PORT-DEVIATION (5.1): the caller's full-circle angle before [`pan_byte`] folds it (0 = ahead, also for a sound
+    /// given none) and the surround gains `[L, R, C, Ls, Rs]` of the last block (a block ramps from them)
+    pub(super) angle: u16,
+    pub(super) sur_prev: [f32; 5],
     pub(super) looping: bool,
     pub(super) finished: bool,
     /// `voice+0x45`: the request's `+0xA`, 0x7F unless the caller passes an aux byte — 0x561960
@@ -360,7 +364,7 @@ impl Voice {
             (Some(r), Some(t)) => Envelope::start(r.env_level, r.env_segments, &t.envelope),
             _ => Envelope::start(0x7F, 1, &nfs_formats::bnk::DEFAULT_ENVELOPE),
         };
-        Voice { clip, cur: Cursor::default(), gains: Gains::default(), hook: false, word, vol16: volume_16(volume), ramp: Ramp::default(), pan: 0x40, looping, finished: false, fx_scale: 0x7F, send: None, wet: 0.0, stamp, patch_pan, level, cents: 0, env, volume_phase: 0, pitch_phase: 0, pulled: false, anchor: false, held: false, bend: 0x40, lowpass: None, table: true }
+        Voice { clip, cur: Cursor::default(), gains: Gains::default(), hook: false, word, vol16: volume_16(volume), ramp: Ramp::default(), pan: 0x40, angle: 0, sur_prev: [0.0; 5], looping, finished: false, fx_scale: 0x7F, send: None, wet: 0.0, stamp, patch_pan, level, cents: 0, env, volume_phase: 0, pitch_phase: 0, pulled: false, anchor: false, held: false, bend: 0x40, lowpass: None, table: true }
     }
 
     /// **`Voice_setVolume` 0x566340 → 0x5662B0** on one voice: the int `<< 16` into `voice+0x2C`

@@ -215,6 +215,7 @@ impl Core {
             Cmd::Pan { id, pan } => {
                 for (_, v) in g.voices.iter_mut().filter(|(i, _)| *i == id) {
                     v.pan = pan_byte(pan);
+                    v.angle = pan;
                     // 0x5661F0 stores the angle and calls 0x590CC0 unconditionally (no compare)
                     v.hook = true;
                 }
@@ -225,6 +226,7 @@ impl Core {
                 for (_, v) in g.voices.iter_mut().filter(|(i, _)| *i == id) {
                     v.bend = bend as i8;
                     v.pan = pan_byte(pan);
+                    v.angle = pan;
                     // the strip build's hook call with the request's `+0x12` (0x589FE0, `PlayArgs::filter`)
                     if let Some(value) = filter {
                         LowPass::set(&mut v.lowpass, value, rate);
@@ -301,14 +303,65 @@ impl Core {
         let step = mix_rate as f64 / out_rate;
         let n = out.len() / channels.max(1);
         let mut bridge = std::mem::take(&mut g.bridge);
+        // PORT-DEVIATION (5.1): the surround path when it is wanted and the device has the channels; switched on
+        // with the surround queue as long as the stereo one (lockstep), off by dropping it
+        let sur = SURROUND.load(Ordering::Relaxed) && channels >= 6;
+        if sur != g.sur {
+            g.sur = sur;
+            g.sur_bridge.pending.clear();
+            if sur {
+                g.sur_bridge = SurBridge::default();
+                g.sur_bridge.pending.extend(std::iter::repeat_n([0.0f32; 3], bridge.pending.len()));
+            }
+            for (_, v) in g.voices.iter_mut() {
+                v.sur_prev = [0.0; 5];
+            }
+        }
+        let mut sb = std::mem::take(&mut g.sur_bridge);
+        let order: [usize; 6] = std::array::from_fn(|i| SPEAKER_ORDER[i].load(Ordering::Relaxed) as usize);
+        // the speaker test: a new request starts it
+        let req = SPEAKER_TEST.load(Ordering::Relaxed);
+        if req != g.speaker_test.seen {
+            g.speaker_test = SpeakerTestState { seen: req, frame: Some(0) };
+        }
         for (k, frame) in out.chunks_exact_mut(channels.max(1)).enumerate() {
-            let lr = bridge.next(step, n - k, |_, pending| g.pump_to(mix_rate, pending));
-            // a mono device takes the left channel, a third and later one the right
-            for (ch, o) in frame.iter_mut().enumerate() {
-                *o = lr[ch.min(1)];
+            let lr = bridge.next(step, n - k, |_, pending| g.pump_to_sur(mix_rate, pending, if sur { Some(&mut sb.pending) } else { None }));
+            if sur {
+                // L, R, C, LFE, Ls, Rs at their channels; any other channel silent
+                frame.fill(0.0);
+                let s = sb.next(step);
+                for (slot, x) in [(0, lr[0]), (1, lr[1]), (2, s[0]), (4, s[1]), (5, s[2])] {
+                    if let Some(o) = frame.get_mut(order[slot]) {
+                        *o = x;
+                    }
+                }
+            } else {
+                // a mono device takes the left channel, a third and later one the right
+                for (ch, o) in frame.iter_mut().enumerate() {
+                    *o = lr[ch.min(1)];
+                }
+            }
+            // the speaker test: 0.9 s of 440 Hz then 0.3 s of nothing per speaker (L, C, R, Rs, Ls; stereo L, R)
+            if let Some(f) = g.speaker_test.frame {
+                let per = (out_rate * 1.2) as u64;
+                let seq: &[usize] = if sur { &[0, 2, 1, 5, 4] } else { &[0, 1] };
+                let i = (f / per) as usize;
+                if let Some(&slot) = seq.get(i) {
+                    let inside = (f % per) as f64 / out_rate;
+                    if inside < 0.9 {
+                        let ch = if sur { order[slot] } else { slot };
+                        if let Some(o) = frame.get_mut(ch) {
+                            *o += 0.2 * (inside * 440.0 * std::f64::consts::TAU).sin() as f32;
+                        }
+                    }
+                    g.speaker_test.frame = Some(f + 1);
+                } else {
+                    g.speaker_test.frame = None;
+                }
             }
         }
         g.bridge = bridge;
+        g.sur_bridge = sb;
     }
 }
 

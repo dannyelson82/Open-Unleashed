@@ -144,6 +144,7 @@ All off / original by default; switched in **Extras** (pause menu › extras), s
 | Anisotropic filtering, draw distance (+fog), FOV offsets | Graphics | `nfs-renderer` (`set_anisotropy`), `race_stages.rs`, `render_scene.rs` |
 | Anti-aliasing: Off / FXAA / MSAA 4× (next start) | Graphics | `nfs-renderer`: `FxaaPass`; MSAA = the 66 mesh pipelines built a second time at 4 samples, the 3-D pass drawn into multisampled targets and resolved into the frame (not for a front-end frame whose sprites test the 3-D depth; no alpha-to-coverage) |
 | HD textures: Original / HD (next race) | Graphics | `nfs_assets::hd` (see "HD texture packs") |
+| Speakers: Stereo (original) / 5.1 when available; Speaker test | Audio | `nfs_audio::mixer` (`set_surround`, `vbap_5_1`): with ≥ 6 output channels, mono voices are panned by their full-circle angle across L C R Ls Rs (pairwise constant power), stereo voices / music / speech stay front, the reverb's wet also feeds Ls / Rs, LFE silent; a second bridge carries C / Ls / Rs in lockstep. Stereo output untouched (all 177 audio tests, incl. the dump comparisons, pass) |
 | Rumble: Original / Enhanced; Trigger effects: Off / Subtle / Strong; Test effects | Controller | `nfs_game::haptics` (pure), `app/force_feedback.rs::haptics_drive` (after the original's driver, never below its levels), `nfs_input::gamepad` (`trigger_rumble`), `nfs_input::dualsense_apple` (GameController adaptive triggers; released on pause / race end / exit) |
 | Steering curve, speed-sensitive steering, countersteer, ABS | Driving assists | `nfs_game::assists` (applied to the local packet: replays/network exact) |
 | Pause when headphones disconnect; output follows the default device | Audio | `nfs-audio` `route_check`, `app/lifecycle.rs` |
@@ -178,8 +179,10 @@ then also shows "HD textures in use: x / y".
 ## Apple TV settings that matter
 - **Match Frame Rate / Match Dynamic Range** (Settings › Video and Audio › Match Content): the app asks for 60 Hz SDR;
   with Match Dynamic Range on, a future HDR mode will switch the TV to HDR.
-- **Audio Format**: Auto sends multichannel PCM over HDMI (for a future 5.1 mode); through a TV's ARC usually only
-  stereo arrives (eARC passes 5.1 PCM).
+- **Audio Format**: Auto sends multichannel PCM over HDMI, which the game's 5.1 mode (Extras › Audio › Speakers) needs;
+  through a TV's ARC usually only stereo arrives (eARC passes 5.1 PCM); with an optical link set **Dolby Digital 5.1**
+  (the Apple TV encodes; the game still outputs six channels). The shell asks the route for every channel it has and
+  maps L / R / C / LFE / Ls / Rs by the route's channel labels (logged as "speaker order"); **Speaker test** checks it.
 - **Automatic tvOS updates off** (atvloadly must be re-paired after updates).
 
 ## AirPods

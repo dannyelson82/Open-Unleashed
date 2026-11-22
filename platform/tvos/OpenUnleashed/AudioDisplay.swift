@@ -16,10 +16,31 @@ enum AudioSetup {
         } catch {
             NSLog("OpenUnleashed: audio session setup failed: %@", error.localizedDescription)
         }
+        // 5.1 (Extras › Audio › Speakers): ask for every channel the route offers (tvOS gives the app 2 unless asked),
+        // and tell the engine where L, R, C, LFE, Ls, Rs are by the route's channel labels
+        if s.maximumOutputNumberOfChannels > 2 {
+            try? s.setPreferredOutputNumberOfChannels(s.maximumOutputNumberOfChannels)
+        }
+        exportSpeakerOrder(s)
         NSLog("OpenUnleashed: audio route %@, %d/%d output channels, latency %.0f ms",
               s.currentRoute.outputs.map { "\($0.portName) (\($0.portType.rawValue))" }.joined(separator: ", "),
               s.outputNumberOfChannels, s.maximumOutputNumberOfChannels, s.outputLatency * 1000)
     }
+}
+
+/// `NFS_SPEAKER_ORDER`: the output channel of each of L, R, C, LFE, Ls, Rs, from the route's channel labels (the
+/// standard order when a label is missing). Never assume an HDMI layout's order (`enhancements-plan.md` §6).
+func exportSpeakerOrder(_ s: AVAudioSession) {
+    let channels = s.currentRoute.outputs.first?.channels ?? []
+    let labels = channels.map { $0.channelLabel }
+    let wanted: [[AudioChannelLabel]] = [
+        [kAudioChannelLabel_Left], [kAudioChannelLabel_Right], [kAudioChannelLabel_Center], [kAudioChannelLabel_LFEScreen],
+        [kAudioChannelLabel_LeftSurround, kAudioChannelLabel_RearSurroundLeft, kAudioChannelLabel_LeftSurroundDirect],
+        [kAudioChannelLabel_RightSurround, kAudioChannelLabel_RearSurroundRight, kAudioChannelLabel_RightSurroundDirect],
+    ]
+    let order = wanted.enumerated().map { i, ls in labels.firstIndex(where: { ls.contains($0) }) ?? i }
+    setenv("NFS_SPEAKER_ORDER", order.map(String.init).joined(separator: ","), 1)
+    NSLog("NFS Haven: %d output channels, labels %@ → speaker order %@", s.outputNumberOfChannels, labels.map { String($0) }.joined(separator: ","), order.map(String.init).joined(separator: ","))
 }
 
 enum AudioRoutes {
