@@ -252,6 +252,7 @@ pub fn routes() -> Router<Shared> {
         .route("/v1/data/sets", get(sets))
         .route("/v1/data/{game}/{set}/manifest", get(manifest))
         .route("/v1/data/{game}/{set}/file/{*path}", get(file))
+        .route("/v1/data/{game}/{file}", get(crate::bundle::tar))
 }
 
 async fn sets(State(st): State<Shared>) -> Response {

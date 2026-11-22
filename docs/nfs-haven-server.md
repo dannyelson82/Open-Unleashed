@@ -83,6 +83,7 @@ Backups: `data/` holds the saves and their versions — the normal Unraid appdat
 | `GET /v1/info` | name, `server: "nfs-haven-server"`, version, features, `games`, data sets, lobby |
 | `GET /v1/data/sets` | every set (`porsche/original`, `porsche/mod-<name>`, `porsche/hd`, …) with its game, kind, file count and size |
 | `GET /v1/data/{game}/{set}/manifest` | `{format, set, total_size, files:[{path,size,sha256}]}` — identical to `make-manifest --game {game}`'s output |
+| `GET /v1/data/{game}/{set}.tar` | **fast install**: the whole set as one uncompressed tar, streamed on the fly in manifest order (nothing extra on disk); fixed ustar headers, so every file's offset follows from the manifest; `Range` + `If-Range` on the `ETag` `"tar-<16 bytes of the manifest's SHA-256>"` — the app resumes from its first missing file and checks every file's SHA-256 as it extracts |
 | `GET /v1/data/{game}/{set}/file/{path}` | the file; `Range` (resume), `If-Range`, `ETag` = `"<sha256>"`, `X-Content-SHA256`. Only manifest files; no path escapes |
 | `GET /v1/saves` | namespaces (one per game: `porsche`, …) |
 | `GET /v1/saves/{ns}` | files with size, SHA-256, ETag, last writer (`X-NFSH-Device`), time |
