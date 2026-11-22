@@ -123,5 +123,18 @@ OU_BUNDLE_ID=com.you.openunleashed scripts/export-ipa.sh
 which keeps its data container — the downloaded game data in `Library/Caches/game` (unless tvOS purged it) and the
 `NSUserDefaults` save mirror + server setting. Deleting the app from the Apple TV deletes both.
 
+## AirPods
+- **Mac head-look** (`airpods-plan.md` H; macOS 14+; Extras › Controller › Head-look, off by default): AirPods
+  head tracking turns the bumper / driver view (strength Low/Medium/High = 50/75/100° of view for 20° of head
+  turn, optional up/down tilt ±15°). Dead zone 3°, smoothing ~80 ms, max 110°, drift correction ~1°/s near
+  centre, recentre on a >30° jump, at race start, after a pause and on pad L3 + R3; a held look key wins.
+  Render-only — replays and network races are unaffected. Code: `nfs_game::headlook` (pure, tested),
+  `open-unleashed/src/app/headlook.rs` (CoreMotion, macOS only). Needs the **app bundle**
+  (`packaging/make_app.sh` adds `NSMotionUsageDescription`); a bare `cargo run` binary logs why and leaves it off.
+  macOS asks for Motion & Fitness permission on first use; if denied it stays off.
+- **Not on tvOS**: `CMHeadphoneMotionManager` doesn't exist on tvOS, so the rows are hidden there.
+- Apple TV: the app declares multichannel content (`setSupportsMultichannelContent`) — spatial audio with
+  AirPods is up to tvOS (probe P1 on the device).
+
 ## Known issues
 (see PROGRESS.md — kept current there)

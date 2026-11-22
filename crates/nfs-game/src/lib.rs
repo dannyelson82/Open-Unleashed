@@ -2,6 +2,7 @@
 //! Currently: start-grid extraction and scene assembly for tracks and cars.
 //! Race logic (checkpoints, laps, positions) follows M5.
 pub mod extras;
+pub mod headlook;
 pub mod ai;
 pub mod aidrive;
 pub mod camera;

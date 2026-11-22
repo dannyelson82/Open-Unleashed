@@ -94,6 +94,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
        macOS ends the app the moment it touches the microphone; with it the user is asked once, and
        a refusal only leaves the voice chat without capture. -->
   <key>NSMicrophoneUsageDescription</key><string>$APP_TITLE sends your voice to the other players during network races, as the original game did.</string>
+  <!-- Head-look (PORT-DEVIATION, airpods-plan.md H): AirPods head tracking turns the in-car view when it is
+       switched on in Extras > Controller. macOS asks once; without this key it would end the app on first use. -->
+  <key>NSMotionUsageDescription</key><string>Head tracking with AirPods to look around inside the car (Extras > Controller > Head-look).</string>
 </dict></plist>
 PLIST
 # Seal the bundle with an ad-hoc signature (PLATFORM GLUE): Apple Silicon runs only signed code, and
