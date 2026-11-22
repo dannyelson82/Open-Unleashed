@@ -87,17 +87,42 @@ pub struct Controller {
     pub head_look_pitch: bool,
 }
 
+/// Driving assists (`enhancements-plan.md` §4; `nfs_game::assists`). Indices into the Extras rows' values.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Assists {
+    /// steering response: 0 linear (original), 1 soft, 2 softer
+    pub steering_response: u8,
+    /// speed-sensitive steering: 0 off, 1 low, 2 medium, 3 high
+    pub speed_steering: u8,
+    /// countersteer assist: 0 off, 1 light, 2 strong
+    pub countersteer: u8,
+    pub abs: bool,
+}
+
+impl Assists {
+    pub fn settings(&self) -> crate::assists::AssistSettings {
+        crate::assists::AssistSettings {
+            curve: [1.0, 1.5, 2.0][self.steering_response.min(2) as usize],
+            lock_at_200: [1.0, 0.75, 0.55, 0.4][self.speed_steering.min(3) as usize],
+            countersteer: [0.0, 0.5, 1.0][self.countersteer.min(2) as usize],
+            abs: self.abs,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ExtrasSettings {
     pub version: u32,
     pub display: Display,
     pub controller: Controller,
+    pub assists: Assists,
 }
 
 impl Default for ExtrasSettings {
     fn default() -> Self {
-        Self { version: VERSION, display: Display::default(), controller: Controller::default() }
+        Self { version: VERSION, display: Display::default(), controller: Controller::default(), assists: Assists::default() }
     }
 }
 
@@ -168,6 +193,7 @@ mod tests {
         assert!(!s.display.fps_overlay);
         assert_eq!(s.display.render_scale, RenderScale::Native);
         assert_eq!(s.display.hud_size, HudSize::Original);
+        assert!(!s.assists.settings().any(), "no assist by default");
     }
 
     #[test]
