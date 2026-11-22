@@ -20,6 +20,19 @@ pub(crate) fn point_filter() -> bool {
     POINT_FILTER.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+/// PORT-DEVIATION (Extras › Graphics › Texture filtering): anisotropic filtering on the scene's trilinear samplers
+/// (1 = off, the original; 4, 8, 16). Set before the renderer is made; the 2D sprite sampler and the point
+/// samplers never get it (`RE/AUDIT.md` F2).
+static ANISOTROPY: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(1);
+
+pub fn set_anisotropy(n: u16) {
+    ANISOTROPY.store(n.clamp(1, 16), std::sync::atomic::Ordering::Relaxed);
+}
+
+pub(crate) fn anisotropy() -> u16 {
+    ANISOTROPY.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 mod camera;
 mod front;
 mod gpu;

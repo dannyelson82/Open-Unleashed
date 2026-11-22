@@ -87,6 +87,41 @@ pub struct Controller {
     pub head_look_pitch: bool,
 }
 
+/// Graphics (`enhancements-plan.md` §3). Indices into the Extras rows' values; 0 = the original everywhere.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Graphics {
+    /// texture filtering: 0 original (trilinear), 1 anisotropic 4×, 2 8×, 3 16×
+    pub filtering: u8,
+    /// draw distance: 0 the original's option, 1 ×1.25, 2 ×1.5, 3 ×2 (fog pushed out by the same factor)
+    pub draw_distance: u8,
+    /// field-of-view offset, chase views: 0 = −5°, 1 = 0, 2 = +5°, 3 = +10°
+    pub fov_chase: u8,
+    /// field-of-view offset, bumper / driver views (same steps)
+    pub fov_incar: u8,
+}
+
+impl Default for Graphics {
+    /// the original: no anisotropy, its own draw distance, the FOV rows on "0°" (index 1)
+    fn default() -> Self {
+        Self { filtering: 0, draw_distance: 0, fov_chase: 1, fov_incar: 1 }
+    }
+}
+
+impl Graphics {
+    pub fn anisotropy(&self) -> u16 {
+        [1, 4, 8, 16][self.filtering.min(3) as usize]
+    }
+    pub fn draw_distance_factor(&self) -> f32 {
+        [1.0, 1.25, 1.5, 2.0][self.draw_distance.min(3) as usize]
+    }
+    /// degrees added to the vertical field of view
+    pub fn fov_offset(&self, in_car: bool) -> f32 {
+        let i = if in_car { self.fov_incar } else { self.fov_chase };
+        [-5.0, 0.0, 5.0, 10.0][i.min(3) as usize]
+    }
+}
+
 /// Driving assists (`enhancements-plan.md` §4; `nfs_game::assists`). Indices into the Extras rows' values.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -118,11 +153,12 @@ pub struct ExtrasSettings {
     pub display: Display,
     pub controller: Controller,
     pub assists: Assists,
+    pub graphics: Graphics,
 }
 
 impl Default for ExtrasSettings {
     fn default() -> Self {
-        Self { version: VERSION, display: Display::default(), controller: Controller::default(), assists: Assists::default() }
+        Self { version: VERSION, display: Display::default(), controller: Controller::default(), assists: Assists::default(), graphics: Graphics::default() }
     }
 }
 
@@ -194,6 +230,9 @@ mod tests {
         assert_eq!(s.display.render_scale, RenderScale::Native);
         assert_eq!(s.display.hud_size, HudSize::Original);
         assert!(!s.assists.settings().any(), "no assist by default");
+        assert_eq!(s.graphics.anisotropy(), 1);
+        assert_eq!(s.graphics.draw_distance_factor(), 1.0);
+        assert_eq!((s.graphics.fov_offset(true), s.graphics.fov_offset(false)), (0.0, 0.0));
     }
 
     #[test]
@@ -206,5 +245,7 @@ mod tests {
         assert_eq!(ExtrasSettings::parse(r#"{"display":{"fps_overlay":true},"future":1}"#).display.fps_overlay, true);
         assert_eq!(ExtrasSettings::parse("not json"), ExtrasSettings::default());
         assert_eq!(ExtrasSettings::parse(r#"{"display":{"render_scale":"p1080"}}"#).display.render_scale, RenderScale::P1080);
+        // a partial graphics block keeps the FOV at 0°, not −5°
+        assert_eq!(ExtrasSettings::parse(r#"{"graphics":{"filtering":2}}"#).graphics.fov_offset(true), 0.0);
     }
 }

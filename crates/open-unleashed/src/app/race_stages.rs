@@ -1198,6 +1198,11 @@ impl App {
         {
             self.detail = [0.5f32, 0.67, 0.83, 1.0][i.min(3)];
         }
+        // PORT-DEVIATION (Extras › Graphics › Draw distance): beyond the original's longest; the fog moves out
+        // by the same factor (`render_scene.rs`, `mirror.rs`)
+        if nfs_game::config::cfg().nfs_detail.as_str().is_none() {
+            self.detail *= nfs_game::extras::get().graphics.draw_distance_factor();
+        }
         renderer.set_lens_probe(self.lens.enabled);
         if let Some(images) = common.as_ref() {
             let mut names: Vec<String> = self.flare_defs.iter().flat_map(|d| d.textures.iter().flatten().cloned()).collect();

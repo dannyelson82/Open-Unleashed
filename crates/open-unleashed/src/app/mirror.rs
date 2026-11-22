@@ -198,7 +198,7 @@ impl App {
             if let Some(c) = bin.background_at(self.sky_level(), 1, main_slice, lap) {
                 clear = [c[0] as f64, c[1] as f64, c[2] as f64, 1.0];
             }
-            let fog = |sky: bool| bin.fog_at(sky, mirror_slice, lap).filter(|_| self.ini.fog).map(|(colour, density)| nfs_renderer::Fog { colour, density });
+            let fog = |sky: bool| bin.fog_at(sky, mirror_slice, lap).filter(|_| self.ini.fog).map(|(colour, density)| nfs_renderer::Fog { colour, density: density / nfs_game::extras::get().graphics.draw_distance_factor() });
             (scene.sky_fog, scene.fog) = (fog(true), fog(false));
         }
         if let Some(r) = self.renderer.as_mut() {

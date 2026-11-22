@@ -864,8 +864,12 @@ impl Core {
         // anisotropy at 8, the port's own). The promotion to `LINEAR` is `[0x69DD1D]`, which
         // 0x44ED10 clears and sets again only at `SPECIALFX` 3 (0x44EDD1, 0x44EF04) and the front
         // end's 0x44F020 clears (0x44F080) — `set_trilinear`; below it the mip filter is `POINT`.
+        // PORT-DEVIATION (Extras › Texture filtering): anisotropy on the all-linear (trilinear) samplers only —
+        // wgpu allows it there alone; 1 = the original
+        let aniso = crate::anisotropy();
         let make_sampler = |clamp_u: bool, clamp_v: bool, mag_min: wgpu::FilterMode, mip: wgpu::MipmapFilterMode| {
             let mode = |c: bool| if c { wgpu::AddressMode::ClampToEdge } else { wgpu::AddressMode::Repeat };
+            let all_linear = mag_min == wgpu::FilterMode::Linear && mip == wgpu::MipmapFilterMode::Linear;
             device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some("scene"),
                 address_mode_u: mode(clamp_u),
@@ -874,6 +878,7 @@ impl Core {
                 mag_filter: mag_min,
                 min_filter: mag_min,
                 mipmap_filter: mip,
+                anisotropy_clamp: if all_linear { aniso } else { 1 },
                 ..Default::default()
             })
         };
