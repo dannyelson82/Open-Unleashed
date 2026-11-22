@@ -18,7 +18,7 @@ no compatibility names kept, since nothing was installed yet).
 | Image | `ghcr.io/dannyelson82/nfs-haven-server:latest` |
 | Container | `nfs-haven-server` (template `packaging/unraid/nfs-haven-server.xml`) |
 | Port | `8642` |
-| Appdata | `/mnt/user/appdata/nfs-haven-server/` (`games/`, `data/`, `inbox/`, `sources/`, `staging/`) |
+| Folders | share `nfs-haven`: `/mnt/user/nfs-haven/{games,inbox,sources,staging}`; saves `/mnt/user/appdata/nfs-haven-server/data` |
 
 In the app's **Server** setting use `tower.local` (or `192.168.1.10`) at home and
 `tower.<your-tailnet>.ts.net` away from home, plus the password. Where to enter it:
@@ -34,7 +34,7 @@ Apple TV can use different names for the same server.
 
 ## The games folder
 ```
-/mnt/user/appdata/nfs-haven-server/
+/mnt/user/nfs-haven/   (and /mnt/user/appdata/nfs-haven-server/data for data/)
   games/                      mounted at /games (imports publish here)
     porsche/                  Need for Speed: Porsche Unleashed
       original/               GameData/, FEData/, version.txt, fe.txt, nfs5.exe   → set porsche/original
@@ -79,11 +79,13 @@ kept sources), and the recent jobs with their logs (`GET /v1/imports`, `POST /v1
 `GET /v1/imports/logs/{id}`). Each published set carries a hidden `.nfsh-import.json` saying which sources made it.
 
 ## Install on Unraid
-1. Either drop your disc images and the 3.5 update into `/mnt/user/appdata/nfs-haven-server/inbox/` once the container
+1. Either drop your disc images and the 3.5 update into `/mnt/user/nfs-haven/inbox/` (the `nfs-haven` share's `inbox`) once the container
    runs (Imports, above), or copy a game's files to `games/<game>/original/` yourself, e.g. from the Mac:
-   `rsync -a ~/Documents/OpenUnleashed/game-data/ root@tower.local:/mnt/user/appdata/nfs-haven-server/games/porsche/original/`
-2. Docker › Add Container › Template: paste the template URL, or copy `packaging/unraid/nfs-haven-server.xml` to
-   `/boot/config/plugins/dockerMan/templates-user/my-nfs-haven-server.xml` on the flash drive and pick it.
+   `rsync -a ~/Documents/OpenUnleashed/game-data/ root@tower.local:/mnt/user/nfs-haven/games/porsche/original/`
+2. Make the share `nfs-haven` (Shares › Add Share, SMB export Yes, Private, your user Read/Write). Install the template
+   once (Unraid terminal: `wget -O /boot/config/plugins/dockerMan/templates-user/my-nfs-haven-server.xml
+   https://raw.githubusercontent.com/dannyelson82/Open-Unleashed/tvos-port/packaging/unraid/nfs-haven-server.xml`),
+   then Docker › Add Container › Template › **nfs-haven-server**.
 3. Set **Password** to a long random string (e.g. `openssl rand -hex 24`). Leave the paths as they are.
 4. Apply, then open `http://tower.local:8642/?token=<password>`: the status page ("NFS Haven server") lists
    `porsche/original` (1,594 files, 531 MB for the US disc patched to 3.5) once the manifest is built (a few seconds;

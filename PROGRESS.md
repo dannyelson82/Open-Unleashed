@@ -69,6 +69,12 @@ new **Inbox** (always shown), **Sources** and **Staging** (advanced) under `/mnt
 Not yet: Most Wanted (needs the 1.3 update + the speed.exe question), a web upload on the status page, "build inputs"
 sets for Mac builds, InstallShield / `.7z` sources (no game needs them yet).
 
+**Unraid template (2026-11-22)**: `packaging/unraid/nfs-haven-server.xml` in ReelHaven's style — Games / Inbox /
+Sources / Staging on the `nfs-haven` share (`/mnt/user/nfs-haven/…`, all rw; Sources and Staging advanced), Data in
+appdata, a description on every field, the Password (`NFSH_TOKEN`) required + masked and **empty in the repo**. Icon and
+TemplateURL are raw.githubusercontent.com URLs on `tvos-port` (both 200). Installing it as Tower's user template is
+your step (this Mac can't reach Tower's flash; see the report).
+
 ## Game data transfer speed (2026-11-22)
 Measured in the tvOS Simulator against the local nfs-haven-server (`porsche/original`, 1,594 files, 530.9 MB), fresh
 install each time, two runs each, by the server's loopback address and by the Mac's LAN address — both

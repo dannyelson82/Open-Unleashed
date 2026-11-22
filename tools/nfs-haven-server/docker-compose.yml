@@ -18,8 +18,8 @@ services:
     volumes:
       # one folder per game (filled by imports, or by hand): porsche/original/ (GameData/, FEData/, version.txt, fe.txt, nfs5.exe),
       # porsche/mods/<name>/, porsche/hd/ — later nfsse/original/ …
-      - /mnt/user/appdata/nfs-haven-server/games:/games        # imports publish sets here
+      - /mnt/user/nfs-haven/games:/games        # imports publish sets here
       - /mnt/user/appdata/nfs-haven-server/data:/data          # saves, versions, caches, import logs
-      - /mnt/user/appdata/nfs-haven-server/inbox:/inbox        # drop disc images and updates here
-      - /mnt/user/appdata/nfs-haven-server/sources:/sources    # kept read-only, with checksums
-      - /mnt/user/appdata/nfs-haven-server/staging:/staging    # builds a set before it is swapped in
+      - /mnt/user/nfs-haven/inbox:/inbox        # drop disc images and updates here
+      - /mnt/user/nfs-haven/sources:/sources    # kept read-only, with checksums
+      - /mnt/user/nfs-haven/staging:/staging    # builds a set before it is swapped in
