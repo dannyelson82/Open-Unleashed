@@ -62,6 +62,8 @@ Choices made without asking (per your instruction); each is easy to change.
 18. **Siri Remote Menu never leaves the app** (Apple's guideline wants Menu at the top level to go Home; for a sideloaded personal build the game's own "back"/exit question is more useful). Home (TV button) still leaves.
 19. **On-screen keyboard opens by itself** when a text field becomes active (once per field); a chat box only on Y, since it is always focused.
 21. **Render resolution via the view's content scale** (system upscales) instead of an engine render target — default native until measured on the device.
+29. **Save-sync conflict rules**: at start, both sides changed while apart → the server's copy is active, the local one is kept as a `.bak` file beside it (plan's rule). During play, another device saved since → **this device's copy wins** (it's the game being played; replacing the save under the running game could be overwritten again anyway) and the other device's copy stays on the server as a restorable version. One server namespace `household` for all game profiles.
+30. **Sync is on by default on tvOS** once a server is set (it's the same server as the game data); **opt-in on the Mac** (no Mac UI to type the address yet — set it in `extras.json`).
 27. **Traction control "On" left out**: it's a physics flag (`vehicle.tcs`) set at race start that replays and network peers don't know about, so it would make them diverge. Needs the flag recorded in the replay/launch data first (or an input-side throttle limiter once wheel-slip units are checked).
 28. **Assists default off on both platforms** (the plan suggests a soft curve + medium speed steering on tvOS; decide with a pad on the TV).
 26. **Head-look**: bumper/driver views only (the plan's "also in chase views" left out for now); recentre = race start, unpause, pad L3+R3 (no keyboard key bound); positive head yaw = view left — to confirm with AirPods.
@@ -130,7 +132,8 @@ Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, e
 |---|---|
 | `crates/ou-manifest` (shared) + `tools/make-manifest` | ✅ your data: 1,593 files, 528.8 MB, ~2 s; the server's manifest is byte-identical |
 | Phase 1 — info + data sets (`original`, `mod-<name>` overlays, `hd`), manifests with hash cache, files with Range/If-Range/ETag | ✅ tested on the Mac: resumed download of the largest file (117.6 MB) verifies against its SHA-256; 416 past end; path escapes 400; files outside the manifest 404 |
-| Phase 2 — saves (`If-Match`/412, versions: last N + one per day for 30 days, restore) | ✅ server side; tested (Mac/TV conflict keeps both, restore works). Client side: ⬜ not started (Stage 9 item 7) |
+| Phase 2 — saves (`If-Match`/412, versions: last N + one per day for 30 days, restore) | ✅ server side; tested (Mac/TV conflict keeps both, restore works) |
+| Phase 2 client (`open-unleashed/src/sync.rs`, both platforms) | ✅ two fake "devices" on the Mac against the local server: A's save uploads; B (empty) pulls it at start; both changed while apart → server's copy active + local kept as `.local-<time>.bak` + server keeps the other as a version; another device saved during play → this device's copy current, the other kept as a server version. Offline: retried every 5 s. On tvOS on automatically with the Game Data server; on the Mac opt-in (`extras.json` › `network`: `server`, `token`, `sync_saves`) | 
 | Phase 3 — lobby (register/heartbeat/expiry, address order for tailnet vs LAN, `?via=`) | ✅ server side; tested. Client side: ⬜ not started |
 | Status page (`/?token=…`): sets, saves + versions with download/restore, games, devices | ✅ |
 | Auth (Bearer / `?token=`), PUID/PGID drop, `--healthcheck` | ✅ |
@@ -145,7 +148,7 @@ Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-loc
 
 ## Next (in order, not started)
 1. Stage 9 item 0: Extras settings menu + `extras.json` (switches for the overlay, render scale, etc.).
-3. Server clients in the engine: save sync (phase 2) and lobby (phase 3).
+3. Lobby client (phase 3): host registration + join-list merge; Mac UI for the server address.
 4. Remaining enhancements 1–11, the rest of the AirPods plan (route changes, auto-pause on disconnect), LAN multiplayer test.
 
 ## Needs Apple TV

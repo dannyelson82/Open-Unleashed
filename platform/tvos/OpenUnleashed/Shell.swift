@@ -23,6 +23,12 @@ final class Shell {
         // frame-time overlay (Stage 7.1) until the Extras menu has the switch: `-ou.fpsOverlay YES`
         if UserDefaults.standard.bool(forKey: "ou.fpsOverlay") { setenv("NFS_FPS_OVERLAY", "1", 1) }
         DisplayMode.exportRenderScale()
+        // save sync with the same OpenUnleashed server the game data comes from (server-plan.md phase 2)
+        if UserDefaults.standard.object(forKey: ServerSettings.addressKey) != nil || !ServerSettings.token.isEmpty {
+            setenv("OU_SERVER", ServerSettings.address, 1)
+            setenv("OU_TOKEN", ServerSettings.token, 1)
+            setenv("OU_DEVICE", UIDevice.current.name, 1)
+        }
         AudioSetup.configure()
         NSLog("OpenUnleashed: game data %@, saves %@", gameDir.path, saveDir.path)
     }

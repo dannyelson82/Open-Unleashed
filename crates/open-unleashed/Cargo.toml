@@ -30,6 +30,11 @@ glam.workspace = true
 nfs-math.workspace = true
 image.workspace = true
 nfs-audio.workspace = true
+# the OpenUnleashed server client (save sync, lobby): blocking HTTP on a worker thread; rustls for `*.ts.net` HTTPS
+ureq = { version = "3", default-features = false, features = ["rustls", "json"] }
+serde = { workspace = true }
+serde_json = "1"
+sha2 = "0.10"
 
 # Mac head-look (AirPods motion, `airpods-plan.md` H): CoreMotion's headphone motion manager, macOS only
 [target.'cfg(target_os = "macos")'.dependencies]
