@@ -7,30 +7,284 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		003F52C3407DFA15EFFF443B /* menu.c in Sources */ = {isa = PBXBuildFile; fileRef = 5C9B0886CB4352C32CE6D39F /* menu.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		00659162E41F374698A855C4 /* ctrlopt.c in Sources */ = {isa = PBXBuildFile; fileRef = 5B9A5600F583E92CB409B791 /* ctrlopt.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		06AC5BC1AB58B7812C9D5468 /* showcase.c in Sources */ = {isa = PBXBuildFile; fileRef = 1892EDE276B2CC014D1CFA33 /* showcase.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		06B56B7B24A72E227BD97F8B /* unpack.c in Sources */ = {isa = PBXBuildFile; fileRef = 7247941BFA09EFB4CC18A04F /* unpack.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		0890B52D5A40422D7E51947C /* unpack.h in Sources */ = {isa = PBXBuildFile; fileRef = 7AD372DEBE25489D23E38FBB /* unpack.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		0966834ADF65637A9FABD044 /* gfxopt.h in Sources */ = {isa = PBXBuildFile; fileRef = EBF14F7A6B39EF70B3B68FEA /* gfxopt.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		0A9AD223E37A8985B58761CC /* fe.c in Sources */ = {isa = PBXBuildFile; fileRef = BE96E6230F9251C903B42CAF /* fe.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		0F15F75793FAE8F6755A4078 /* trackrec.c in Sources */ = {isa = PBXBuildFile; fileRef = 57E752982E57915B2905DA6C /* trackrec.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		13261CBFC9CAED30B24E40F1 /* crash.c in Sources */ = {isa = PBXBuildFile; fileRef = 68B2646AED1B94BC57712B3B /* crash.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		15DAA80E698B4CEE61FB4C4E /* sky.h in Sources */ = {isa = PBXBuildFile; fileRef = 7D135511CACB4081481FC74F /* sky.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		183CF23B074746F3B4311A97 /* movie.c in Sources */ = {isa = PBXBuildFile; fileRef = 611BEEDD8A09F45D36C94455 /* movie.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		19A21C1B709E96782C593E3F /* font.h in Sources */ = {isa = PBXBuildFile; fileRef = 072D810FB5AB168F53B70DB4 /* font.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		1B3B85D34D23D7043073BB54 /* timing.c in Sources */ = {isa = PBXBuildFile; fileRef = 7E9518537618D5DEE8D4D985 /* timing.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		1BBA744C03EF416F94E3EECE /* smoke.h in Sources */ = {isa = PBXBuildFile; fileRef = C1695CC4630D78D5EACD8185 /* smoke.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		1BC955CAD18A842E705028B5 /* credits.h in Sources */ = {isa = PBXBuildFile; fileRef = 442F3674850001E3D836149C /* credits.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		1BFD10EEB239CA3DFC23A8AC /* dash.c in Sources */ = {isa = PBXBuildFile; fileRef = 90D35DD6C96380B4827C6BFF /* dash.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		1CC1E8799B83D3E1302327DA /* racesnd.c in Sources */ = {isa = PBXBuildFile; fileRef = C670DC7161CFE9AB3F1D7035 /* racesnd.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		1D0C526FD28F96A47EDF1D72 /* racemenu.c in Sources */ = {isa = PBXBuildFile; fileRef = 6B069ED1598A7C116C69B2F8 /* racemenu.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		1D4F9180BBE40454EAA0C4B3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B85096C407BB942913B652E7 /* Assets.xcassets */; };
+		1E387CDF7E580C2E2CE6D1D8 /* drive.c in Sources */ = {isa = PBXBuildFile; fileRef = 3602686C3723B46882D48BF7 /* drive.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		20FCFDAB7DF9140E91EBE067 /* audioopt.c in Sources */ = {isa = PBXBuildFile; fileRef = 33D22F47FFA92506A7CCECAD /* audioopt.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		21737664A999AE02BE8CEC29 /* AudioDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D853CB8DCAE931F5EDF3690 /* AudioDisplay.swift */; };
+		21D7176B74D2E0BBA67BA9D6 /* options.c in Sources */ = {isa = PBXBuildFile; fileRef = 52DC782FE5BB114EBE4EFA00 /* options.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		233139847161A333935210BF /* mainmenu.c in Sources */ = {isa = PBXBuildFile; fileRef = 677F3948B0173B66709DC815 /* mainmenu.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		2404EA719E17FED5C0207CB3 /* car.h in Sources */ = {isa = PBXBuildFile; fileRef = 732E7495C411821B8F122C8E /* car.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		275147BD619AE64FAC8EE114 /* config.c in Sources */ = {isa = PBXBuildFile; fileRef = 9E47DA925B2A27B6BA142B02 /* config.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		2AC83576EB7CBB46A3583127 /* fe.h in Sources */ = {isa = PBXBuildFile; fileRef = C5407729EF970538536172F3 /* fe.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		2FB9A91FFBDA047402CBA5EC /* audio.h in Sources */ = {isa = PBXBuildFile; fileRef = 3417887ECE9BFDCF61A5C131 /* audio.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		32139F157CC7801B78C841C7 /* ServerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00B5534C94C680C0FD17C5B /* ServerClient.swift */; };
+		32D3D7DB53BBB7766F971A4A /* loadsave.h in Sources */ = {isa = PBXBuildFile; fileRef = DE2DE47F153B2DE52E33E4E7 /* loadsave.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		333CFDCC8851ED9E808238CB /* video.h in Sources */ = {isa = PBXBuildFile; fileRef = D4D3CC4C2BFCCAB0D108CC61 /* video.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		35F20237A3C6DB8997662791 /* trackfam.h in Sources */ = {isa = PBXBuildFile; fileRef = 38238831DE99871A4E845F2B /* trackfam.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		387415876850C3B2F59DFA63 /* trackfam.c in Sources */ = {isa = PBXBuildFile; fileRef = 0BE60A3EBED1A11F3EF370D2 /* trackfam.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		3FCAD8FB44FFFF207D2E25D3 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = F6CA0F1D58C3A61816FA9C75 /* main.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		3FEA43A7B9CD61CF49D6C3B9 /* opponent.h in Sources */ = {isa = PBXBuildFile; fileRef = 8433E09052A13347F5B928AC /* opponent.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		40238C70CC9DAAFF63E7125F /* poly.c in Sources */ = {isa = PBXBuildFile; fileRef = 391944206A22B7D063F6FCBE /* poly.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		402E46DC262EF076D79BDF56 /* road.c in Sources */ = {isa = PBXBuildFile; fileRef = EFF82122326F3CC53F7DDFF7 /* road.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		4319FE895BBC99B6A645A58F /* sndlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 05D1DF6D2B7DC4EC49AAE9E5 /* sndlib.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		4320D9C1171BBE3B4751581C /* showcase.h in Sources */ = {isa = PBXBuildFile; fileRef = AD673F913285513872A3BD0C /* showcase.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		43DEC7688E0546DCED88E5BF /* cardraw.h in Sources */ = {isa = PBXBuildFile; fileRef = D06952B35BE1A7A2006B3C1D /* cardraw.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		446F97092463C10C9E4EEECD /* ff.c in Sources */ = {isa = PBXBuildFile; fileRef = 45C32ADBF823280FE0C6BCCB /* ff.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		489382467A28F51383C42EA3 /* hud.c in Sources */ = {isa = PBXBuildFile; fileRef = A46C41013F8D69B5ECEC9B2B /* hud.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		4A0B014AEB4AD69BBA18AC71 /* joystick.c in Sources */ = {isa = PBXBuildFile; fileRef = 90CE79E990C5A71F85EB4742 /* joystick.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		50B31E4CC3C2A5D125420112 /* menu.h in Sources */ = {isa = PBXBuildFile; fileRef = 1904546FECF6CA5F424FFBD1 /* menu.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		528010EB8D6B2EFB3863E00A /* files.c in Sources */ = {isa = PBXBuildFile; fileRef = 4FBDF76314177C666B22E58B /* files.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		5318F2E7B7FB3B6B57DC267E /* Games.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F1C781256E7539D26D8E5A /* Games.swift */; };
+		540EA9944B8A101D357C7B75 /* skid.c in Sources */ = {isa = PBXBuildFile; fileRef = 8D84F519489A153400CD0F11 /* skid.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		5AD974F064E7D377416D802E /* audioopt.h in Sources */ = {isa = PBXBuildFile; fileRef = D1E0899381F8DE4FD2B6544B /* audioopt.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		5CDCE500CE20CFDFC0FD24FD /* GameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7BAC9333C818674CEE00870 /* GameStore.swift */; };
+		5EF9F7AE50D4B0AAED01D870 /* sound.h in Sources */ = {isa = PBXBuildFile; fileRef = 9CA55B1593778374C955913E /* sound.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		60D0F892007F2C7F3728DBAD /* dash.h in Sources */ = {isa = PBXBuildFile; fileRef = DC534D5E5873DE6E5471A8C2 /* dash.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		61F67113B0E8E68AFCF0C1C8 /* ffdev.c in Sources */ = {isa = PBXBuildFile; fileRef = 5811DE1BBB130258F2768400 /* ffdev.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		627C4D3531079446471F44EA /* replay.h in Sources */ = {isa = PBXBuildFile; fileRef = 998259908A7EF99559D28054 /* replay.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		6757F96076808F5317ACA8E4 /* timing.h in Sources */ = {isa = PBXBuildFile; fileRef = 643D51667BB86289B707C831 /* timing.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		69A291B8EA17C920B5A46A3A /* NFSSEViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F04FE3BE072267E9F1C7F103 /* NFSSEViewController.swift */; };
+		69A37FDD4A3CDBD72F5F6EDB /* raster.c in Sources */ = {isa = PBXBuildFile; fileRef = FEE0ACD9F304B594D5795144 /* raster.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		6F2A1415EC28C7ADE32947FB /* files.h in Sources */ = {isa = PBXBuildFile; fileRef = C2F781C3C901175DCCA44F68 /* files.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		72C7C659B90C526BC4DEC6B5 /* view.c in Sources */ = {isa = PBXBuildFile; fileRef = A84D7601B76CB78D03067234 /* view.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		763D16EE45684CF2385845A0 /* Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = A267AFA0CFD493B179B3E243 /* Shell.swift */; };
+		76EE36A33F3C63D0D49D332D /* model.c in Sources */ = {isa = PBXBuildFile; fileRef = 1B5BDA5D7CAFFD0F6F518D28 /* model.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		7704474F55D44313CC5E462A /* racekeys.h in Sources */ = {isa = PBXBuildFile; fileRef = F038CB5ED6D4605D8B2C3533 /* racekeys.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		7A8AAD9FF40DC3B0BB498259 /* joystick.h in Sources */ = {isa = PBXBuildFile; fileRef = C556DA65DB999A995E4FED8C /* joystick.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		7AD9BAB09F4DBB7BF68E4795 /* race.c in Sources */ = {isa = PBXBuildFile; fileRef = AD6A7E35F738D5BBA481FBFD /* race.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		7B149D47DFC1EF918261B3A8 /* crash.h in Sources */ = {isa = PBXBuildFile; fileRef = 4E4557FB9A9AAE232215C889 /* crash.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		8492F7C7B8C54BFD2207706A /* racekeys.c in Sources */ = {isa = PBXBuildFile; fileRef = FE867E048B2B9A240818F8F8 /* racekeys.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		8593135A325E2A9FC23C4B22 /* ffdev.h in Sources */ = {isa = PBXBuildFile; fileRef = DB85809D639CEBC74DD9CD2A /* ffdev.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		8623CEB246E3D3A4C20CF76B /* ctrlopt.h in Sources */ = {isa = PBXBuildFile; fileRef = D99F3A731ED056070DAFEF92 /* ctrlopt.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		8BCECBA0975DC356BC97614D /* sound.c in Sources */ = {isa = PBXBuildFile; fileRef = 23987C7CBCD9B35082EB0A69 /* sound.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		913E96BC4101262D1A3E1056 /* GameDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB6884F0FEE12204803634A6 /* GameDataViewController.swift */; };
+		923D35F29738FB67C682667E /* track.c in Sources */ = {isa = PBXBuildFile; fileRef = 23598AA2E8ACA6AF1D2A6EFE /* track.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		929B6A9932912F94298BD154 /* pause.c in Sources */ = {isa = PBXBuildFile; fileRef = D58124A62601CA7ECD4D86EC /* pause.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		92BB87D9B75E5202763F474D /* ff.h in Sources */ = {isa = PBXBuildFile; fileRef = 2405C48875D3E750CA4580C2 /* ff.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		92BD711650A35AA255CD5D98 /* smooth.h in Sources */ = {isa = PBXBuildFile; fileRef = A7F1127D2DCF2ED85B45E211 /* smooth.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		94896DC080AD02E66B9AF82A /* smooth.c in Sources */ = {isa = PBXBuildFile; fileRef = B1F1AD1CEF1BBC23F06F3F32 /* smooth.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		9BC44F572B953763475CE038 /* SaveMirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1DBCFAB84757E0D21FEBDF /* SaveMirror.swift */; };
+		9BE5DB5BFEC7D46E2EFB6E0D /* trackinfo.h in Sources */ = {isa = PBXBuildFile; fileRef = BB5921938DB2FFB406311A8E /* trackinfo.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		9D2366D8EFB17F6025F68D54 /* options.h in Sources */ = {isa = PBXBuildFile; fileRef = DE2F86FA34154EDDEA0EAC23 /* options.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		A31C33B17FA9735209953F5F /* hud.h in Sources */ = {isa = PBXBuildFile; fileRef = DA6F703220A1D544D59CEEBB /* hud.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		A67F15873225290BDE6DB1FA /* polyfill.h in Sources */ = {isa = PBXBuildFile; fileRef = B34C093196E06A233CCD7A0C /* polyfill.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		AA3AABE3E81AE85AC19AC41B /* track.h in Sources */ = {isa = PBXBuildFile; fileRef = 8B3DDA81656DAE13B48000B9 /* track.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		AC2B2551C68FC4E0B0837A8C /* credits.c in Sources */ = {isa = PBXBuildFile; fileRef = A0245EAD1A423ACF5197CD97 /* credits.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		AC39D4D415B771B2A4FE028B /* mainmenu.h in Sources */ = {isa = PBXBuildFile; fileRef = FD417CAC07EB3A436EEFAB28 /* mainmenu.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		ACFD74C2F334BAC56E8D073B /* racesnd.h in Sources */ = {isa = PBXBuildFile; fileRef = 27672F03506198B75B5FCBF8 /* racesnd.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		AD85936E2C06B42756EDC9EA /* sndlib.h in Sources */ = {isa = PBXBuildFile; fileRef = 794999B44B22C5DA0807E9D5 /* sndlib.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		ADD513164C35EA146F3ED4C3 /* replay.c in Sources */ = {isa = PBXBuildFile; fileRef = 8918FB71E835B03640DC5F53 /* replay.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		AE1161218E48F32D456BA514 /* exe.h in Sources */ = {isa = PBXBuildFile; fileRef = A30FAC9010B017212B66DC4A /* exe.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B0326C72FC48D10AB6C58989 /* collide.h in Sources */ = {isa = PBXBuildFile; fileRef = CD054A01D6D5FB242FB07B68 /* collide.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B078657E794CB634C92A0212 /* roaddraw.h in Sources */ = {isa = PBXBuildFile; fileRef = ABB54C22B2DD430AF5B74672 /* roaddraw.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B0C6FF440DED0DDE69C7E0AA /* gfxopt.c in Sources */ = {isa = PBXBuildFile; fileRef = 3CA904C5CA77AD9E5AE5EA7C /* gfxopt.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B0E5EDF62739FF86800CF98D /* view.h in Sources */ = {isa = PBXBuildFile; fileRef = B37EB708AFA4C96B1951BDF2 /* view.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B14FB183093847DD91506D26 /* host.c in Sources */ = {isa = PBXBuildFile; fileRef = 38FBB43FE0309DC057C51261 /* host.c */; };
+		B26C04CEBABA421CDCB09E0D /* racepal.h in Sources */ = {isa = PBXBuildFile; fileRef = 5A56EA09056D235768FF56A3 /* racepal.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B428AAC6EEF39FE67C7CD0E7 /* trackrec.h in Sources */ = {isa = PBXBuildFile; fileRef = 18CE5F51E524FA08AA281E13 /* trackrec.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B70BA272B72112C023C8F847 /* collide.c in Sources */ = {isa = PBXBuildFile; fileRef = 36B71272FC575581C3F94E3D /* collide.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B7C6ED66FF8D5E75404FA13B /* trackinfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 984335BA31C0B244AB4E0318 /* trackinfo.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B8ECA418E44DAE7DF2F125E8 /* drive.h in Sources */ = {isa = PBXBuildFile; fileRef = 719A9F3229C432E9B719EDEB /* drive.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		B918C132C1242407E081E6CA /* tgv.c in Sources */ = {isa = PBXBuildFile; fileRef = C2761939E0DE8D465BFEE84B /* tgv.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		BA911FD9772C00C59349AF35 /* camera.c in Sources */ = {isa = PBXBuildFile; fileRef = 43BE97905D85DB233DD2C5E1 /* camera.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		BB4C9B77F3FBAD277B6B558A /* skid.h in Sources */ = {isa = PBXBuildFile; fileRef = FF910D9157DD6FF33D4453AE /* skid.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		BC37EB353FD5CD15B518E7F6 /* font.c in Sources */ = {isa = PBXBuildFile; fileRef = A79576FFED3EC24D23058F0C /* font.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		BE5FE2609088E7A9733C45FA /* session.h in Sources */ = {isa = PBXBuildFile; fileRef = 25386E807559411CC6EF64E4 /* session.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		C5065430FE3A950F82FD7004 /* eacs.c in Sources */ = {isa = PBXBuildFile; fileRef = 885EBB68A28E2F59DC96EB02 /* eacs.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		C5B5D0D08876F1642E0CAB50 /* fsh.c in Sources */ = {isa = PBXBuildFile; fileRef = 30533CEB84614D5145639E47 /* fsh.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		C73118FEB85D71AA48061538 /* polyfill.c in Sources */ = {isa = PBXBuildFile; fileRef = 22C60BD717D80EDB42797292 /* polyfill.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		C8E649562480863B335EBC04 /* fsh.h in Sources */ = {isa = PBXBuildFile; fileRef = 41FEEE04141B9D0876D29544 /* fsh.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		D00B312F46F2DB7657606388 /* LauncherViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5422B82BDF30EB3D395F2269 /* LauncherViewController.swift */; };
+		D0D2762044EB17FF594E85BC /* sky.c in Sources */ = {isa = PBXBuildFile; fileRef = 8ECBB4B45344265AD2F4A3D5 /* sky.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		D147A4A420EDDB1AAD9DA3CE /* car.c in Sources */ = {isa = PBXBuildFile; fileRef = B3C59D1FA060991A9B2B0C15 /* car.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		D167E933F8EC2329EEA714E2 /* tgv.h in Sources */ = {isa = PBXBuildFile; fileRef = F5B0A50E853349432043EADF /* tgv.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		D318B631033CF0C857E4F1D0 /* exe.c in Sources */ = {isa = PBXBuildFile; fileRef = 9ECAF26570AFDD0712F60637 /* exe.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		D533A9BC4E9FD9F9474E3F42 /* audio.c in Sources */ = {isa = PBXBuildFile; fileRef = B984B05D97ED2B4D7598E96B /* audio.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		D6410A4AE6723F8D6DB7C371 /* racepal.c in Sources */ = {isa = PBXBuildFile; fileRef = 6887E0F576ABC82B115C8A6C /* racepal.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		D79A54BE67A0A53DAB25B17C /* standings.h in Sources */ = {isa = PBXBuildFile; fileRef = 9A2EFAFA17673F77E4F3011F /* standings.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		DCDB793261DA73F1B4B056D8 /* opponent.c in Sources */ = {isa = PBXBuildFile; fileRef = 270CA85DB111CFAA4DC6165B /* opponent.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		DE41058BE96F416B02D80742 /* standings.c in Sources */ = {isa = PBXBuildFile; fileRef = 39DCC65873A3DE9DB552D810 /* standings.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		DEA892F3A3360FB1404FCF6D /* smoke.c in Sources */ = {isa = PBXBuildFile; fileRef = 80B9E9E09D8EDBC99E99A01C /* smoke.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		E0286EFA48035B1D456B2AC6 /* raster.h in Sources */ = {isa = PBXBuildFile; fileRef = 5C0771D5A74B9BB402D076FA /* raster.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		E35D42D81DBDB2D6E7F456CB /* session.c in Sources */ = {isa = PBXBuildFile; fileRef = 32901C8E37874B1CFA6FFBE3 /* session.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		E546978291D34CC74457BEC5 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122F654BC474259CF43A70D0 /* main.swift */; };
+		E9D95ACC05B4FED7165806AE /* movie.h in Sources */ = {isa = PBXBuildFile; fileRef = 13629AEF7857D28FC9D76412 /* movie.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		EB176F8CDEF449B495152715 /* video.c in Sources */ = {isa = PBXBuildFile; fileRef = 2E335556CCEAFCBBF098E604 /* video.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		EB6F3436729AD7B844ED10CB /* poly.h in Sources */ = {isa = PBXBuildFile; fileRef = 31C11AD6F967549A409C186E /* poly.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		ED8A7302C856C985E9494586 /* pause.h in Sources */ = {isa = PBXBuildFile; fileRef = 6CDCC8F8E3592728183B4129 /* pause.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		EEAC0E4B8D70B1DCC1CA0C83 /* loadsave.c in Sources */ = {isa = PBXBuildFile; fileRef = E7B7B4A7922A2D6773C64A81 /* loadsave.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		EF87CD727B99A1A796A97ADC /* racemenu.h in Sources */ = {isa = PBXBuildFile; fileRef = 5307155BF67CF46767D99FA2 /* racemenu.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		F36DF74B612842EE30AE43D9 /* config.h in Sources */ = {isa = PBXBuildFile; fileRef = F73DCA593B06C9D3E75260C8 /* config.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		F3F9FB076916D07AA5C36187 /* model.h in Sources */ = {isa = PBXBuildFile; fileRef = 063800D55F95137AEB0CFF17 /* model.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		F5C242CC1E10CAC9E3D37F74 /* cardraw.c in Sources */ = {isa = PBXBuildFile; fileRef = D196B437B70FF5A844171ED9 /* cardraw.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		F6D5B9433531AE217EFA863B /* camera.h in Sources */ = {isa = PBXBuildFile; fileRef = 76E82A80D4E420FB182585CE /* camera.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		F8ADF1993AB5CA4C6A71769B /* race.h in Sources */ = {isa = PBXBuildFile; fileRef = 58AF0F27E8E3925415382442 /* race.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		F9340C460D0A05023B216362 /* roaddraw.c in Sources */ = {isa = PBXBuildFile; fileRef = 562BD244D525E2D2F45CA9CC /* roaddraw.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		FB04D7802EB74F7261D65B4D /* Bonjour.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D42B09C075E16229EE31B8E /* Bonjour.swift */; };
+		FB3EEA14E486D4D6ADB592DA /* eacs.h in Sources */ = {isa = PBXBuildFile; fileRef = 53FD8E3037655DD940940242 /* eacs.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		FED53F2677467DAFE7474F2D /* road.h in Sources */ = {isa = PBXBuildFile; fileRef = BA806FF89F361BA89C576D9D /* road.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		05D1DF6D2B7DC4EC49AAE9E5 /* sndlib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = sndlib.c; sourceTree = "<group>"; };
+		063800D55F95137AEB0CFF17 /* model.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = model.h; sourceTree = "<group>"; };
+		072D810FB5AB168F53B70DB4 /* font.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = font.h; sourceTree = "<group>"; };
+		0BE60A3EBED1A11F3EF370D2 /* trackfam.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = trackfam.c; sourceTree = "<group>"; };
 		122F654BC474259CF43A70D0 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		13629AEF7857D28FC9D76412 /* movie.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = movie.h; sourceTree = "<group>"; };
+		1892EDE276B2CC014D1CFA33 /* showcase.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = showcase.c; sourceTree = "<group>"; };
+		18CE5F51E524FA08AA281E13 /* trackrec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = trackrec.h; sourceTree = "<group>"; };
+		1904546FECF6CA5F424FFBD1 /* menu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = menu.h; sourceTree = "<group>"; };
+		1B5BDA5D7CAFFD0F6F518D28 /* model.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = model.c; sourceTree = "<group>"; };
 		1D853CB8DCAE931F5EDF3690 /* AudioDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDisplay.swift; sourceTree = "<group>"; };
+		22C60BD717D80EDB42797292 /* polyfill.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = polyfill.c; sourceTree = "<group>"; };
+		23598AA2E8ACA6AF1D2A6EFE /* track.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = track.c; sourceTree = "<group>"; };
+		23987C7CBCD9B35082EB0A69 /* sound.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = sound.c; sourceTree = "<group>"; };
+		2405C48875D3E750CA4580C2 /* ff.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ff.h; sourceTree = "<group>"; };
+		25386E807559411CC6EF64E4 /* session.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = session.h; sourceTree = "<group>"; };
+		270CA85DB111CFAA4DC6165B /* opponent.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = opponent.c; sourceTree = "<group>"; };
+		27672F03506198B75B5FCBF8 /* racesnd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = racesnd.h; sourceTree = "<group>"; };
+		2E335556CCEAFCBBF098E604 /* video.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = video.c; sourceTree = "<group>"; };
+		2E9A572D6BDFA0BF268A13FB /* SDL_syswm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SDL_syswm.h; sourceTree = "<group>"; };
+		30533CEB84614D5145639E47 /* fsh.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = fsh.c; sourceTree = "<group>"; };
+		31C11AD6F967549A409C186E /* poly.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = poly.h; sourceTree = "<group>"; };
+		32901C8E37874B1CFA6FFBE3 /* session.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = session.c; sourceTree = "<group>"; };
+		33D22F47FFA92506A7CCECAD /* audioopt.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = audioopt.c; sourceTree = "<group>"; };
+		3417887ECE9BFDCF61A5C131 /* audio.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = audio.h; sourceTree = "<group>"; };
+		3602686C3723B46882D48BF7 /* drive.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = drive.c; sourceTree = "<group>"; };
+		36B71272FC575581C3F94E3D /* collide.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = collide.c; sourceTree = "<group>"; };
+		38238831DE99871A4E845F2B /* trackfam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = trackfam.h; sourceTree = "<group>"; };
+		38FBB43FE0309DC057C51261 /* host.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = host.c; sourceTree = "<group>"; };
+		391944206A22B7D063F6FCBE /* poly.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = poly.c; sourceTree = "<group>"; };
+		39DCC65873A3DE9DB552D810 /* standings.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = standings.c; sourceTree = "<group>"; };
+		3CA904C5CA77AD9E5AE5EA7C /* gfxopt.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = gfxopt.c; sourceTree = "<group>"; };
+		41FEEE04141B9D0876D29544 /* fsh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fsh.h; sourceTree = "<group>"; };
+		43BE97905D85DB233DD2C5E1 /* camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = camera.c; sourceTree = "<group>"; };
+		442F3674850001E3D836149C /* credits.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = credits.h; sourceTree = "<group>"; };
+		45C32ADBF823280FE0C6BCCB /* ff.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ff.c; sourceTree = "<group>"; };
 		4D42B09C075E16229EE31B8E /* Bonjour.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bonjour.swift; sourceTree = "<group>"; };
+		4E4557FB9A9AAE232215C889 /* crash.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = crash.h; sourceTree = "<group>"; };
+		4FBDF76314177C666B22E58B /* files.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = files.c; sourceTree = "<group>"; };
+		52DC782FE5BB114EBE4EFA00 /* options.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = options.c; sourceTree = "<group>"; };
+		5307155BF67CF46767D99FA2 /* racemenu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = racemenu.h; sourceTree = "<group>"; };
+		53FD8E3037655DD940940242 /* eacs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = eacs.h; sourceTree = "<group>"; };
+		5422B82BDF30EB3D395F2269 /* LauncherViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherViewController.swift; sourceTree = "<group>"; };
+		562BD244D525E2D2F45CA9CC /* roaddraw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = roaddraw.c; sourceTree = "<group>"; };
+		57E752982E57915B2905DA6C /* trackrec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = trackrec.c; sourceTree = "<group>"; };
+		5811DE1BBB130258F2768400 /* ffdev.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ffdev.c; sourceTree = "<group>"; };
+		58AF0F27E8E3925415382442 /* race.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = race.h; sourceTree = "<group>"; };
+		58F1C781256E7539D26D8E5A /* Games.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Games.swift; sourceTree = "<group>"; };
+		5A56EA09056D235768FF56A3 /* racepal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = racepal.h; sourceTree = "<group>"; };
+		5B9A5600F583E92CB409B791 /* ctrlopt.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ctrlopt.c; sourceTree = "<group>"; };
+		5C0771D5A74B9BB402D076FA /* raster.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = raster.h; sourceTree = "<group>"; };
+		5C9B0886CB4352C32CE6D39F /* menu.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = menu.c; sourceTree = "<group>"; };
+		611BEEDD8A09F45D36C94455 /* movie.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = movie.c; sourceTree = "<group>"; };
+		643D51667BB86289B707C831 /* timing.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = timing.h; sourceTree = "<group>"; };
+		677F3948B0173B66709DC815 /* mainmenu.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mainmenu.c; sourceTree = "<group>"; };
+		6887E0F576ABC82B115C8A6C /* racepal.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = racepal.c; sourceTree = "<group>"; };
+		68B2646AED1B94BC57712B3B /* crash.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = crash.c; sourceTree = "<group>"; };
+		6B069ED1598A7C116C69B2F8 /* racemenu.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = racemenu.c; sourceTree = "<group>"; };
+		6CDCC8F8E3592728183B4129 /* pause.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pause.h; sourceTree = "<group>"; };
+		719A9F3229C432E9B719EDEB /* drive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = drive.h; sourceTree = "<group>"; };
+		7247941BFA09EFB4CC18A04F /* unpack.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = unpack.c; sourceTree = "<group>"; };
+		732E7495C411821B8F122C8E /* car.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = car.h; sourceTree = "<group>"; };
+		76E82A80D4E420FB182585CE /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
+		794999B44B22C5DA0807E9D5 /* sndlib.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sndlib.h; sourceTree = "<group>"; };
+		7AD372DEBE25489D23E38FBB /* unpack.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = unpack.h; sourceTree = "<group>"; };
+		7D135511CACB4081481FC74F /* sky.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sky.h; sourceTree = "<group>"; };
+		7E9518537618D5DEE8D4D985 /* timing.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = timing.c; sourceTree = "<group>"; };
 		7FE33CDB731467D5403E4DDE /* OpenUnleashed-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OpenUnleashed-Bridging-Header.h"; sourceTree = "<group>"; };
+		80B9E9E09D8EDBC99E99A01C /* smoke.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = smoke.c; sourceTree = "<group>"; };
+		8433E09052A13347F5B928AC /* opponent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = opponent.h; sourceTree = "<group>"; };
+		885EBB68A28E2F59DC96EB02 /* eacs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = eacs.c; sourceTree = "<group>"; };
+		8918FB71E835B03640DC5F53 /* replay.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = replay.c; sourceTree = "<group>"; };
+		8B3DDA81656DAE13B48000B9 /* track.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = track.h; sourceTree = "<group>"; };
+		8D84F519489A153400CD0F11 /* skid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = skid.c; sourceTree = "<group>"; };
+		8D946C05DB55CA7CBD0E333F /* SDL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SDL.h; sourceTree = "<group>"; };
+		8ECBB4B45344265AD2F4A3D5 /* sky.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = sky.c; sourceTree = "<group>"; };
+		90CE79E990C5A71F85EB4742 /* joystick.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = joystick.c; sourceTree = "<group>"; };
+		90D35DD6C96380B4827C6BFF /* dash.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dash.c; sourceTree = "<group>"; };
 		97558A36196C41A7E289C416 /* OpenUnleashed.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OpenUnleashed.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		984335BA31C0B244AB4E0318 /* trackinfo.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = trackinfo.c; sourceTree = "<group>"; };
+		998259908A7EF99559D28054 /* replay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = replay.h; sourceTree = "<group>"; };
+		9A2EFAFA17673F77E4F3011F /* standings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = standings.h; sourceTree = "<group>"; };
+		9CA55B1593778374C955913E /* sound.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sound.h; sourceTree = "<group>"; };
+		9E47DA925B2A27B6BA142B02 /* config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = config.c; sourceTree = "<group>"; };
 		9EB71FAE444FF345B037D283 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		9ECAF26570AFDD0712F60637 /* exe.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = exe.c; sourceTree = "<group>"; };
+		A0245EAD1A423ACF5197CD97 /* credits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = credits.c; sourceTree = "<group>"; };
 		A267AFA0CFD493B179B3E243 /* Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell.swift; sourceTree = "<group>"; };
+		A30FAC9010B017212B66DC4A /* exe.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = exe.h; sourceTree = "<group>"; };
+		A46C41013F8D69B5ECEC9B2B /* hud.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = hud.c; sourceTree = "<group>"; };
+		A79576FFED3EC24D23058F0C /* font.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = font.c; sourceTree = "<group>"; };
+		A7F1127D2DCF2ED85B45E211 /* smooth.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = smooth.h; sourceTree = "<group>"; };
+		A84D7601B76CB78D03067234 /* view.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = view.c; sourceTree = "<group>"; };
+		ABB54C22B2DD430AF5B74672 /* roaddraw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = roaddraw.h; sourceTree = "<group>"; };
+		AD673F913285513872A3BD0C /* showcase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = showcase.h; sourceTree = "<group>"; };
+		AD6A7E35F738D5BBA481FBFD /* race.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = race.c; sourceTree = "<group>"; };
+		B1F1AD1CEF1BBC23F06F3F32 /* smooth.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = smooth.c; sourceTree = "<group>"; };
+		B34C093196E06A233CCD7A0C /* polyfill.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = polyfill.h; sourceTree = "<group>"; };
+		B37EB708AFA4C96B1951BDF2 /* view.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = view.h; sourceTree = "<group>"; };
+		B3C59D1FA060991A9B2B0C15 /* car.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = car.c; sourceTree = "<group>"; };
 		B85096C407BB942913B652E7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B984B05D97ED2B4D7598E96B /* audio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = audio.c; sourceTree = "<group>"; };
+		BA806FF89F361BA89C576D9D /* road.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = road.h; sourceTree = "<group>"; };
+		BB5921938DB2FFB406311A8E /* trackinfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = trackinfo.h; sourceTree = "<group>"; };
+		BE96E6230F9251C903B42CAF /* fe.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = fe.c; sourceTree = "<group>"; };
+		C1695CC4630D78D5EACD8185 /* smoke.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = smoke.h; sourceTree = "<group>"; };
+		C2761939E0DE8D465BFEE84B /* tgv.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tgv.c; sourceTree = "<group>"; };
+		C2F781C3C901175DCCA44F68 /* files.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = files.h; sourceTree = "<group>"; };
+		C5407729EF970538536172F3 /* fe.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fe.h; sourceTree = "<group>"; };
+		C556DA65DB999A995E4FED8C /* joystick.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = joystick.h; sourceTree = "<group>"; };
+		C670DC7161CFE9AB3F1D7035 /* racesnd.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = racesnd.c; sourceTree = "<group>"; };
 		CA1DBCFAB84757E0D21FEBDF /* SaveMirror.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveMirror.swift; sourceTree = "<group>"; };
+		CD054A01D6D5FB242FB07B68 /* collide.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = collide.h; sourceTree = "<group>"; };
+		D06952B35BE1A7A2006B3C1D /* cardraw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = cardraw.h; sourceTree = "<group>"; };
+		D196B437B70FF5A844171ED9 /* cardraw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = cardraw.c; sourceTree = "<group>"; };
+		D1E0899381F8DE4FD2B6544B /* audioopt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = audioopt.h; sourceTree = "<group>"; };
+		D4D3CC4C2BFCCAB0D108CC61 /* video.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = video.h; sourceTree = "<group>"; };
+		D58124A62601CA7ECD4D86EC /* pause.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = pause.c; sourceTree = "<group>"; };
+		D87F0BED7B776F85AE7F7E33 /* renfs_host.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = renfs_host.h; sourceTree = "<group>"; };
+		D99F3A731ED056070DAFEF92 /* ctrlopt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ctrlopt.h; sourceTree = "<group>"; };
+		DA6F703220A1D544D59CEEBB /* hud.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hud.h; sourceTree = "<group>"; };
+		DB85809D639CEBC74DD9CD2A /* ffdev.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ffdev.h; sourceTree = "<group>"; };
+		DC534D5E5873DE6E5471A8C2 /* dash.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dash.h; sourceTree = "<group>"; };
+		DE2DE47F153B2DE52E33E4E7 /* loadsave.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = loadsave.h; sourceTree = "<group>"; };
+		DE2F86FA34154EDDEA0EAC23 /* options.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = options.h; sourceTree = "<group>"; };
+		E7B7B4A7922A2D6773C64A81 /* loadsave.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = loadsave.c; sourceTree = "<group>"; };
 		E7BAC9333C818674CEE00870 /* GameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameStore.swift; sourceTree = "<group>"; };
 		EB6884F0FEE12204803634A6 /* GameDataViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDataViewController.swift; sourceTree = "<group>"; };
+		EBF14F7A6B39EF70B3B68FEA /* gfxopt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gfxopt.h; sourceTree = "<group>"; };
+		EFF82122326F3CC53F7DDFF7 /* road.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = road.c; sourceTree = "<group>"; };
 		F00B5534C94C680C0FD17C5B /* ServerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerClient.swift; sourceTree = "<group>"; };
+		F038CB5ED6D4605D8B2C3533 /* racekeys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = racekeys.h; sourceTree = "<group>"; };
+		F04FE3BE072267E9F1C7F103 /* NFSSEViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFSSEViewController.swift; sourceTree = "<group>"; };
+		F1BC61A55F8EF8590FF208EE /* renfs_version.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = renfs_version.h; sourceTree = "<group>"; };
+		F5B0A50E853349432043EADF /* tgv.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tgv.h; sourceTree = "<group>"; };
+		F6CA0F1D58C3A61816FA9C75 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		F73DCA593B06C9D3E75260C8 /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
+		FD417CAC07EB3A436EEFAB28 /* mainmenu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mainmenu.h; sourceTree = "<group>"; };
+		FE867E048B2B9A240818F8F8 /* racekeys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = racekeys.c; sourceTree = "<group>"; };
+		FEE0ACD9F304B594D5795144 /* raster.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = raster.c; sourceTree = "<group>"; };
+		FF910D9157DD6FF33D4453AE /* skid.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = skid.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -41,15 +295,28 @@
 				1D853CB8DCAE931F5EDF3690 /* AudioDisplay.swift */,
 				4D42B09C075E16229EE31B8E /* Bonjour.swift */,
 				EB6884F0FEE12204803634A6 /* GameDataViewController.swift */,
+				58F1C781256E7539D26D8E5A /* Games.swift */,
 				E7BAC9333C818674CEE00870 /* GameStore.swift */,
 				9EB71FAE444FF345B037D283 /* Info.plist */,
+				5422B82BDF30EB3D395F2269 /* LauncherViewController.swift */,
 				122F654BC474259CF43A70D0 /* main.swift */,
+				F04FE3BE072267E9F1C7F103 /* NFSSEViewController.swift */,
 				7FE33CDB731467D5403E4DDE /* OpenUnleashed-Bridging-Header.h */,
 				CA1DBCFAB84757E0D21FEBDF /* SaveMirror.swift */,
 				F00B5534C94C680C0FD17C5B /* ServerClient.swift */,
 				A267AFA0CFD493B179B3E243 /* Shell.swift */,
 			);
 			path = OpenUnleashed;
+			sourceTree = "<group>";
+		};
+		889FAD540F31245919EF2938 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				F1BC61A55F8EF8590FF208EE /* renfs_version.h */,
+				2E9A572D6BDFA0BF268A13FB /* SDL_syswm.h */,
+				8D946C05DB55CA7CBD0E333F /* SDL.h */,
+			);
+			path = include;
 			sourceTree = "<group>";
 		};
 		944DE8034996E1A9B10CB2C7 /* Products */ = {
@@ -60,12 +327,154 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		C2A2473208B586F501BE6BF3 /* renfs-host */ = {
+			isa = PBXGroup;
+			children = (
+				38FBB43FE0309DC057C51261 /* host.c */,
+				D87F0BED7B776F85AE7F7E33 /* renfs_host.h */,
+				889FAD540F31245919EF2938 /* include */,
+			);
+			name = "renfs-host";
+			path = "../renfs-host";
+			sourceTree = "<group>";
+		};
 		C98F134A510516D9FBBF3984 = {
 			isa = PBXGroup;
 			children = (
 				10912F4FE965FFA4A3177042 /* OpenUnleashed */,
+				C2A2473208B586F501BE6BF3 /* renfs-host */,
+				CADD786EF39D25EBCBAB621B /* src */,
 				944DE8034996E1A9B10CB2C7 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		CADD786EF39D25EBCBAB621B /* src */ = {
+			isa = PBXGroup;
+			children = (
+				B984B05D97ED2B4D7598E96B /* audio.c */,
+				3417887ECE9BFDCF61A5C131 /* audio.h */,
+				33D22F47FFA92506A7CCECAD /* audioopt.c */,
+				D1E0899381F8DE4FD2B6544B /* audioopt.h */,
+				43BE97905D85DB233DD2C5E1 /* camera.c */,
+				76E82A80D4E420FB182585CE /* camera.h */,
+				B3C59D1FA060991A9B2B0C15 /* car.c */,
+				732E7495C411821B8F122C8E /* car.h */,
+				D196B437B70FF5A844171ED9 /* cardraw.c */,
+				D06952B35BE1A7A2006B3C1D /* cardraw.h */,
+				36B71272FC575581C3F94E3D /* collide.c */,
+				CD054A01D6D5FB242FB07B68 /* collide.h */,
+				9E47DA925B2A27B6BA142B02 /* config.c */,
+				F73DCA593B06C9D3E75260C8 /* config.h */,
+				68B2646AED1B94BC57712B3B /* crash.c */,
+				4E4557FB9A9AAE232215C889 /* crash.h */,
+				A0245EAD1A423ACF5197CD97 /* credits.c */,
+				442F3674850001E3D836149C /* credits.h */,
+				5B9A5600F583E92CB409B791 /* ctrlopt.c */,
+				D99F3A731ED056070DAFEF92 /* ctrlopt.h */,
+				90D35DD6C96380B4827C6BFF /* dash.c */,
+				DC534D5E5873DE6E5471A8C2 /* dash.h */,
+				3602686C3723B46882D48BF7 /* drive.c */,
+				719A9F3229C432E9B719EDEB /* drive.h */,
+				885EBB68A28E2F59DC96EB02 /* eacs.c */,
+				53FD8E3037655DD940940242 /* eacs.h */,
+				9ECAF26570AFDD0712F60637 /* exe.c */,
+				A30FAC9010B017212B66DC4A /* exe.h */,
+				BE96E6230F9251C903B42CAF /* fe.c */,
+				C5407729EF970538536172F3 /* fe.h */,
+				45C32ADBF823280FE0C6BCCB /* ff.c */,
+				2405C48875D3E750CA4580C2 /* ff.h */,
+				5811DE1BBB130258F2768400 /* ffdev.c */,
+				DB85809D639CEBC74DD9CD2A /* ffdev.h */,
+				4FBDF76314177C666B22E58B /* files.c */,
+				C2F781C3C901175DCCA44F68 /* files.h */,
+				A79576FFED3EC24D23058F0C /* font.c */,
+				072D810FB5AB168F53B70DB4 /* font.h */,
+				30533CEB84614D5145639E47 /* fsh.c */,
+				41FEEE04141B9D0876D29544 /* fsh.h */,
+				3CA904C5CA77AD9E5AE5EA7C /* gfxopt.c */,
+				EBF14F7A6B39EF70B3B68FEA /* gfxopt.h */,
+				A46C41013F8D69B5ECEC9B2B /* hud.c */,
+				DA6F703220A1D544D59CEEBB /* hud.h */,
+				90CE79E990C5A71F85EB4742 /* joystick.c */,
+				C556DA65DB999A995E4FED8C /* joystick.h */,
+				E7B7B4A7922A2D6773C64A81 /* loadsave.c */,
+				DE2DE47F153B2DE52E33E4E7 /* loadsave.h */,
+				F6CA0F1D58C3A61816FA9C75 /* main.c */,
+				677F3948B0173B66709DC815 /* mainmenu.c */,
+				FD417CAC07EB3A436EEFAB28 /* mainmenu.h */,
+				5C9B0886CB4352C32CE6D39F /* menu.c */,
+				1904546FECF6CA5F424FFBD1 /* menu.h */,
+				1B5BDA5D7CAFFD0F6F518D28 /* model.c */,
+				063800D55F95137AEB0CFF17 /* model.h */,
+				611BEEDD8A09F45D36C94455 /* movie.c */,
+				13629AEF7857D28FC9D76412 /* movie.h */,
+				270CA85DB111CFAA4DC6165B /* opponent.c */,
+				8433E09052A13347F5B928AC /* opponent.h */,
+				52DC782FE5BB114EBE4EFA00 /* options.c */,
+				DE2F86FA34154EDDEA0EAC23 /* options.h */,
+				D58124A62601CA7ECD4D86EC /* pause.c */,
+				6CDCC8F8E3592728183B4129 /* pause.h */,
+				391944206A22B7D063F6FCBE /* poly.c */,
+				31C11AD6F967549A409C186E /* poly.h */,
+				22C60BD717D80EDB42797292 /* polyfill.c */,
+				B34C093196E06A233CCD7A0C /* polyfill.h */,
+				AD6A7E35F738D5BBA481FBFD /* race.c */,
+				58AF0F27E8E3925415382442 /* race.h */,
+				FE867E048B2B9A240818F8F8 /* racekeys.c */,
+				F038CB5ED6D4605D8B2C3533 /* racekeys.h */,
+				6B069ED1598A7C116C69B2F8 /* racemenu.c */,
+				5307155BF67CF46767D99FA2 /* racemenu.h */,
+				6887E0F576ABC82B115C8A6C /* racepal.c */,
+				5A56EA09056D235768FF56A3 /* racepal.h */,
+				C670DC7161CFE9AB3F1D7035 /* racesnd.c */,
+				27672F03506198B75B5FCBF8 /* racesnd.h */,
+				FEE0ACD9F304B594D5795144 /* raster.c */,
+				5C0771D5A74B9BB402D076FA /* raster.h */,
+				8918FB71E835B03640DC5F53 /* replay.c */,
+				998259908A7EF99559D28054 /* replay.h */,
+				EFF82122326F3CC53F7DDFF7 /* road.c */,
+				BA806FF89F361BA89C576D9D /* road.h */,
+				562BD244D525E2D2F45CA9CC /* roaddraw.c */,
+				ABB54C22B2DD430AF5B74672 /* roaddraw.h */,
+				32901C8E37874B1CFA6FFBE3 /* session.c */,
+				25386E807559411CC6EF64E4 /* session.h */,
+				1892EDE276B2CC014D1CFA33 /* showcase.c */,
+				AD673F913285513872A3BD0C /* showcase.h */,
+				8D84F519489A153400CD0F11 /* skid.c */,
+				FF910D9157DD6FF33D4453AE /* skid.h */,
+				8ECBB4B45344265AD2F4A3D5 /* sky.c */,
+				7D135511CACB4081481FC74F /* sky.h */,
+				80B9E9E09D8EDBC99E99A01C /* smoke.c */,
+				C1695CC4630D78D5EACD8185 /* smoke.h */,
+				B1F1AD1CEF1BBC23F06F3F32 /* smooth.c */,
+				A7F1127D2DCF2ED85B45E211 /* smooth.h */,
+				05D1DF6D2B7DC4EC49AAE9E5 /* sndlib.c */,
+				794999B44B22C5DA0807E9D5 /* sndlib.h */,
+				23987C7CBCD9B35082EB0A69 /* sound.c */,
+				9CA55B1593778374C955913E /* sound.h */,
+				39DCC65873A3DE9DB552D810 /* standings.c */,
+				9A2EFAFA17673F77E4F3011F /* standings.h */,
+				C2761939E0DE8D465BFEE84B /* tgv.c */,
+				F5B0A50E853349432043EADF /* tgv.h */,
+				7E9518537618D5DEE8D4D985 /* timing.c */,
+				643D51667BB86289B707C831 /* timing.h */,
+				23598AA2E8ACA6AF1D2A6EFE /* track.c */,
+				8B3DDA81656DAE13B48000B9 /* track.h */,
+				0BE60A3EBED1A11F3EF370D2 /* trackfam.c */,
+				38238831DE99871A4E845F2B /* trackfam.h */,
+				984335BA31C0B244AB4E0318 /* trackinfo.c */,
+				BB5921938DB2FFB406311A8E /* trackinfo.h */,
+				57E752982E57915B2905DA6C /* trackrec.c */,
+				18CE5F51E524FA08AA281E13 /* trackrec.h */,
+				7247941BFA09EFB4CC18A04F /* unpack.c */,
+				7AD372DEBE25489D23E38FBB /* unpack.h */,
+				2E335556CCEAFCBBF098E604 /* video.c */,
+				D4D3CC4C2BFCCAB0D108CC61 /* video.h */,
+				A84D7601B76CB78D03067234 /* view.c */,
+				B37EB708AFA4C96B1951BDF2 /* view.h */,
+			);
+			name = src;
+			path = ../../engines/renfs/port/src;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -143,10 +552,135 @@
 				FB04D7802EB74F7261D65B4D /* Bonjour.swift in Sources */,
 				913E96BC4101262D1A3E1056 /* GameDataViewController.swift in Sources */,
 				5CDCE500CE20CFDFC0FD24FD /* GameStore.swift in Sources */,
+				5318F2E7B7FB3B6B57DC267E /* Games.swift in Sources */,
+				D00B312F46F2DB7657606388 /* LauncherViewController.swift in Sources */,
+				69A291B8EA17C920B5A46A3A /* NFSSEViewController.swift in Sources */,
 				9BC44F572B953763475CE038 /* SaveMirror.swift in Sources */,
 				32139F157CC7801B78C841C7 /* ServerClient.swift in Sources */,
 				763D16EE45684CF2385845A0 /* Shell.swift in Sources */,
+				D533A9BC4E9FD9F9474E3F42 /* audio.c in Sources */,
+				2FB9A91FFBDA047402CBA5EC /* audio.h in Sources */,
+				20FCFDAB7DF9140E91EBE067 /* audioopt.c in Sources */,
+				5AD974F064E7D377416D802E /* audioopt.h in Sources */,
+				BA911FD9772C00C59349AF35 /* camera.c in Sources */,
+				F6D5B9433531AE217EFA863B /* camera.h in Sources */,
+				D147A4A420EDDB1AAD9DA3CE /* car.c in Sources */,
+				2404EA719E17FED5C0207CB3 /* car.h in Sources */,
+				F5C242CC1E10CAC9E3D37F74 /* cardraw.c in Sources */,
+				43DEC7688E0546DCED88E5BF /* cardraw.h in Sources */,
+				B70BA272B72112C023C8F847 /* collide.c in Sources */,
+				B0326C72FC48D10AB6C58989 /* collide.h in Sources */,
+				275147BD619AE64FAC8EE114 /* config.c in Sources */,
+				F36DF74B612842EE30AE43D9 /* config.h in Sources */,
+				13261CBFC9CAED30B24E40F1 /* crash.c in Sources */,
+				7B149D47DFC1EF918261B3A8 /* crash.h in Sources */,
+				AC2B2551C68FC4E0B0837A8C /* credits.c in Sources */,
+				1BC955CAD18A842E705028B5 /* credits.h in Sources */,
+				00659162E41F374698A855C4 /* ctrlopt.c in Sources */,
+				8623CEB246E3D3A4C20CF76B /* ctrlopt.h in Sources */,
+				1BFD10EEB239CA3DFC23A8AC /* dash.c in Sources */,
+				60D0F892007F2C7F3728DBAD /* dash.h in Sources */,
+				1E387CDF7E580C2E2CE6D1D8 /* drive.c in Sources */,
+				B8ECA418E44DAE7DF2F125E8 /* drive.h in Sources */,
+				C5065430FE3A950F82FD7004 /* eacs.c in Sources */,
+				FB3EEA14E486D4D6ADB592DA /* eacs.h in Sources */,
+				D318B631033CF0C857E4F1D0 /* exe.c in Sources */,
+				AE1161218E48F32D456BA514 /* exe.h in Sources */,
+				0A9AD223E37A8985B58761CC /* fe.c in Sources */,
+				2AC83576EB7CBB46A3583127 /* fe.h in Sources */,
+				446F97092463C10C9E4EEECD /* ff.c in Sources */,
+				92BB87D9B75E5202763F474D /* ff.h in Sources */,
+				61F67113B0E8E68AFCF0C1C8 /* ffdev.c in Sources */,
+				8593135A325E2A9FC23C4B22 /* ffdev.h in Sources */,
+				528010EB8D6B2EFB3863E00A /* files.c in Sources */,
+				6F2A1415EC28C7ADE32947FB /* files.h in Sources */,
+				BC37EB353FD5CD15B518E7F6 /* font.c in Sources */,
+				19A21C1B709E96782C593E3F /* font.h in Sources */,
+				C5B5D0D08876F1642E0CAB50 /* fsh.c in Sources */,
+				C8E649562480863B335EBC04 /* fsh.h in Sources */,
+				B0C6FF440DED0DDE69C7E0AA /* gfxopt.c in Sources */,
+				0966834ADF65637A9FABD044 /* gfxopt.h in Sources */,
+				B14FB183093847DD91506D26 /* host.c in Sources */,
+				489382467A28F51383C42EA3 /* hud.c in Sources */,
+				A31C33B17FA9735209953F5F /* hud.h in Sources */,
+				4A0B014AEB4AD69BBA18AC71 /* joystick.c in Sources */,
+				7A8AAD9FF40DC3B0BB498259 /* joystick.h in Sources */,
+				EEAC0E4B8D70B1DCC1CA0C83 /* loadsave.c in Sources */,
+				32D3D7DB53BBB7766F971A4A /* loadsave.h in Sources */,
+				3FCAD8FB44FFFF207D2E25D3 /* main.c in Sources */,
 				E546978291D34CC74457BEC5 /* main.swift in Sources */,
+				233139847161A333935210BF /* mainmenu.c in Sources */,
+				AC39D4D415B771B2A4FE028B /* mainmenu.h in Sources */,
+				003F52C3407DFA15EFFF443B /* menu.c in Sources */,
+				50B31E4CC3C2A5D125420112 /* menu.h in Sources */,
+				76EE36A33F3C63D0D49D332D /* model.c in Sources */,
+				F3F9FB076916D07AA5C36187 /* model.h in Sources */,
+				183CF23B074746F3B4311A97 /* movie.c in Sources */,
+				E9D95ACC05B4FED7165806AE /* movie.h in Sources */,
+				DCDB793261DA73F1B4B056D8 /* opponent.c in Sources */,
+				3FEA43A7B9CD61CF49D6C3B9 /* opponent.h in Sources */,
+				21D7176B74D2E0BBA67BA9D6 /* options.c in Sources */,
+				9D2366D8EFB17F6025F68D54 /* options.h in Sources */,
+				929B6A9932912F94298BD154 /* pause.c in Sources */,
+				ED8A7302C856C985E9494586 /* pause.h in Sources */,
+				40238C70CC9DAAFF63E7125F /* poly.c in Sources */,
+				EB6F3436729AD7B844ED10CB /* poly.h in Sources */,
+				C73118FEB85D71AA48061538 /* polyfill.c in Sources */,
+				A67F15873225290BDE6DB1FA /* polyfill.h in Sources */,
+				7AD9BAB09F4DBB7BF68E4795 /* race.c in Sources */,
+				F8ADF1993AB5CA4C6A71769B /* race.h in Sources */,
+				8492F7C7B8C54BFD2207706A /* racekeys.c in Sources */,
+				7704474F55D44313CC5E462A /* racekeys.h in Sources */,
+				1D0C526FD28F96A47EDF1D72 /* racemenu.c in Sources */,
+				EF87CD727B99A1A796A97ADC /* racemenu.h in Sources */,
+				D6410A4AE6723F8D6DB7C371 /* racepal.c in Sources */,
+				B26C04CEBABA421CDCB09E0D /* racepal.h in Sources */,
+				1CC1E8799B83D3E1302327DA /* racesnd.c in Sources */,
+				ACFD74C2F334BAC56E8D073B /* racesnd.h in Sources */,
+				69A37FDD4A3CDBD72F5F6EDB /* raster.c in Sources */,
+				E0286EFA48035B1D456B2AC6 /* raster.h in Sources */,
+				ADD513164C35EA146F3ED4C3 /* replay.c in Sources */,
+				627C4D3531079446471F44EA /* replay.h in Sources */,
+				402E46DC262EF076D79BDF56 /* road.c in Sources */,
+				FED53F2677467DAFE7474F2D /* road.h in Sources */,
+				F9340C460D0A05023B216362 /* roaddraw.c in Sources */,
+				B078657E794CB634C92A0212 /* roaddraw.h in Sources */,
+				E35D42D81DBDB2D6E7F456CB /* session.c in Sources */,
+				BE5FE2609088E7A9733C45FA /* session.h in Sources */,
+				06AC5BC1AB58B7812C9D5468 /* showcase.c in Sources */,
+				4320D9C1171BBE3B4751581C /* showcase.h in Sources */,
+				540EA9944B8A101D357C7B75 /* skid.c in Sources */,
+				BB4C9B77F3FBAD277B6B558A /* skid.h in Sources */,
+				D0D2762044EB17FF594E85BC /* sky.c in Sources */,
+				15DAA80E698B4CEE61FB4C4E /* sky.h in Sources */,
+				DEA892F3A3360FB1404FCF6D /* smoke.c in Sources */,
+				1BBA744C03EF416F94E3EECE /* smoke.h in Sources */,
+				94896DC080AD02E66B9AF82A /* smooth.c in Sources */,
+				92BD711650A35AA255CD5D98 /* smooth.h in Sources */,
+				4319FE895BBC99B6A645A58F /* sndlib.c in Sources */,
+				AD85936E2C06B42756EDC9EA /* sndlib.h in Sources */,
+				8BCECBA0975DC356BC97614D /* sound.c in Sources */,
+				5EF9F7AE50D4B0AAED01D870 /* sound.h in Sources */,
+				DE41058BE96F416B02D80742 /* standings.c in Sources */,
+				D79A54BE67A0A53DAB25B17C /* standings.h in Sources */,
+				B918C132C1242407E081E6CA /* tgv.c in Sources */,
+				D167E933F8EC2329EEA714E2 /* tgv.h in Sources */,
+				1B3B85D34D23D7043073BB54 /* timing.c in Sources */,
+				6757F96076808F5317ACA8E4 /* timing.h in Sources */,
+				923D35F29738FB67C682667E /* track.c in Sources */,
+				AA3AABE3E81AE85AC19AC41B /* track.h in Sources */,
+				387415876850C3B2F59DFA63 /* trackfam.c in Sources */,
+				35F20237A3C6DB8997662791 /* trackfam.h in Sources */,
+				B7C6ED66FF8D5E75404FA13B /* trackinfo.c in Sources */,
+				9BE5DB5BFEC7D46E2EFB6E0D /* trackinfo.h in Sources */,
+				0F15F75793FAE8F6755A4078 /* trackrec.c in Sources */,
+				B428AAC6EEF39FE67C7CD0E7 /* trackrec.h in Sources */,
+				06B56B7B24A72E227BD97F8B /* unpack.c in Sources */,
+				0890B52D5A40422D7E51947C /* unpack.h in Sources */,
+				EB176F8CDEF449B495152715 /* video.c in Sources */,
+				333CFDCC8851ED9E808238CB /* video.h in Sources */,
+				72C7C659B90C526BC4DEC6B5 /* view.c in Sources */,
+				B0E5EDF62739FF86800CF98D /* view.h in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -227,6 +761,11 @@
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../renfs-host/include",
+					"$(SRCROOT)/../renfs-host",
+				);
 				INFOPLIST_FILE = OpenUnleashed/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -266,6 +805,11 @@
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../renfs-host/include",
+					"$(SRCROOT)/../renfs-host",
+				);
 				INFOPLIST_FILE = OpenUnleashed/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

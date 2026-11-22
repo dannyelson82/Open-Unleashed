@@ -1,0 +1,81 @@
+/* The road as the race draws it (NOTES §4.7): its points near the camera, moved into the
+   camera's view and onto the screen each frame. */
+#ifndef RENFS_ROAD_H
+#define RENFS_ROAD_H
+
+#include "poly.h"
+
+#define ROAD_POINTS 515        /* 0x137434 .. 0x138c58 */
+#define ROAD_SECTIONS 600      /* 0x136620 .. 0x137434, 6 bytes each */
+#define EXTRA_POINTS 900       /* 0x12f540 .. 0x131f70 */
+#define BEHIND_POINTS 55       /* 0x13b494 .. 0x13b728: 5 sections' first rows */
+
+typedef struct {
+    unsigned char kind;        /* +0: the record of its faces (0xf61c0 + kind × 0x4c) */
+    unsigned char behind;      /* +1: the same for the mirror */
+    short a;                   /* +2 */
+    short points;              /* +4: its points across */
+} road_section;
+
+typedef struct {
+    road_section sec[ROAD_SECTIONS];   /* 0x136620 */
+    unsigned sec_mask;                 /* 0x13bb90 */
+    int drawn;                         /* 0x136618: the sections drawn */
+
+    int count;                         /* 0x13bb78: the points near the camera */
+    vec3 world[ROAD_POINTS];           /* 0x137434: in the world (16.16) */
+    vec3 view[ROAD_POINTS];            /* 0x138c58: from the camera, >> 11 */
+    vec3 near[ROAD_POINTS];            /* 0x142578: the same, held off the near plane */
+    scr2 screen[ROAD_POINTS];          /* 0x13a47c: projected from near[] */
+
+    int xsets, xcount;                 /* 0x1365d8, 0x1365c0: another set of points */
+    vec3 xworld[EXTRA_POINTS];         /* 0x12f540 */
+    vec3 xmoved[EXTRA_POINTS];         /* 0x13d8f8 */
+    vec3 xview[EXTRA_POINTS];          /* 0x131f70 */
+    scr2 xscreen[EXTRA_POINTS];        /* 0x1349a0 */
+
+    int fill;                          /* 0x13bb74: world[] filled so far */
+    int xfill;                         /* 0x1365c4: xworld[] filled so far */
+    int base;                          /* 0x13660c: the camera's section */
+    int xfirst;                        /* 0x1365cc: the first placement near it */
+    int xnext;                         /* 0x1365d0: the next placement to take */
+    int xnode;                         /* 0x1365d4: its node (-1: none left) */
+    int xcursor;                       /* 0x1365c8: the objects' points not yet painted */
+
+    vec3 cam;                          /* the camera's place and turn the points were */
+    int cam_m[9];                      /* taken into the view with ([0x143df4] +0x10,
+                                          [0x143df8]): the walls' tops by them */
+
+    /* the road behind, for the mirror */
+    int bcount;                        /* 0x13bb7c */
+    vec3 bworld[BEHIND_POINTS];        /* 0x13b494 */
+    vec3 bview[BEHIND_POINTS];         /* 0x13b728 */
+    scr2 bscreen[BEHIND_POINTS];       /* 0x13b9bc */
+} road_state;
+
+extern road_state g_road;
+
+/* the points of the sections drawn this frame (0x4ffbc): `drawn` sections from section
+   `sec`, the camera at road node `node`; the roadside objects' corners with them */
+void road_gather(int node, int sec, int drawn);
+
+/* the road's direction ahead from the camera's section (0x587b8): what the near plane
+   moves points along */
+void road_clip_direction(int section);
+
+/* the points into the view (0x59a74): the camera at pos, turned by m (3 x 3, 16.16), in
+   section node / 4. Returns the near plane (also the view's +4) */
+int road_transform(const vec3 *pos, const int m[9], int node);
+
+/* 0x5004c: the road's points gathered again at the next frame (a roadside object knocked
+   over), the mirror's too (the original sets the camera's flag for it; race.c asks
+   for last_kinds < 0) */
+void road_refresh(void);
+
+/* the road behind for the mirror (0x50070's end, 0x4fed8), when the camera's node
+   changed: the first row of five sections from (node + 3) / 4 - 4 */
+void road_gather_behind(int node);
+/* those points into the mirror's view (0x5a950); returns its near plane */
+int road_transform_behind(const vec3 *pos, const int m[9]);
+
+#endif

@@ -18,11 +18,13 @@ enum ServerSettings {
         get { UserDefaults.standard.string(forKey: tokenKey) ?? "" }
         set { UserDefaults.standard.set(newValue.trimmingCharacters(in: .whitespaces), forKey: tokenKey) }
     }
-    /// The chosen data set (`porsche/original`, `porsche/mod-<name>`).
+    /// The chosen data set of the game being started (`porsche/original`, `porsche/mod-<name>`, `nfsse/original`);
+    /// one choice per game (Porsche keeps the key it always had).
     static var dataSet: String {
-        get { UserDefaults.standard.string(forKey: setKey) ?? "porsche/original" }
-        set { UserDefaults.standard.set(newValue, forKey: setKey) }
+        get { UserDefaults.standard.string(forKey: setKey(for: Shell.game)) ?? "\(Shell.game.rawValue)/original" }
+        set { UserDefaults.standard.set(newValue, forKey: setKey(for: Shell.game)) }
     }
+    static func setKey(for g: GameID) -> String { g == .porsche ? setKey : "\(setKey).\(g.rawValue)" }
 
     /// Base URLs to try for an address, in order. `*.ts.net` names try HTTPS first (a `tailscale serve`
     /// certificate), then plain HTTP on 8642; everything else plain HTTP on the LAN (ATS `NSAllowsLocalNetworking`).

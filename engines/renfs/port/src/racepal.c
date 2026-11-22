@@ -1,0 +1,292 @@
+/* The race's palette and what its pictures are turned into. */
+#include "racepal.h"
+#include "exe.h"
+#include "font.h"
+#include "polyfill.h"
+#include "video.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_PIECES 50          /* the original stops dead past these */
+#define MAX_REMAPS 100
+
+static struct { int start, count; const unsigned char *pal; } g_pieces[MAX_PIECES];
+static int g_npieces;          /* 0xee3b0; the list at 0x13c7f0 */
+static struct { unsigned char *bank; const unsigned char *pal; } g_remaps[MAX_REMAPS];
+static int g_nremaps;          /* 0xee3ac; the list at 0x13ce48 */
+
+static int g_tint[5];              /* 0x13d58c, 0x13d594, 0x13d598, 0x13d590, 0x13d588 */
+
+void pal_set_tint(int r, int g, int b, int towards, int bright)
+{
+    g_tint[0] = r;
+    g_tint[1] = g;
+    g_tint[2] = b;
+    g_tint[3] = towards;
+    g_tint[4] = bright;
+}
+
+/* x * f >> 16, rounded by the last bit out */
+static int mul16(int x, int f)
+{
+    long long p = (long long)x * f;
+    return (int)(p >> 16) + (int)(p >> 15 & 1);
+}
+
+void pal_tint(int from, int to, unsigned char *pal)
+{
+    int i, k, c[3], top;
+    for (i = from; i < to; i++, pal += 3) {
+        for (k = 0; k < 3; k++) {
+            if (g_tint[k] < 0)
+                g_tint[k] = 0;
+            c[k] = pal[k] * g_tint[k] / 256;
+        }
+        if (g_tint[3] > 0x10000)
+            g_tint[3] = 0x10000;
+        top = c[0] > c[1] ? c[0] : c[1];
+        if (c[2] >= top)
+            top = c[2];
+        for (k = 0; k < 3; k++)
+            c[k] += mul16(top - c[k], g_tint[3]);
+        for (k = 0; k < 3; k++) {
+            c[k] = mul16(c[k], g_tint[4]);
+            if (c[k] < 0)
+                c[k] = 0;
+            if (c[k] > 0x3f)
+                c[k] = 0x3f;
+            pal[k] = (unsigned char)c[k];
+        }
+    }
+}
+
+void pal_queue_piece(int start, int count, const unsigned char *pal)
+{
+    if (g_npieces == MAX_PIECES) {
+        fprintf(stderr, "renfs: too many palette pieces\n");
+        exit(1);
+    }
+    g_pieces[g_npieces].start = start;
+    g_pieces[g_npieces].count = count;
+    g_pieces[g_npieces].pal = pal;
+    g_npieces++;
+}
+
+/* setpalette with 6-bit colours: the game's copy holds them x 4 */
+void pal_apply_pieces(void)
+{
+    unsigned char p8[768];
+    int i, k;
+    for (i = 0; i < g_npieces; i++) {
+        for (k = 0; k < 3 * g_pieces[i].count; k++)
+            p8[k] = (unsigned char)((g_pieces[i].pal[k] & 0x3f) << 2);
+        video_palette(p8, g_pieces[i].start, g_pieces[i].count);
+    }
+    g_npieces = 0;
+}
+
+void pal_queue_remap(unsigned char *bank, const unsigned char *pal)
+{
+    if (g_nremaps == MAX_REMAPS) {
+        fprintf(stderr, "renfs: too many pictures to re-colour\n");
+        exit(1);
+    }
+    g_remaps[g_nremaps].bank = bank;
+    g_remaps[g_nremaps].pal = pal;
+    g_nremaps++;
+}
+
+static unsigned rd32(const unsigned char *p)
+{
+    return (unsigned)p[0] | (unsigned)p[1] << 8 | (unsigned)p[2] << 16 | (unsigned)p[3] << 24;
+}
+
+/* the colour map the re-colourings share (0xf9520): what one leaves in entries it does not
+   fill, the next finds there */
+static unsigned char g_map[256];
+
+/* entries from..to-1 of the map: each colour of pal to its nearest (0x95d20: 6 bits to 8
+   rounded, 0xa2f10; then 0xaa1f0) */
+static void map_fill(int from, int to, const unsigned char *pal)
+{
+    int i;
+    for (i = from; i < to; i++) {
+        unsigned r = (pal[3 * i] * 255u + 32) / 63, g = (pal[3 * i + 1] * 255u + 32) / 63,
+                 b = (pal[3 * i + 2] * 255u + 32) / 63;
+        g_map[i] = (unsigned char)nearest_colour((unsigned long)(r & 0xff) << 16 | (g & 0xff) << 8 | (b & 0xff));
+    }
+}
+
+/* every picture of the bank not named "!..", last first, through the map */
+static void map_bank(unsigned char *bank)
+{
+    int i, n, k;
+    for (i = (int)rd32(bank + 8) - 1; i >= 0; i--) {
+        unsigned char *s = bank + rd32(bank + 20 + 8 * i);
+        if (bank[16 + 8 * i] == '!')
+            continue;
+        n = (s[4] | s[5] << 8) * (s[6] | s[7] << 8);
+        for (k = 0; k < n; k++)
+            s[16 + k] = g_map[s[16 + k]];
+    }
+}
+
+void pal_remap(unsigned char *bank, const unsigned char *pal)
+{
+    map_fill(0, 255, pal);
+    g_map[255] = 255;
+    map_bank(bank);
+}
+
+void car_pics_remap(unsigned char *bank, const unsigned char *pal, int mark, int lights)
+{
+    map_fill(0, 0xfa, pal);
+    if (mark)
+        g_map[0xfe] = (unsigned char)mark;
+    if (lights) {
+        g_map[0xfa] = 0xfa;
+        g_map[0xfb] = 0xfb;
+        g_map[0xfc] = 0xfc;
+        g_map[0xfd] = 0xfd;
+    }
+    /* (0x13ca48, another map of the race's colours made by 0x5591c, gets the same five
+       entries) */
+    map_bank(bank);
+}
+
+void pal_apply_remaps(void)
+{
+    int i;
+    for (i = 0; i < g_nremaps; i++)
+        pal_remap(g_remaps[i].bank, g_remaps[i].pal);
+    g_nremaps = 0;
+}
+
+void race_colours(const unsigned char *marks, int n, int mode)
+{
+    int i;
+
+    memset(g_colour_off, 0, 255);
+    g_colour_off[0x47] = 1;
+    if (mode < 2)
+        g_colour_off[0x5f] = 1;
+    for (i = 0xfa; i < 0x100; i++)
+        g_colour_off[i] = 1;
+    for (i = 0; i < n; i++)
+        if (marks[i])
+            g_colour_off[marks[i]] = 1;
+    inv_build();
+}
+
+/* c (6 bits) times f (16.16), rounded by the last bit out */
+static int scaled(int c, int f)
+{
+    long long p = (long long)c * f;
+    return (int)(p >> 16) + (int)((p >> 15) & 1);
+}
+
+void shade_make(int f)
+{
+    const unsigned char *p8 = video_palette8();
+    int i, k, best, d, r, g, b, pick;
+
+    for (i = 0; i < 256; i++) {
+        r = scaled(p8[3 * i] >> 2, f);
+        g = scaled(p8[3 * i + 1] >> 2, f);
+        b = scaled(p8[3 * i + 2] >> 2, f);
+        if (r > 63)
+            r = 63;
+        if (g > 63)
+            g = 63;
+        if (b > 63)
+            b = 63;
+        /* the nearest of the colours allowed, red twice and green three times as much as
+           blue (0x89da0); the first of equals */
+        best = 9999;
+        pick = 0;
+        for (k = 0; k < 256; k++) {
+            if (g_colour_off[k])
+                continue;
+            d = 2 * (r - (p8[3 * k] >> 2)) * (r - (p8[3 * k] >> 2))
+                + 3 * (g - (p8[3 * k + 1] >> 2)) * (g - (p8[3 * k + 1] >> 2))
+                + (b - (p8[3 * k + 2] >> 2)) * (b - (p8[3 * k + 2] >> 2));
+            if (d < best) {
+                best = d;
+                pick = k;
+            }
+        }
+        g_shade[i] = (unsigned char)pick;
+    }
+}
+
+unsigned char g_marker_colour[8];
+int g_marker_line;
+
+/* the entry 0..254 nearest to (r, g, b), 6 bits each, the differences added (0x55790);
+   the first of equals */
+static int hud_nearest(int r, int g, int b)
+{
+    const unsigned char *p8 = video_palette8();
+    int i, d, best = 99999, pick = 0;
+
+    for (i = 0; i < 255; i++) {
+        d = abs((p8[3 * i] >> 2) - r) + abs((p8[3 * i + 1] >> 2) - g)
+            + abs((p8[3 * i + 2] >> 2) - b);
+        if (d < best) {
+            best = d;
+            pick = i;
+        }
+    }
+    return pick;
+}
+
+void hud_colours(void)
+{
+    /* 0x13d5a4 on, 4 apart: red, dark red, green, dark green, blue, dark blue, yellow,
+       dark yellow, white, black, four greys, orange, magenta, cyan (6 bits) */
+    static const unsigned char rgb[17][3] = {
+        { 63, 0, 0 }, { 32, 0, 0 }, { 0, 63, 0 }, { 0, 32, 0 }, { 0, 0, 63 }, { 0, 0, 32 },
+        { 63, 63, 0 }, { 32, 32, 0 }, { 63, 63, 63 }, { 0, 0, 0 }, { 6, 6, 6 },
+        { 16, 16, 16 }, { 32, 32, 32 }, { 48, 48, 48 }, { 63, 20, 0 }, { 63, 0, 63 },
+        { 0, 63, 63 } };
+    static const unsigned char fixed[8] = { 0xf5, 0xf8, 0xf0, 0xfa, 0, 0xf9, 0xfc, 0xfb };
+    int i;
+
+    for (i = 0; i < 17; i++)
+        g_hud_colour[i] = hud_nearest(rgb[i][0], rgb[i][1], rgb[i][2]);
+    g_hud_slate = hud_nearest(10, 14, 18);         /* 0x12b9fc */
+    g_map_frame = hud_nearest(26, 26, 26);         /* 0x12ba08 */
+    memcpy(g_marker_colour, fixed, sizeof fixed);
+    g_marker_colour[4] = (unsigned char)g_hud_colour[HUD_WHITE];
+    g_marker_line = g_hud_colour[HUD_BLACK];
+}
+
+/* t of the way from a to b (t 16.16, 0xa6040) */
+static int toward(int a, int b, int t)
+{
+    long long p = (long long)(b - a) * t;
+    return (int)(p >> 16) + (int)((p >> 15) & 1) + a;
+}
+
+int g_hud_colour[17], g_hud_slate, g_map_frame;
+
+unsigned char g_needle_blend[16][256];
+int g_needle_colour;
+
+void needle_colours(int number)
+{
+    const unsigned char *p8 = video_palette8();
+    int r = exe_i32(0xea710 + 20 * number), g = exe_i32(0xea714 + 20 * number);
+    int b = exe_i32(0xea718 + 20 * number), k, c, t;
+
+    g_needle_colour = nearest_colour((unsigned long)r << 16 | (unsigned long)g << 8 | (unsigned long)b);
+    for (k = 0; k < 16; k++) {
+        t = (k + 1) << 12;
+        for (c = 0; c < 256; c++)      /* (the palette read back from the card, 0x13cb48) */
+            g_needle_blend[k][c] = (unsigned char)nearest_colour(
+                (unsigned long)toward(p8[3 * c] & 0xfc, r, t) << 16
+                | (unsigned long)toward(p8[3 * c + 1] & 0xfc, g, t) << 8
+                | (unsigned long)toward(p8[3 * c + 2] & 0xfc, b, t));
+    }
+}

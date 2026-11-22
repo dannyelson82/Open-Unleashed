@@ -36,7 +36,7 @@ final class GameDataViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = UIColor(white: 0.06, alpha: 1)
 
-        titleLabel.text = "Game Data"
+        titleLabel.text = "Game Data — \(Shell.game.title)"
         titleLabel.font = .systemFont(ofSize: 64, weight: .bold)
         titleLabel.textColor = .white
 
@@ -192,7 +192,7 @@ final class GameDataViewController: UIViewController {
         do {
             let (c, info) = try await ServerClient.connect(address: ServerSettings.address, token: ServerSettings.token)
             sets = try await c.dataSets()
-            if !sets.contains(where: { $0.id == ServerSettings.dataSet }) { ServerSettings.dataSet = "porsche/original" }
+            if !sets.contains(where: { $0.id == ServerSettings.dataSet }) { ServerSettings.dataSet = "\(Shell.game.rawValue)/original" }
             errorLabel.text = test ? "✓ \(info.name) — nfs-haven-server \(info.version) at \(c.base.absoluteString); data: \(info.data_state ?? "?"), sets: \(sets.map { Self.setName($0.id) }.joined(separator: ", "))" : nil
             errorLabel.textColor = test ? UIColor(red: 0.5, green: 0.9, blue: 0.5, alpha: 1) : UIColor(red: 1, green: 0.45, blue: 0.4, alpha: 1)
         } catch {
@@ -204,7 +204,7 @@ final class GameDataViewController: UIViewController {
 
     @objc private func chooseSet() {
         let a = UIAlertController(title: "Game data", message: "Mod sets are the original files with the mod's files on top. \"Original files\" always goes back to the unmodified game.", preferredStyle: .actionSheet)
-        let list = sets.isEmpty ? [DataSetInfo(id: "porsche/original", kind: "original", files: 0, size: 0)] : sets.filter { $0.id.hasPrefix("porsche/") && $0.kind != "hd" }
+        let list = sets.isEmpty ? [DataSetInfo(id: "\(Shell.game.rawValue)/original", kind: "original", files: 0, size: 0)] : sets.filter { $0.id.hasPrefix("\(Shell.game.rawValue)/") && $0.kind != "hd" }
         for s in list {
             let t = "\(Self.setName(s.id))\(s.size > 0 ? "  —  \(Self.mb(s.size))" : "")\(s.id == ServerSettings.dataSet ? "  ✓" : "")"
             a.addAction(UIAlertAction(title: t, style: .default) { [weak self] _ in
