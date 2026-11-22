@@ -273,6 +273,8 @@ pub(crate) struct Core {
     /// the surface carries `COPY_SRC`, so the lens flare's frame read-back can copy from it
     /// ([`Self::set_lens_enabled`])
     lens_enabled: bool,
+    /// PORT-DEVIATION (Extras › Anti-aliasing): the FXAA pass, made on first use per target format
+    fxaa_pass: Option<FxaaPass>,
     /// read-backs issued and not yet collected, oldest first
     lens_pending: Vec<LensPending>,
     /// read-backs collected, for the front to hand to the game
@@ -555,7 +557,8 @@ impl Core {
             .or_else(|| caps.formats.iter().copied().find(|f| !f.is_srgb()))
             .unwrap_or(caps.formats[0]);
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            // FXAA (Extras) copies the finished 3-D image out of the frame
+            usage: if crate::fxaa() { wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC } else { wgpu::TextureUsages::RENDER_ATTACHMENT },
             format,
             width: size.width.max(1),
             height: size.height.max(1),
@@ -1007,6 +1010,7 @@ impl Core {
             depth_cache: std::collections::HashMap::new(),
             buckets: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
             lens_enabled: false,
+            fxaa_pass: None,
             lens_pending: Vec::new(),
             lens_done: Vec::new(),
             lens_staged: Vec::new(),
@@ -1117,7 +1121,7 @@ impl Core {
             return;
         }
         self.lens_enabled = on;
-        self.config.usage = if on { wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC } else { wgpu::TextureUsages::RENDER_ATTACHMENT };
+        self.config.usage = if on || crate::fxaa() { wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC } else { wgpu::TextureUsages::RENDER_ATTACHMENT };
         self.surface.configure(&self.device, &self.config);
         if !on {
             self.lens_pending.clear();
@@ -1686,7 +1690,7 @@ impl Core {
         let aspect = self.aspect();
         let depth = self.depth_view.clone();
         let (w, h) = (frame.texture.width(), frame.texture.height());
-        let can_copy = self.lens_enabled;
+        let can_copy = self.lens_enabled || crate::fxaa();
         self.encode_with_gamma(scene, camera, FrameTarget { view: &view, texture: &frame.texture, can_copy, depth_view: &depth }, w, h, aspect);
         self.queue.present(frame);
         self.collect_lens();
@@ -2116,6 +2120,18 @@ impl Core {
         if let Some(p) = probe.filter(|p| p.test) {
             self.lens_copy(&mut encoder, target, p, false);
         }
+        // PORT-DEVIATION (Extras › Anti-aliasing): FXAA over the finished 3-D image, before the flare elements and
+        // the 2D pass; only where the frame may be copied from (the surface gets COPY_SRC while FXAA is on)
+        if crate::fxaa() && can_copy && with_sprites {
+            let format = target.format();
+            if self.fxaa_pass.as_ref().is_none_or(|p| p.format != format) {
+                self.fxaa_pass = Some(FxaaPass::new(&self.device, format));
+            }
+            let device = self.device.clone();
+            if let Some(fx) = self.fxaa_pass.as_mut() {
+                fx.encode(&device, &mut encoder, target, view);
+            }
+        }
         // the lens flare's elements (0x460460 → 0x451710): flat on the screen over the finished
         // frame, under no depth test
         if overlay {
@@ -2353,6 +2369,149 @@ impl GammaPass {
         }
         crate::prof::resolve(&mut enc);
         queue.submit(Some(enc.finish()));
+    }
+}
+
+/// PORT-DEVIATION (Extras › Anti-aliasing): a small FXAA-style pass — the frame is copied out, and one full-screen
+/// triangle writes each pixel back blended toward its neighbour across a detected edge (luma contrast, edge
+/// direction from the gradients, a sub-pixel term and a short search along the edge for its ends).
+struct FxaaPass {
+    format: wgpu::TextureFormat,
+    pipeline: wgpu::RenderPipeline,
+    layout: wgpu::BindGroupLayout,
+    src: Option<(u32, u32, wgpu::Texture, wgpu::BindGroup)>,
+}
+
+const FXAA_WGSL: &str = r#"
+@group(0) @binding(0) var src: texture_2d<f32>;
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
+    let p = vec2<f32>(f32((i << 1u) & 2u), f32(i & 2u));
+    return vec4<f32>(p * 2.0 - 1.0, 0.0, 1.0);
+}
+fn px(p: vec2<i32>) -> vec4<f32> {
+    let d = vec2<i32>(textureDimensions(src)) - vec2<i32>(1, 1);
+    return textureLoad(src, clamp(p, vec2<i32>(0, 0), d), 0);
+}
+fn lum(c: vec4<f32>) -> f32 { return dot(c.rgb, vec3<f32>(0.299, 0.587, 0.114)); }
+@fragment fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let p = vec2<i32>(pos.xy);
+    let c = px(p);
+    let lc = lum(c);
+    let ln = lum(px(p + vec2<i32>(0, -1)));
+    let ls = lum(px(p + vec2<i32>(0, 1)));
+    let lw = lum(px(p + vec2<i32>(-1, 0)));
+    let le = lum(px(p + vec2<i32>(1, 0)));
+    let hi = max(lc, max(max(ln, ls), max(lw, le)));
+    let lo = min(lc, min(min(ln, ls), min(lw, le)));
+    let range = hi - lo;
+    // low contrast: leave the pixel alone (keeps flat areas and the original's dithering untouched)
+    if (range < max(0.04, hi * 0.15)) { return c; }
+    let lnw = lum(px(p + vec2<i32>(-1, -1)));
+    let lne = lum(px(p + vec2<i32>(1, -1)));
+    let lsw = lum(px(p + vec2<i32>(-1, 1)));
+    let lse = lum(px(p + vec2<i32>(1, 1)));
+    // a horizontal edge has its big change vertically
+    let gh = abs(ln + ls - 2.0 * lc) * 2.0 + abs(lne + lse - 2.0 * le) + abs(lnw + lsw - 2.0 * lw);
+    let gv = abs(lw + le - 2.0 * lc) * 2.0 + abs(lnw + lne - 2.0 * ln) + abs(lsw + lse - 2.0 * ls);
+    let horizontal = gh >= gv;
+    // the side of the edge with the steeper step
+    var across: vec2<i32>;
+    var l_across: f32;
+    if (horizontal) {
+        if (abs(ln - lc) >= abs(ls - lc)) { across = vec2<i32>(0, -1); l_across = ln; } else { across = vec2<i32>(0, 1); l_across = ls; }
+    } else {
+        if (abs(lw - lc) >= abs(le - lc)) { across = vec2<i32>(-1, 0); l_across = lw; } else { across = vec2<i32>(1, 0); l_across = le; }
+    }
+    let along = select(vec2<i32>(0, 1), vec2<i32>(1, 0), horizontal);
+    // walk along the edge both ways (8 steps) until the pair (pixel, neighbour across) stops looking like it
+    let edge = (lc + l_across) * 0.5;
+    let grad = abs(l_across - lc) * 0.25;
+    var dn = 8;
+    var dp = 8;
+    for (var i = 1; i <= 8; i = i + 1) {
+        let q = p - along * i;
+        let e = (lum(px(q)) + lum(px(q + across))) * 0.5;
+        if (abs(e - edge) >= grad) { dn = i; break; }
+    }
+    for (var i = 1; i <= 8; i = i + 1) {
+        let q = p + along * i;
+        let e = (lum(px(q)) + lum(px(q + across))) * 0.5;
+        if (abs(e - edge) >= grad) { dp = i; break; }
+    }
+    let len = f32(dn + dp);
+    let edge_blend = max(0.0, 0.5 - f32(min(dn, dp)) / len);
+    // sub-pixel aliasing: how far the pixel is from its neighbourhood's average
+    let avg = (2.0 * (ln + ls + lw + le) + lnw + lne + lsw + lse) / 12.0;
+    let sub = clamp(abs(avg - lc) / range, 0.0, 1.0);
+    let sub_blend = smoothstep(0.0, 1.0, sub) * smoothstep(0.0, 1.0, sub) * 0.75;
+    let b = max(edge_blend, sub_blend);
+    let o = px(p + across);
+    return vec4<f32>(mix(c.rgb, o.rgb, b), c.a);
+}
+"#;
+
+impl FxaaPass {
+    fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fxaa"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: false }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                count: None,
+            }],
+        });
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("fxaa"), source: wgpu::ShaderSource::Wgsl(FXAA_WGSL.into()) });
+        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("fxaa"), bind_group_layouts: &[Some(&layout)], immediate_size: 0 });
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("fxaa"),
+            layout: Some(&pl),
+            vertex: wgpu::VertexState { module: &module, entry_point: Some("vs"), compilation_options: Default::default(), buffers: &[] },
+            fragment: Some(wgpu::FragmentState { module: &module, entry_point: Some("fs"), compilation_options: Default::default(), targets: &[Some(wgpu::ColorTargetState { format, blend: None, write_mask: wgpu::ColorWrites::ALL })] }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
+        Self { format, pipeline, layout, src: None }
+    }
+
+    /// Copy `target` out and draw the smoothed image back into `view`.
+    fn encode(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, target: &wgpu::Texture, view: &wgpu::TextureView) {
+        let (w, h) = (target.width(), target.height());
+        if !self.src.as_ref().is_some_and(|(sw, sh, ..)| *sw == w && *sh == h) {
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("fxaa source"),
+                size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: self.format,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+            let tv = texture.create_view(&Default::default());
+            let bg = device.create_bind_group(&wgpu::BindGroupDescriptor { label: Some("fxaa"), layout: &self.layout, entries: &[wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&tv) }] });
+            self.src = Some((w, h, texture, bg));
+        }
+        let Some((_, _, src, bg)) = self.src.as_ref() else { return };
+        encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo { texture: target, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+            wgpu::TexelCopyTextureInfo { texture: src, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+            wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        );
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("fxaa"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment { view, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store } })],
+            depth_stencil_attachment: None,
+            timestamp_writes: crate::prof::rp("fxaa"),
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, bg, &[]);
+        pass.draw(0..3, 0..1);
     }
 }
 

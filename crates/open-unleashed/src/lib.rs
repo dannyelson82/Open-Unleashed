@@ -140,6 +140,7 @@ pub(crate) fn build_app(on_loop: &mut dyn FnMut(bool) -> Result<()>) -> Result<O
     nfs_renderer::set_point_filter(!paths.nfs5_ini().filtering);
     // PORT-DEVIATION (Extras › Graphics › Texture filtering), also before the renderer is made
     nfs_renderer::set_anisotropy(nfs_game::extras::get().graphics.anisotropy());
+    nfs_renderer::set_fxaa(nfs_game::extras::get().graphics.anti_aliasing == 1);
     let cli = cli::Cli::from_env();
     // the strings every `Registry::load` reads after `fe.txt` (0x4B6698); PLATFORM GLUE: the port's own `--flags` stay out
     nfs_formats::fetxt::set_command_line(cli.options.clone());
