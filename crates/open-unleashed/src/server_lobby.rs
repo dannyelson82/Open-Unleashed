@@ -3,7 +3,7 @@
 //!
 //! * **Hosting:** `CREATE` registers the session (name, host player, players, every local address with the
 //!   well-known port) and heartbeats every 5 s; it is deleted when the session ends (and expires on the server
-//!   after `OU_LOBBY_TTL` otherwise).
+//!   after `NFSH_LOBBY_TTL` otherwise).
 //! * **Joining:** while a games screen is open, the server's open games are fetched every 3 s and the original's
 //!   `'w'` probe is also sent **unicast** to each game's best address (the server orders them: the tailnet one first
 //!   for a tailnet requester). A host that answers appears in the original's games list like a LAN one — real

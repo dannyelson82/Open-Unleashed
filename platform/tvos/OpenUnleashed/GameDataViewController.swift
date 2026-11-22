@@ -1,6 +1,6 @@
-// OpenUnleashed for Apple TV — the Game Data screen (TVOS.md, Stage 4.3). GPL-3.0-or-later.
+// NFS Haven for Apple TV — the Game Data screen (TVOS.md, Stage 4.3). GPL-3.0-or-later.
 //
-// Shown when Caches/game doesn't hold a complete, verified download, or at launch when the server has newer data
+// Shown when Caches/games/porsche/data doesn't hold a complete, verified download, or at launch when the server has newer data
 // for the chosen set (a patch, an updated mod set): then Update fetches only the changed files and Play starts
 // with the files already here. Fully usable with the Siri Remote or a
 // game controller (tvOS focus engine): Server (address + token, Find on network, Test), data set choice
@@ -84,8 +84,8 @@ final class GameDataViewController: UIViewController {
             progress.widthAnchor.constraint(equalToConstant: 1100),
         ])
         refresh()
-        if UserDefaults.standard.bool(forKey: "ou.autoDownload") {
-            // test hook (launch argument `-ou.autoDownload YES`): download without a button press
+        if UserDefaults.standard.bool(forKey: "nfsh.autoDownload") {
+            // test hook (launch argument `-nfsh.autoDownload YES`): download without a button press
             startDownload()
         } else if errorText == nil {
             Task { await loadSets(quiet: true) }
@@ -104,7 +104,7 @@ final class GameDataViewController: UIViewController {
             if u.removed > 0 { t += ", \(u.removed) removed" }
             statusLabel.text = t + ".\nUpdate downloads only those files. Play starts with the files already on this Apple TV."
         } else if have == nil {
-            statusLabel.text = "The original game data (your own copy) is downloaded once from your OpenUnleashed server and kept on this Apple TV.\nIf tvOS clears its storage, this screen comes back and only the missing files are fetched again."
+            statusLabel.text = "The original game data (your own copy) is downloaded once from your NFS Haven server and kept on this Apple TV.\nIf tvOS clears its storage, this screen comes back and only the missing files are fetched again."
         } else {
             statusLabel.text = "\(have!.count) file(s) of the game data are missing (tvOS may have cleared storage). Download them again."
         }
@@ -118,8 +118,9 @@ final class GameDataViewController: UIViewController {
     }
 
     static func setName(_ id: String) -> String {
-        if id == "original" { return "Original files" }
-        if id.hasPrefix("mod-") { return "Mod: " + id.dropFirst(4) }
+        let set = id.split(separator: "/", maxSplits: 1).last.map(String.init) ?? id
+        if set == "original" { return "Original files" }
+        if set.hasPrefix("mod-") { return "Mod: " + set.dropFirst(4) }
         return id
     }
 
@@ -132,7 +133,7 @@ final class GameDataViewController: UIViewController {
     // MARK: server
 
     @objc private func editServer() {
-        let a = UIAlertController(title: "OpenUnleashed server", message: "Name or IP address (e.g. tower.local, 192.168.50.37, tower-1.tawny-taipan.ts.net) and the server's password.", preferredStyle: .alert)
+        let a = UIAlertController(title: "NFS Haven server", message: "Name or IP address (e.g. tower.local, 192.168.50.37, tower-1.tawny-taipan.ts.net) and the server's password.", preferredStyle: .alert)
         a.addTextField { t in
             t.text = ServerSettings.address
             t.placeholder = "tower.local"
@@ -165,7 +166,7 @@ final class GameDataViewController: UIViewController {
             guard let self else { return }
             self.findButton.setTitle("Find on network", for: .normal)
             if found.isEmpty {
-                self.errorLabel.text = "No OpenUnleashed server found on this network (Bonjour _ou-server._tcp). Enter its address instead — see docs/ou-server.md for advertising it from Unraid."
+                self.errorLabel.text = "No NFS Haven server found on this network (Bonjour _nfs-haven._tcp). Enter its address instead — see docs/nfs-haven-server.md for advertising it from Unraid."
                 return
             }
             let a = UIAlertController(title: "Servers found", message: nil, preferredStyle: .actionSheet)
@@ -191,8 +192,8 @@ final class GameDataViewController: UIViewController {
         do {
             let (c, info) = try await ServerClient.connect(address: ServerSettings.address, token: ServerSettings.token)
             sets = try await c.dataSets()
-            if !sets.contains(where: { $0.id == ServerSettings.dataSet }) { ServerSettings.dataSet = "original" }
-            errorLabel.text = test ? "✓ \(info.name) — ou-server \(info.version) at \(c.base.absoluteString); data: \(info.data_state ?? "?"), sets: \(sets.map { Self.setName($0.id) }.joined(separator: ", "))" : nil
+            if !sets.contains(where: { $0.id == ServerSettings.dataSet }) { ServerSettings.dataSet = "porsche/original" }
+            errorLabel.text = test ? "✓ \(info.name) — nfs-haven-server \(info.version) at \(c.base.absoluteString); data: \(info.data_state ?? "?"), sets: \(sets.map { Self.setName($0.id) }.joined(separator: ", "))" : nil
             errorLabel.textColor = test ? UIColor(red: 0.5, green: 0.9, blue: 0.5, alpha: 1) : UIColor(red: 1, green: 0.45, blue: 0.4, alpha: 1)
         } catch {
             errorLabel.textColor = UIColor(red: 1, green: 0.45, blue: 0.4, alpha: 1)
@@ -203,7 +204,7 @@ final class GameDataViewController: UIViewController {
 
     @objc private func chooseSet() {
         let a = UIAlertController(title: "Game data", message: "Mod sets are the original files with the mod's files on top. \"Original files\" always goes back to the unmodified game.", preferredStyle: .actionSheet)
-        let list = sets.isEmpty ? [DataSetInfo(id: "original", kind: "original", files: 0, size: 0)] : sets.filter { $0.kind != "hd" }
+        let list = sets.isEmpty ? [DataSetInfo(id: "porsche/original", kind: "original", files: 0, size: 0)] : sets.filter { $0.id.hasPrefix("porsche/") && $0.kind != "hd" }
         for s in list {
             let t = "\(Self.setName(s.id))\(s.size > 0 ? "  —  \(Self.mb(s.size))" : "")\(s.id == ServerSettings.dataSet ? "  ✓" : "")"
             a.addAction(UIAlertAction(title: t, style: .default) { [weak self] _ in

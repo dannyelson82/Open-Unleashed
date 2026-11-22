@@ -6,5 +6,5 @@ license.workspace = true
 description = "Writes manifest.json (path, size, SHA-256) for an original game folder"
 
 [dependencies]
-ou-manifest = { path = "../../crates/ou-manifest" }
+nfs-haven-manifest = { path = "../../crates/nfs-haven-manifest" }
 serde_json = "1"

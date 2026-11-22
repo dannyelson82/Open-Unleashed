@@ -1,8 +1,9 @@
 //! Game-data manifests: the list of files (relative path, size, SHA-256) the Apple TV app downloads.
 //!
-//! Shared by `tools/make-manifest` and the OpenUnleashed server (`tools/ou-server`) so both produce the same
+//! Shared by `tools/make-manifest` and nfs-haven-server (`tools/nfs-haven-server`) so both produce the same
 //! manifest byte for byte for the same folder. Which files belong to a set is decided here too
-//! ([`is_game_file`]), following `docs/en/game-data.md`. Nothing here reads or interprets game files beyond
+//! ([`is_game_file`]): Porsche Unleashed (`porsche`) follows `docs/en/game-data.md`; any other game's folder
+//! is taken whole ([`SetKind::Any`]) until it gets rules of its own ([`kinds_for`]). Nothing here reads or interprets game files beyond
 //! hashing their bytes. GPL-3.0-or-later.
 
 use serde::{Deserialize, Serialize};
@@ -29,7 +30,7 @@ pub struct Entry {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Manifest {
     pub format: u32,
-    /// `original`, `mod:<name>` or `hd`.
+    /// The set id, `<game>/<set>`: `porsche/original`, `porsche/mod-<name>`, `porsche/hd`, …
     pub set: String,
     pub total_size: u64,
     /// Sorted by `path` (byte order).
@@ -65,6 +66,30 @@ pub enum SetKind {
     Mod,
     /// The HD texture pack: every file.
     Hd,
+    /// A game without rules of its own yet: every (non-hidden) file of the folder.
+    Any,
+}
+
+/// The kinds a game's `original/` and `mods/<name>/` folders are read as.
+pub fn kinds_for(game: &str) -> (SetKind, SetKind) {
+    match game {
+        "porsche" => (SetKind::Original, SetKind::Mod),
+        _ => (SetKind::Any, SetKind::Any),
+    }
+}
+
+/// Whether `root` looks like a complete `original/` folder for `game` (Porsche: `GameData/` and `FEData/`;
+/// another game: any file at all).
+pub fn original_ok(game: &str, root: &Path) -> bool {
+    match kinds_for(game).0 {
+        SetKind::Original => root.join("GameData").is_dir() && root.join("FEData").is_dir(),
+        k => list_files(root, k).is_ok_and(|f| !f.is_empty()),
+    }
+}
+
+/// A game id usable in a set id and a folder name: `porsche`, `nfsse`, … (lower-case letters, digits, `-`).
+pub fn game_id_ok(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 32 && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
 /// Top-level files of the original the engine reads (`docs/en/game-data.md`; `nfs5.ini` = the Verok patch's
@@ -83,7 +108,7 @@ pub fn is_game_file(kind: SetKind, rel: &str) -> bool {
         None => (rel, None),
     };
     match kind {
-        SetKind::Hd => true,
+        SetKind::Hd | SetKind::Any => true,
         SetKind::Original => match rest {
             None => ORIGINAL_TOP_FILES.iter().any(|f| f.eq_ignore_ascii_case(first)),
             Some(_) => ORIGINAL_DIRS.iter().any(|d| d.eq_ignore_ascii_case(first)),
@@ -111,7 +136,7 @@ pub fn list_files(root: &Path, kind: SetKind) -> std::io::Result<Vec<String>> {
             let rel_s = rel.to_string_lossy().replace('\\', "/");
             if ft.is_dir() {
                 // only descend into directories that can hold set files
-                if rel_dir.as_os_str().is_empty() && kind != SetKind::Hd {
+                if rel_dir.as_os_str().is_empty() && matches!(kind, SetKind::Original | SetKind::Mod) {
                     let dirs: &[&str] = if kind == SetKind::Original { &ORIGINAL_DIRS } else { &MOD_DIRS };
                     if !dirs.iter().any(|d| d.eq_ignore_ascii_case(&name)) {
                         continue;
@@ -259,7 +284,7 @@ mod tests {
     use super::*;
 
     fn tmp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("ou-manifest-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("nfs-haven-manifest-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d

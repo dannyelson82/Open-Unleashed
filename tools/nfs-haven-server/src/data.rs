@@ -1,6 +1,13 @@
-//! Game data sets: `original` (the `/game` folder), `mod-<name>` (each folder in `/mods` overlaid on the
-//! original) and `hd` (the `/hd` folder). Manifests are built at start-up and rebuilt when the folders change;
-//! hashes are cached in `/data/cache` keyed by size + modification time. Only files a manifest lists are served.
+//! Game data sets for any number of games. The games root (`/games`) holds one folder per game (`porsche/`,
+//! later `nfsse/`, …; adding a game = adding a folder), each with:
+//!
+//! * `original/` → set `<game>/original` (Porsche: `GameData/`, `FEData/` and the top-level files the engine
+//!   reads; any other game: every file)
+//! * `mods/<name>/` → set `<game>/mod-<name>`, overlaid on that game's original
+//! * `hd/` → set `<game>/hd`
+//!
+//! Manifests are built at start-up and rebuilt when the folders change; hashes are cached in `/data/cache` keyed
+//! by size + modification time. Only files a manifest lists are served.
 
 use crate::{Shared, error};
 use axum::{
@@ -11,7 +18,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
-use ou_manifest::{HashCache, Manifest, Origin, SetKind};
+use nfs_haven_manifest::{HashCache, Manifest, Origin, SetKind};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
@@ -24,6 +31,8 @@ pub struct Built {
     /// manifest path → file on disk
     pub sources: BTreeMap<String, PathBuf>,
     pub kind: &'static str,
+    /// the game it belongs to (`porsche`, …)
+    pub game: String,
 }
 
 #[derive(Default)]
@@ -40,6 +49,12 @@ pub struct Data {
 }
 
 impl Data {
+    /// The games that have at least one set.
+    pub fn game_ids(&self) -> Vec<String> {
+        let mut g: Vec<String> = self.inner.read().unwrap().sets.values().map(|b| b.game.clone()).collect();
+        g.dedup();
+        g
+    }
     pub fn set_ids(&self) -> Vec<String> {
         self.inner.read().unwrap().sets.keys().cloned().collect()
     }
@@ -65,13 +80,46 @@ fn mod_name_ok(n: &str) -> bool {
     !n.is_empty() && n.len() <= 64 && !n.starts_with('.') && n.chars().all(|c| c.is_ascii_alphanumeric() || " _-.".contains(c))
 }
 
+/// The games root's game folders (valid ids only), sorted.
+fn games(cfg: &crate::Config) -> Vec<(String, PathBuf)> {
+    let mut out: Vec<(String, PathBuf)> = std::fs::read_dir(&cfg.games_dir)
+        .map(|rd| {
+            rd.flatten()
+                .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+                .filter_map(|e| {
+                    let id = e.file_name().to_str()?.to_string();
+                    if nfs_haven_manifest::game_id_ok(&id) {
+                        Some((id, e.path()))
+                    } else {
+                        if !id.starts_with('.') {
+                            tracing::warn!(folder = id, "game folder skipped: use lower-case letters, digits and - only");
+                        }
+                        None
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    out.sort();
+    out
+}
+
+/// A game's mod folders (`mods/<name>/`), sorted.
+fn mod_dirs(game_dir: &std::path::Path) -> Vec<(String, PathBuf)> {
+    let mut out: Vec<(String, PathBuf)> = std::fs::read_dir(game_dir.join("mods"))
+        .map(|rd| rd.flatten().filter(|e| e.file_type().is_ok_and(|t| t.is_dir())).filter_map(|e| Some((e.file_name().to_str()?.to_string(), e.path()))).collect())
+        .unwrap_or_default();
+    out.sort();
+    out
+}
+
 /// A cheap fingerprint of every folder (paths, sizes, mtimes) to notice changes without hashing.
 fn fingerprint(cfg: &crate::Config) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
     let mut walk = |root: &std::path::Path, kind: SetKind| {
         root.display().to_string().hash(&mut h);
-        for rel in ou_manifest::list_files(root, kind).unwrap_or_default() {
+        for rel in nfs_haven_manifest::list_files(root, kind).unwrap_or_default() {
             rel.hash(&mut h);
             if let Ok(md) = std::fs::metadata(root.join(&rel)) {
                 md.len().hash(&mut h);
@@ -79,78 +127,84 @@ fn fingerprint(cfg: &crate::Config) -> u64 {
             }
         }
     };
-    walk(&cfg.game_dir, SetKind::Original);
-    if let Ok(rd) = std::fs::read_dir(&cfg.mods_dir) {
-        let mut dirs: Vec<_> = rd.flatten().filter(|e| e.file_type().is_ok_and(|t| t.is_dir())).map(|e| e.path()).collect();
-        dirs.sort();
-        for d in dirs {
-            walk(&d, SetKind::Mod);
+    for (id, dir) in games(cfg) {
+        let (orig_kind, mod_kind) = nfs_haven_manifest::kinds_for(&id);
+        walk(&dir.join("original"), orig_kind);
+        for (_, d) in mod_dirs(&dir) {
+            walk(&d, mod_kind);
         }
+        walk(&dir.join("hd"), SetKind::Hd);
     }
-    walk(&cfg.hd_dir, SetKind::Hd);
     h.finish()
 }
 
-/// Build every set (blocking: hashing).
+/// Build every game's sets (blocking: hashing).
 fn build_all(cfg: &crate::Config) -> Result<BTreeMap<String, Arc<Built>>, String> {
     let cache_path = cfg.data_dir.join("cache").join("hashes.json");
     let mut cache = HashCache::load(&cache_path);
     let mut sets = BTreeMap::new();
-    let game_ok = cfg.game_dir.join("GameData").is_dir() && cfg.game_dir.join("FEData").is_dir();
-    if game_ok {
-        let original = ou_manifest::build(&cfg.game_dir, SetKind::Original, "original", &mut cache).map_err(|e| format!("{}: {e}", cfg.game_dir.display()))?;
-        let sources = original.files.iter().map(|f| (f.path.clone(), cfg.game_dir.join(&f.path))).collect();
-        tracing::info!(files = original.files.len(), mb = original.total_size / 1_000_000, "set original");
-        // mods: each folder overlaid on the original
-        if let Ok(rd) = std::fs::read_dir(&cfg.mods_dir) {
-            let mut dirs: Vec<_> = rd.flatten().filter(|e| e.file_type().is_ok_and(|t| t.is_dir())).collect();
-            dirs.sort_by_key(|e| e.file_name());
-            for d in dirs {
-                let Some(name) = d.file_name().to_str().map(str::to_string) else { continue };
-                if !mod_name_ok(&name) {
-                    tracing::warn!(name, "mod folder skipped: use letters, digits, space, _ - . only");
-                    continue;
-                }
-                let id = format!("mod-{name}");
-                let m = match ou_manifest::build(&d.path(), SetKind::Mod, &id, &mut cache) {
-                    Ok(m) if !m.files.is_empty() => m,
-                    Ok(_) => {
-                        tracing::warn!(name, "mod folder has no GameData/, FEData/ or SaveData/ files: skipped");
-                        continue;
-                    }
-                    Err(e) => {
-                        tracing::warn!(name, error = %e, "mod folder unreadable: skipped");
-                        continue;
-                    }
-                };
-                let (merged, origins) = ou_manifest::overlay(&original, &m, &id);
-                let sources = origins
-                    .into_iter()
-                    .map(|(path, (o, src))| (path, if o == Origin::Overlay { d.path().join(src) } else { cfg.game_dir.join(src) }))
-                    .collect();
-                tracing::info!(set = id, replaced_or_added = m.files.len(), files = merged.files.len(), "set mod");
-                sets.insert(id, Arc::new(Built { json: Arc::new(merged.to_json()), manifest: merged, sources, kind: "mod" }));
-            }
-        }
-        sets.insert("original".into(), Arc::new(Built { json: Arc::new(original.to_json()), manifest: original, sources, kind: "original" }));
-    } else {
-        tracing::warn!(dir = %cfg.game_dir.display(), "no GameData/ and FEData/ in the game folder: no data sets");
+    let all = games(cfg);
+    if all.is_empty() {
+        tracing::warn!(dir = %cfg.games_dir.display(), "no game folders (e.g. porsche/original/) in the games folder: no data sets");
     }
-    if cfg.hd_dir.is_dir() {
-        match ou_manifest::build(&cfg.hd_dir, SetKind::Hd, "hd", &mut cache) {
-            Ok(m) if !m.files.is_empty() => {
-                let sources = m.files.iter().map(|f| (f.path.clone(), cfg.hd_dir.join(&f.path))).collect();
-                tracing::info!(files = m.files.len(), mb = m.total_size / 1_000_000, "set hd");
-                sets.insert("hd".into(), Arc::new(Built { json: Arc::new(m.to_json()), manifest: m, sources, kind: "hd" }));
-            }
-            Ok(_) => {}
-            Err(e) => tracing::warn!(error = %e, "hd folder unreadable"),
-        }
+    for (game, dir) in all {
+        build_game(&game, &dir, &mut cache, &mut sets)?;
     }
     if let Err(e) = cache.save(&cache_path) {
         tracing::warn!(error = %e, "hash cache not saved");
     }
     Ok(sets)
+}
+
+/// One game's sets: `<game>/original`, `<game>/mod-<name>` (each overlaid on the original), `<game>/hd`.
+fn build_game(game: &str, dir: &std::path::Path, cache: &mut HashCache, sets: &mut BTreeMap<String, Arc<Built>>) -> Result<(), String> {
+    let (orig_kind, mod_kind) = nfs_haven_manifest::kinds_for(game);
+    let orig_dir = dir.join("original");
+    if nfs_haven_manifest::original_ok(game, &orig_dir) {
+        let id = format!("{game}/original");
+        let original = nfs_haven_manifest::build(&orig_dir, orig_kind, &id, cache).map_err(|e| format!("{}: {e}", orig_dir.display()))?;
+        let sources = original.files.iter().map(|f| (f.path.clone(), orig_dir.join(&f.path))).collect();
+        tracing::info!(set = id, files = original.files.len(), mb = original.total_size / 1_000_000, "set original");
+        for (name, d) in mod_dirs(dir) {
+            if !mod_name_ok(&name) {
+                tracing::warn!(game, name, "mod folder skipped: use letters, digits, space, _ - . only");
+                continue;
+            }
+            let id = format!("{game}/mod-{name}");
+            let m = match nfs_haven_manifest::build(&d, mod_kind, &id, cache) {
+                Ok(m) if !m.files.is_empty() => m,
+                Ok(_) => {
+                    tracing::warn!(game, name, "mod folder has no files the game uses: skipped");
+                    continue;
+                }
+                Err(e) => {
+                    tracing::warn!(game, name, error = %e, "mod folder unreadable: skipped");
+                    continue;
+                }
+            };
+            let (merged, origins) = nfs_haven_manifest::overlay(&original, &m, &id);
+            let sources = origins.into_iter().map(|(path, (o, src))| (path, if o == Origin::Overlay { d.join(src) } else { orig_dir.join(src) })).collect();
+            tracing::info!(set = id, replaced_or_added = m.files.len(), files = merged.files.len(), "set mod");
+            sets.insert(id, Arc::new(Built { json: Arc::new(merged.to_json()), manifest: merged, sources, kind: "mod", game: game.to_string() }));
+        }
+        sets.insert(id, Arc::new(Built { json: Arc::new(original.to_json()), manifest: original, sources, kind: "original", game: game.to_string() }));
+    } else {
+        tracing::warn!(game, dir = %orig_dir.display(), "no usable original/ folder: this game has no data sets");
+    }
+    let hd_dir = dir.join("hd");
+    if hd_dir.is_dir() {
+        let id = format!("{game}/hd");
+        match nfs_haven_manifest::build(&hd_dir, SetKind::Hd, &id, cache) {
+            Ok(m) if !m.files.is_empty() => {
+                let sources = m.files.iter().map(|f| (f.path.clone(), hd_dir.join(&f.path))).collect();
+                tracing::info!(set = id, files = m.files.len(), mb = m.total_size / 1_000_000, "set hd");
+                sets.insert(id, Arc::new(Built { json: Arc::new(m.to_json()), manifest: m, sources, kind: "hd", game: game.to_string() }));
+            }
+            Ok(_) => {}
+            Err(e) => tracing::warn!(game, error = %e, "hd folder unreadable"),
+        }
+    }
+    Ok(())
 }
 
 /// Build now, synchronously (tests).
@@ -196,8 +250,8 @@ pub fn spawn_scanner(st: Shared) {
 pub fn routes() -> Router<Shared> {
     Router::new()
         .route("/v1/data/sets", get(sets))
-        .route("/v1/data/{set}/manifest", get(manifest))
-        .route("/v1/data/{set}/file/{*path}", get(file))
+        .route("/v1/data/{game}/{set}/manifest", get(manifest))
+        .route("/v1/data/{game}/{set}/file/{*path}", get(file))
 }
 
 async fn sets(State(st): State<Shared>) -> Response {
@@ -208,6 +262,7 @@ async fn sets(State(st): State<Shared>) -> Response {
         .map(|(id, b)| {
             serde_json::json!({
                 "id": id,
+                "game": b.game,
                 "kind": b.kind,
                 "files": b.manifest.files.len(),
                 "size": b.manifest.total_size,
@@ -217,7 +272,8 @@ async fn sets(State(st): State<Shared>) -> Response {
     axum::Json(serde_json::json!({ "state": if s.building { "building" } else { "ready" }, "sets": list })).into_response()
 }
 
-async fn manifest(State(st): State<Shared>, Path(set): Path<String>) -> Response {
+async fn manifest(State(st): State<Shared>, Path((game, set)): Path<(String, String)>) -> Response {
+    let set = format!("{game}/{set}");
     match st.data.get(&set) {
         Some(b) => ([(header::CONTENT_TYPE, "application/json")], b.json.as_str().to_string()).into_response(),
         None => error(StatusCode::NOT_FOUND, format!("no data set {set:?} (state: {})", st.data.state_text())),
@@ -252,9 +308,10 @@ pub fn parse_range(v: &str, len: u64) -> Option<Result<(u64, u64), ()>> {
     Some(Ok(r))
 }
 
-async fn file(State(st): State<Shared>, Path((set, path)): Path<(String, String)>, headers: HeaderMap) -> Response {
+async fn file(State(st): State<Shared>, Path((game, set, path)): Path<(String, String, String)>, headers: HeaderMap) -> Response {
+    let set = format!("{game}/{set}");
     let Some(b) = st.data.get(&set) else { return error(StatusCode::NOT_FOUND, format!("no data set {set:?}")) };
-    if !ou_manifest::safe_rel_path(&path) {
+    if !nfs_haven_manifest::safe_rel_path(&path) {
         return error(StatusCode::BAD_REQUEST, "bad path");
     }
     let (Some(entry), Some(src)) = (b.manifest.get(&path), b.sources.get(&path)) else {

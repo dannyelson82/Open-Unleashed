@@ -1,4 +1,4 @@
-// OpenUnleashed for Apple TV — audio session and display mode (TVOS.md Stages 6.1, 7.2). GPL-3.0-or-later.
+// NFS Haven for Apple TV — audio session and display mode (TVOS.md Stages 6.1, 7.2). GPL-3.0-or-later.
 import AVFoundation
 import AVKit
 import UIKit
@@ -58,9 +58,9 @@ enum DisplayMode {
         window.avDisplayManager.preferredDisplayCriteria = criteria
     }
 
-    /// The Display setting's render resolution → `NFS_RENDER_SCALE` for the engine (`-ou.renderScale 1|1.5|2`).
+    /// The Display setting's render resolution → `NFS_RENDER_SCALE` for the engine (`-nfsh.renderScale 1|1.5|2`).
     static func exportRenderScale() {
-        let v = UserDefaults.standard.double(forKey: "ou.renderScale")
+        let v = UserDefaults.standard.double(forKey: "nfsh.renderScale")
         if v >= 1 { setenv("NFS_RENDER_SCALE", String(v), 1) }
     }
 }

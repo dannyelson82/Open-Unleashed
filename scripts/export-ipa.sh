@@ -3,18 +3,18 @@
 # (TVOS.md, "Sideloading with atvloadly"). atvloadly signs the app with its own Apple ID when it installs it,
 # so this build is unsigned and needs no Apple ID or team on this Mac.
 #
-#   scripts/export-ipa.sh                 # → target/tvos/OpenUnleashed.ipa
-#   OU_BUNDLE_ID=com.you.openunleashed scripts/export-ipa.sh
+#   scripts/export-ipa.sh                 # → target/tvos/NFSHaven.ipa
+#   NFSH_BUNDLE_ID=com.you.openunleashed scripts/export-ipa.sh
 #
-# The .ipa never contains game files (the app downloads them from the OpenUnleashed server). GPL-3.0-or-later.
+# The .ipa never contains game files (the app downloads them from the NFS Haven server). GPL-3.0-or-later.
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 [ -x "$HOME/homebrew/bin/brew" ] && eval "$("$HOME/homebrew/bin/brew" shellenv)"
-: "${OU_BUNDLE_ID:=org.openunleashed.tvos}"
-: "${OU_TEAM_ID:=}"
-export OU_BUNDLE_ID OU_TEAM_ID
+: "${NFSH_BUNDLE_ID:=com.dannyelson.nfshaven}"
+: "${NFSH_TEAM_ID:=}"
+export NFSH_BUNDLE_ID NFSH_TEAM_ID
 export TVOS_DEPLOYMENT_TARGET=17.0
 
 echo "== cargo: engine static library for aarch64-apple-tvos (release)"
@@ -39,7 +39,7 @@ fi
 
 echo "== package"
 STAGE="$ROOT/target/tvos/ipa"
-OUT="$ROOT/target/tvos/OpenUnleashed.ipa"
+OUT="$ROOT/target/tvos/NFSHaven.ipa"
 mkdir -p "$STAGE"
 find "$STAGE" -mindepth 1 -maxdepth 1 -name Payload -exec rm -rf {} +
 mkdir -p "$STAGE/Payload"

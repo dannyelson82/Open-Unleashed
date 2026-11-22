@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>OpenUnleashed</string>
+	<string>NFS Haven</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -62,12 +62,12 @@
 		</dict>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>OpenUnleashed downloads your game data and saves from your OpenUnleashed server and finds network games on your local network.</string>
+	<string>NFS Haven downloads your game data and saves from your NFS Haven server and finds network games on your local network.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>OpenUnleashed uses Bluetooth only to talk to game controllers.</string>
+	<string>NFS Haven uses Bluetooth only to talk to game controllers.</string>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_ou-server._tcp</string>
+		<string>_nfs-haven._tcp</string>
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>

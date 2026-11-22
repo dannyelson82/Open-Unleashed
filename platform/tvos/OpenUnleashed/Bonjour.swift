@@ -1,7 +1,7 @@
-// OpenUnleashed for Apple TV — "Find on network": Bonjour `_ou-server._tcp` (NSBonjourServices). GPL-3.0-or-later.
+// NFS Haven for Apple TV — "Find on network": Bonjour `_nfs-haven._tcp` (NSBonjourServices). GPL-3.0-or-later.
 import Foundation
 
-/// Browses for OpenUnleashed servers for a few seconds and resolves them to host:port.
+/// Browses for NFS Haven servers for a few seconds and resolves them to host:port.
 final class ServerFinder: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
     struct Found { let name: String; let address: String }
     private let browser = NetServiceBrowser()
@@ -12,7 +12,7 @@ final class ServerFinder: NSObject, NetServiceBrowserDelegate, NetServiceDelegat
     func find(seconds: TimeInterval = 4, completion: @escaping ([Found]) -> Void) {
         done = completion
         browser.delegate = self
-        browser.searchForServices(ofType: "_ou-server._tcp.", inDomain: "local.")
+        browser.searchForServices(ofType: "_nfs-haven._tcp.", inDomain: "local.")
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in self?.finish() }
     }
 

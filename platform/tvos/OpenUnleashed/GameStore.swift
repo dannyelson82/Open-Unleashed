@@ -1,7 +1,7 @@
-// OpenUnleashed for Apple TV — the downloaded game data in Caches/game (TVOS.md, Stage 4). GPL-3.0-or-later.
+// NFS Haven for Apple TV — the downloaded game data in Caches/games/porsche/data (TVOS.md, Stage 4). GPL-3.0-or-later.
 //
 // Launch check (cheap, no hashing): the manifest the last complete download used is kept beside the data
-// (`Caches/game/.ou/manifest.json`) with a "verified" marker; every listed file must exist with its size.
+// (`Caches/games/porsche/data/.nfsh/manifest.json`) with a "verified" marker; every listed file must exist with its size.
 // A download resumes partial files with HTTP Range, verifies each file's SHA-256 (retrying up to 3 times),
 // and only then marks the set verified. tvOS may purge Caches at any time — then the screen simply comes back.
 import CryptoKit
@@ -35,7 +35,7 @@ enum StoreError: LocalizedError {
 
 enum GameStore {
     static var root: URL { Shell.gameDir }
-    static var meta: URL { root.appendingPathComponent(".ou", isDirectory: true) }
+    static var meta: URL { root.appendingPathComponent(".nfsh", isDirectory: true) }
     static var manifestFile: URL { meta.appendingPathComponent("manifest.json") }
     static var verifiedFile: URL { meta.appendingPathComponent("verified") }
     static var partsDir: URL { meta.appendingPathComponent("parts", isDirectory: true) }
@@ -161,7 +161,7 @@ final class FileDownload: NSObject, URLSessionDataDelegate {
     }
 }
 
-/// Brings Caches/game in line with a set's manifest.
+/// Brings Caches/games/porsche/data in line with a set's manifest.
 final class GameDownloader {
     let client: ServerClient
     let set: String
@@ -188,7 +188,7 @@ final class GameDownloader {
             guard let d = try? Data(contentsOf: GameStore.manifestFile), let m = try? JSONDecoder().decode(Manifest.self, from: d) else { return [:] }
             return Dictionary(m.files.map { ($0.path, $0) }, uniquingKeysWith: { a, _ in a })
         }()
-        let previousVerified = UserDefaults.standard.string(forKey: "ou.data.verifiedHashesOf") == "set"
+        let previousVerified = UserDefaults.standard.string(forKey: "nfsh.data.verifiedHashesOf") == "set"
         var todo: [ManifestEntry] = []
         for e in manifest.files {
             let dest = GameStore.root.appendingPathComponent(e.path)
@@ -198,7 +198,7 @@ final class GameDownloader {
             todo.append(e)
         }
         try raw.write(to: GameStore.manifestFile, options: .atomic)
-        UserDefaults.standard.set("partial", forKey: "ou.data.verifiedHashesOf")
+        UserDefaults.standard.set("partial", forKey: "nfsh.data.verifiedHashesOf")
 
         var p = DownloadProgress()
         p.filesTotal = todo.count
@@ -235,7 +235,7 @@ final class GameDownloader {
                 }
                 var req = URLRequest(url: client.fileURL(set: set, path: e.path))
                 if !client.token.isEmpty { req.setValue("Bearer \(client.token)", forHTTPHeaderField: "Authorization") }
-                req.setValue(ServerClient.deviceName, forHTTPHeaderField: "X-OU-Device")
+                req.setValue(ServerClient.deviceName, forHTTPHeaderField: "X-NFSH-Device")
                 req.setValue("\"\(e.sha256)\"", forHTTPHeaderField: "If-Range")
                 let sha: String
                 do {
@@ -267,7 +267,7 @@ final class GameDownloader {
         if let en = fm.enumerator(at: GameStore.root, includingPropertiesForKeys: [.isRegularFileKey]) {
             for case let u as URL in en {
                 let rel = u.path.replacingOccurrences(of: GameStore.root.path + "/", with: "")
-                if rel.hasPrefix(".ou") { en.skipDescendants(); continue }
+                if rel.hasPrefix(".nfsh") { en.skipDescendants(); continue }
                 if (try? u.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true, !wanted.contains(rel) {
                     try? fm.removeItem(at: u)
                 }
@@ -275,7 +275,7 @@ final class GameDownloader {
         }
         try? fm.removeItem(at: GameStore.partsDir)
         try Data("\(set)\n".utf8).write(to: GameStore.verifiedFile, options: .atomic)
-        UserDefaults.standard.set("set", forKey: "ou.data.verifiedHashesOf")
-        UserDefaults.standard.set(set, forKey: "ou.data.verifiedSet")
+        UserDefaults.standard.set("set", forKey: "nfsh.data.verifiedHashesOf")
+        UserDefaults.standard.set(set, forKey: "nfsh.data.verifiedSet")
     }
 }

@@ -16,7 +16,7 @@ typedef struct {
 
 /// Runs the engine's event loop (winit's UIKit backend calls UIApplicationMain; never returns).
 int32_t ou_main(const OuShellCallbacks *callbacks);
-/// Caches/game/ is complete and verified: start the game.
+/// Caches/games/porsche/data/ is complete and verified: start the game.
 void ou_data_ready(void);
 /// The app's window scene is connected: windows can be shown from now on.
 void ou_scene_ready(void);

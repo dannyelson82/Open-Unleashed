@@ -45,30 +45,31 @@ pub async fn page(State(st): State<Shared>, RawQuery(q): RawQuery) -> Response {
     let tq = q.as_deref().and_then(|q| q.split('&').find(|kv| kv.starts_with("token="))).map(|t| format!("?{t}")).unwrap_or_default();
     let mut h = String::new();
     h.push_str("<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>");
-    h.push_str(&format!("<title>{} — ou-server</title>", esc(&st.cfg.name)));
+    h.push_str(&format!("<title>{} — NFS Haven server</title>", esc(&st.cfg.name)));
     h.push_str("<style>body{font:15px/1.45 system-ui,sans-serif;margin:2rem auto;max-width:72rem;padding:0 1rem;color:#1d1d1f;background:#fbfbfd}\
         @media(prefers-color-scheme:dark){body{color:#f5f5f7;background:#111}th{background:#222!important}td,th{border-color:#333!important}}\
         h1{font-size:1.6rem}h2{margin-top:2rem;font-size:1.2rem}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:.35rem .5rem;text-align:left;vertical-align:top}\
         th{background:#f0f0f3;font-weight:600}.muted{opacity:.65}code{font-size:.9em}form{display:inline}button{font:inherit;padding:.1rem .5rem}</style>");
-    h.push_str(&format!("<h1>{}</h1><p class=muted>ou-server {} · data: {} · <a href='/healthz'>healthz</a> · LAN/tailnet only — never port-forward this server.</p>",
+    h.push_str(&format!("<h1>{}</h1><p class=muted>NFS Haven server {} · data: {} · <a href='/healthz'>healthz</a> · LAN/tailnet only — never port-forward this server.</p>",
         esc(&st.cfg.name), crate::VERSION, esc(&st.data.state_text())));
 
     // data sets
-    h.push_str("<h2>Game data sets</h2><table><tr><th>Set</th><th>Kind</th><th>Files</th><th>Size</th><th>Manifest</th></tr>");
+    h.push_str("<h2>Game data sets</h2><table><tr><th>Game</th><th>Set</th><th>Kind</th><th>Files</th><th>Size</th><th>Manifest</th></tr>");
     {
         let s = st.data.inner.read().unwrap();
         if s.sets.is_empty() {
-            h.push_str(&format!("<tr><td colspan=5 class=muted>No data yet. Put the original <code>GameData/</code> and <code>FEData/</code> in the <code>/game</code> folder ({}).</td></tr>", esc(&st.cfg.game_dir.display().to_string())));
+            h.push_str(&format!("<tr><td colspan=6 class=muted>No data yet. Put each game in its own folder of the games folder ({}): Porsche Unleashed's <code>GameData/</code>, <code>FEData/</code>, <code>version.txt</code>, <code>fe.txt</code> in <code>porsche/original/</code>.</td></tr>", esc(&st.cfg.games_dir.display().to_string())));
         }
         for (id, b) in &s.sets {
-            h.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td><a href='/v1/data/{}/manifest{tq}'>manifest.json</a></td></tr>",
-                esc(id), b.kind, b.manifest.files.len(), mb(b.manifest.total_size), seg(id)));
+            let set = id.split_once('/').map_or(id.as_str(), |(_, s)| s);
+            h.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td><a href='/v1/data/{}/{}/manifest{tq}'>manifest.json</a></td></tr>",
+                esc(&b.game), esc(set), b.kind, b.manifest.files.len(), mb(b.manifest.total_size), seg(&b.game), seg(set)));
         }
     }
     h.push_str("</table>");
 
     // saves
-    h.push_str("<h2>Saves</h2>");
+    h.push_str("<h2>Saves</h2><p class=muted>One section per game (its save namespace).</p>");
     let profiles = st.saves.profiles();
     if profiles.is_empty() {
         h.push_str("<p class=muted>No saves yet.</p>");

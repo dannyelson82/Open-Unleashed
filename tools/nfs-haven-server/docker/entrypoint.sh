@@ -1,6 +1,6 @@
 #!/bin/sh
-# ou-server entrypoint: starts as root only to apply PUID/PGID/UMASK and own /data, then drops privileges.
-# The game, mods and HD folders are mounted read-only and never changed.
+# nfs-haven-server entrypoint: starts as root only to apply PUID/PGID/UMASK and own /data, then drops privileges.
+# The games folder is mounted read-only and never changed.
 set -eu
 
 PUID="${PUID:-99}"
@@ -19,8 +19,8 @@ if [ "$(id -u)" = "0" ]; then
     echo "Refusing to run as root (PUID=0). Use Unraid's default PUID=99 PGID=100." >&2
     exit 1
   fi
-  groupmod --non-unique --gid "$PGID" ou
-  usermod --non-unique --uid "$PUID" --gid "$PGID" ou
+  groupmod --non-unique --gid "$PGID" nfsh
+  usermod --non-unique --uid "$PUID" --gid "$PGID" nfsh
   # only the server's own folder (saves, caches); fixed recursively only when PUID changed
   if [ "$(stat -c %u /data)" != "$PUID" ]; then
     chown -R "$PUID:$PGID" /data

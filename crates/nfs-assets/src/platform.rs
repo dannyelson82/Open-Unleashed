@@ -30,7 +30,7 @@ pub fn data_dir() -> PathBuf {
         if let Some(d) = std::env::var_os("NFS5_DATA_DIR").filter(|v| !v.is_empty()) {
             return PathBuf::from(d);
         }
-        tvos_caches().join("save")
+        tvos_caches().join("games/porsche/save")
     } else if cfg!(target_os = "macos") {
         let base = home_dir().unwrap_or_else(|| PathBuf::from("."));
         base.join("Library").join("Application Support").join("PorscheUnleashed")
@@ -65,8 +65,8 @@ pub fn game_data_candidates() -> Vec<PathBuf> {
         }
     }
     if cfg!(target_os = "tvos") {
-        // tvOS: the data the app shell downloaded from the OpenUnleashed server (TVOS.md, Stage 4)
-        v.push(tvos_caches().join("game"));
+        // tvOS: the data the app shell downloaded from the NFS Haven server (TVOS.md, Stage 4)
+        v.push(tvos_caches().join("games/porsche/data"));
     }
     if let Some(home) = home_dir() {
         v.push(home.join("Games/NFS-Porsche-Unleashed/game_info/data"));
@@ -102,7 +102,7 @@ pub fn photo_dir() -> PathBuf {
     }
     if cfg!(target_os = "tvos") {
         // tvOS has no user-visible Pictures folder: the stills stay in Caches (TVOS.md)
-        return tvos_caches().join("photos");
+        return tvos_caches().join("games/porsche/photos");
     }
     let Some(home) = home_dir() else { return PathBuf::from("PorscheUnleashed") };
     let pictures = if cfg!(windows) {
@@ -117,7 +117,8 @@ pub fn photo_dir() -> PathBuf {
 }
 
 /// tvOS: the app sandbox's `Library/Caches` (`$HOME` is the sandbox container there), the parent of the
-/// downloaded `game/`, the `save/` folder and `photos/`. Elsewhere unused.
+/// `games/porsche/` with the downloaded `data/`, the `save/` folder and `photos/` (one folder per game, as the
+/// NFS Haven shell lays it out). Elsewhere unused.
 pub fn tvos_caches() -> PathBuf {
     home_dir().unwrap_or_else(|| PathBuf::from(".")).join("Library").join("Caches")
 }

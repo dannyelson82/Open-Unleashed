@@ -1,4 +1,4 @@
-// OpenUnleashed for Apple TV — app shell: storage layout and the start-up gate. GPL-3.0-or-later.
+// NFS Haven for Apple TV — app shell: storage layout and the start-up gate. GPL-3.0-or-later.
 import UIKit
 
 /// The shell's state. Everything runs on the main thread (winit's event loop is the main run loop).
@@ -9,10 +9,12 @@ final class Shell {
     static var caches: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
     }
-    /// The downloaded original game data (`GameData/`, `FEData/`, …).
-    static var gameDir: URL { caches.appendingPathComponent("game", isDirectory: true) }
+    /// This game's folder: `Caches/games/porsche/` (one folder per game, `nfs-haven-plan.md` Phase 5).
+    static var gameRoot: URL { caches.appendingPathComponent("games/porsche", isDirectory: true) }
+    /// The downloaded game data (`GameData/`, `FEData/`, …: the chosen set, `porsche/original` or a mod set).
+    static var gameDir: URL { gameRoot.appendingPathComponent("data", isDirectory: true) }
     /// The engine's data folder (`SaveData/`, settings, logs).
-    static var saveDir: URL { caches.appendingPathComponent("save", isDirectory: true) }
+    static var saveDir: URL { gameRoot.appendingPathComponent("save", isDirectory: true) }
 
     /// Before the engine starts: tell it where the data and the saves live.
     static func prepareEnvironment() {
@@ -20,24 +22,24 @@ final class Shell {
         try? FileManager.default.createDirectory(at: saveDir, withIntermediateDirectories: true)
         setenv("NFS5_GAME_PATH", gameDir.path, 1)
         setenv("NFS5_DATA_DIR", saveDir.path, 1)
-        // frame-time overlay (Stage 7.1) until the Extras menu has the switch: `-ou.fpsOverlay YES`
-        if UserDefaults.standard.bool(forKey: "ou.fpsOverlay") { setenv("NFS_FPS_OVERLAY", "1", 1) }
+        // frame-time overlay (Stage 7.1) until the Extras menu has the switch: `-nfsh.fpsOverlay YES`
+        if UserDefaults.standard.bool(forKey: "nfsh.fpsOverlay") { setenv("NFS_FPS_OVERLAY", "1", 1) }
         DisplayMode.exportRenderScale()
-        // save sync with the same OpenUnleashed server the game data comes from (server-plan.md phase 2)
+        // save sync with the same NFS Haven server the game data comes from (server-plan.md phase 2)
         if UserDefaults.standard.object(forKey: ServerSettings.addressKey) != nil || !ServerSettings.token.isEmpty {
-            setenv("OU_SERVER", ServerSettings.address, 1)
-            setenv("OU_TOKEN", ServerSettings.token, 1)
-            setenv("OU_DEVICE", UIDevice.current.name, 1)
+            setenv("NFSH_SERVER", ServerSettings.address, 1)
+            setenv("NFSH_TOKEN", ServerSettings.token, 1)
+            setenv("NFSH_DEVICE", UIDevice.current.name, 1)
         }
         AudioSetup.configure()
         NSLog("OpenUnleashed: game data %@, saves %@", gameDir.path, saveDir.path)
     }
 
     /// The data is ready: a complete, verified download (or, for development only, data copied in by
-    /// `scripts/build-tvos.sh sim --data` with the launch argument `-ou.trustLocalData YES`).
+    /// `scripts/build-tvos.sh sim --data` with the launch argument `-nfsh.trustLocalData YES`).
     static var gameDataReady: Bool {
         if GameStore.isReady { return true }
-        guard UserDefaults.standard.bool(forKey: "ou.trustLocalData") else { return false }
+        guard UserDefaults.standard.bool(forKey: "nfsh.trustLocalData") else { return false }
         var isDir: ObjCBool = false
         return ["GameData", "FEData"].allSatisfy {
             FileManager.default.fileExists(atPath: gameDir.appendingPathComponent($0).path, isDirectory: &isDir) && isDir.boolValue

@@ -1343,7 +1343,7 @@ checksum = "dae608c151f68243f2b000364e1f7b186d9c29845f7d2d85bd31b9ad77ad552b"
 name = "make-manifest"
 version = "0.1.5"
 dependencies = [
- "ou-manifest",
+ "nfs-haven-manifest",
  "serde_json",
 ]
 
@@ -1541,6 +1541,32 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tracing",
+]
+
+[[package]]
+name = "nfs-haven-manifest"
+version = "0.1.5"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "nfs-haven-server"
+version = "0.2.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "nfs-haven-manifest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tokio-util",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2050,32 +2076,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c7c9e0d9b23589f26070720bac724174bfec1083e82f7854cdd0267518343c0"
 dependencies = [
  "num-traits",
-]
-
-[[package]]
-name = "ou-manifest"
-version = "0.1.5"
-dependencies = [
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
-name = "ou-server"
-version = "0.1.5"
-dependencies = [
- "axum",
- "http-body-util",
- "ou-manifest",
- "serde",
- "serde_json",
- "sha2",
- "tokio",
- "tokio-util",
- "tower",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -2810,7 +2810,7 @@ version = "0.1.5"
 dependencies = [
  "anyhow",
  "nfs-formats",
- "ou-manifest",
+ "nfs-haven-manifest",
  "sha2",
 ]
 

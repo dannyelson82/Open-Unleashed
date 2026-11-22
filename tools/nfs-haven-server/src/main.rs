@@ -1,7 +1,8 @@
-//! **ou-server** — the OpenUnleashed server (`server-plan.md`, `docs/ou-server.md`): one container on the home
-//! server that the Apple TV and Mac builds point at, on the LAN or over Tailscale.
+//! **nfs-haven-server** — the NFS Haven server (`docs/nfs-haven-server.md`): one container on the home server
+//! that the NFS Haven app (Apple TV, Mac) points at, on the LAN or over Tailscale.
 //!
-//! * game data: the original files, mod sets overlaid on them, the HD pack — manifests + files with `Range`
+//! * game data for any number of games: `/games/<id>/original`, `/games/<id>/mods/<name>` (overlaid on the
+//!   original), `/games/<id>/hd` — manifests + files with `Range`; a new game is a new folder
 //! * saves: per-profile save files with `If-Match` conflict detection, version history and restore
 //! * lobby: hosted network games, so they can be joined over Tailscale where LAN broadcast can't reach
 //! * a status page (`/`) and `/healthz`
@@ -29,7 +30,7 @@ use std::time::{Duration, SystemTime};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Settings from the environment (`docs/ou-server.md`).
+/// Settings from the environment (`docs/nfs-haven-server.md`).
 #[derive(Debug, Clone)]
 pub struct Config {
     pub token: String,
@@ -37,9 +38,8 @@ pub struct Config {
     pub name: String,
     pub save_versions: usize,
     pub lobby_ttl: Duration,
-    pub game_dir: PathBuf,
-    pub mods_dir: PathBuf,
-    pub hd_dir: PathBuf,
+    /// one folder per game (`porsche/`, …), each with `original/`, `mods/<name>/`, `hd/`
+    pub games_dir: PathBuf,
     pub data_dir: PathBuf,
     pub rescan: Duration,
     pub save_max_bytes: usize,
@@ -50,17 +50,15 @@ impl Config {
         let var = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
         let num = |k: &str, d: u64| var(k).and_then(|v| v.trim().parse().ok()).unwrap_or(d);
         Self {
-            token: var("OU_TOKEN").unwrap_or_default(),
-            port: num("OU_PORT", 8642) as u16,
-            name: var("OU_NAME").unwrap_or_else(|| "OpenUnleashed server".into()),
-            save_versions: num("OU_SAVE_VERSIONS", 20).max(1) as usize,
-            lobby_ttl: Duration::from_secs(num("OU_LOBBY_TTL", 15).max(5)),
-            game_dir: var("OU_GAME_DIR").unwrap_or_else(|| "/game".into()).into(),
-            mods_dir: var("OU_MODS_DIR").unwrap_or_else(|| "/mods".into()).into(),
-            hd_dir: var("OU_HD_DIR").unwrap_or_else(|| "/hd".into()).into(),
-            data_dir: var("OU_DATA_DIR").unwrap_or_else(|| "/data".into()).into(),
-            rescan: Duration::from_secs(num("OU_RESCAN_SECS", 60).max(5)),
-            save_max_bytes: num("OU_SAVE_MAX_BYTES", 8 << 20) as usize,
+            token: var("NFSH_TOKEN").unwrap_or_default(),
+            port: num("NFSH_PORT", 8642) as u16,
+            name: var("NFSH_NAME").unwrap_or_else(|| "NFS Haven server".into()),
+            save_versions: num("NFSH_SAVE_VERSIONS", 20).max(1) as usize,
+            lobby_ttl: Duration::from_secs(num("NFSH_LOBBY_TTL", 15).max(5)),
+            games_dir: var("NFSH_GAMES_DIR").unwrap_or_else(|| "/games".into()).into(),
+            data_dir: var("NFSH_DATA_DIR").unwrap_or_else(|| "/data".into()).into(),
+            rescan: Duration::from_secs(num("NFSH_RESCAN_SECS", 60).max(5)),
+            save_max_bytes: num("NFSH_SAVE_MAX_BYTES", 8 << 20) as usize,
         }
     }
 }
@@ -113,10 +111,10 @@ async fn auth(State(st): State<Shared>, req: Request, next: Next) -> Response {
         return next.run(req).await;
     }
     if !token_ok(&st.cfg, given_token(req.headers(), req.uri().query())) {
-        return error(StatusCode::UNAUTHORIZED, "missing or wrong password (Authorization: Bearer <OU_TOKEN>)");
+        return error(StatusCode::UNAUTHORIZED, "missing or wrong password (Authorization: Bearer <NFSH_TOKEN>)");
     }
     // remember the device for the status page
-    let device = req.headers().get("x-ou-device").and_then(|v| v.to_str().ok()).unwrap_or("").chars().take(64).collect::<String>();
+    let device = req.headers().get("x-nfsh-device").and_then(|v| v.to_str().ok()).unwrap_or("").chars().take(64).collect::<String>();
     let addr = req.extensions().get::<axum::extract::ConnectInfo<SocketAddr>>().map(|c| c.0.ip().to_string()).unwrap_or_default();
     let key = if device.is_empty() { addr.clone() } else { device };
     if let Ok(mut seen) = st.seen.lock() {
@@ -135,10 +133,11 @@ async fn info(State(st): State<Shared>) -> Response {
     let sets = st.data.set_ids();
     axum::Json(serde_json::json!({
         "name": st.cfg.name,
-        "server": "ou-server",
+        "server": "nfs-haven-server",
         "version": VERSION,
         "api": 1,
         "features": ["data", "saves", "lobby"],
+        "games": st.data.game_ids(),
         "data_sets": sets,
         "data_state": st.data.state_text(),
         "lobby": true,
@@ -165,7 +164,7 @@ pub fn new_state(cfg: Config) -> Shared {
     Arc::new(AppState { data: data::Data::default(), saves, lobby, seen: Mutex::new(BTreeMap::new()), cfg })
 }
 
-/// `ou-server --healthcheck`: the container's HEALTHCHECK (no curl in the image) — GET /healthz on the local port.
+/// `nfs-haven-server --healthcheck`: the container's HEALTHCHECK (no curl in the image) — GET /healthz on the local port.
 fn healthcheck() -> ! {
     use std::io::{Read, Write};
     let port = Config::from_env().port;
@@ -190,9 +189,9 @@ async fn main() {
     tracing_subscriber::fmt().with_ansi(std::io::stdout().is_terminal()).with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into())).init();
     let cfg = Config::from_env();
     if cfg.token.is_empty() {
-        tracing::warn!("OU_TOKEN is not set: anyone on the network can use this server (set a password)");
+        tracing::warn!("NFSH_TOKEN is not set: anyone on the network can use this server (set a password)");
     }
-    tracing::info!(game = %cfg.game_dir.display(), mods = %cfg.mods_dir.display(), hd = %cfg.hd_dir.display(), data = %cfg.data_dir.display(), port = cfg.port, "ou-server {VERSION} starting");
+    tracing::info!(games = %cfg.games_dir.display(), data = %cfg.data_dir.display(), port = cfg.port, "nfs-haven-server {VERSION} starting");
     if let Err(e) = std::fs::create_dir_all(&cfg.data_dir) {
         tracing::error!(error = %e, dir = %cfg.data_dir.display(), "data folder not writable");
     }

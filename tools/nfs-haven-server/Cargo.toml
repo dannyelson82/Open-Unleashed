@@ -1,12 +1,12 @@
 [package]
-name = "ou-server"
-version.workspace = true
+name = "nfs-haven-server"
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
-description = "OpenUnleashed server: game data, saves and the multiplayer lobby for the Apple TV and Mac builds"
+description = "NFS Haven server: game data for every game, saves and the multiplayer lobby for the NFS Haven app (Apple TV, Mac)"
 
 [dependencies]
-ou-manifest = { path = "../../crates/ou-manifest" }
+nfs-haven-manifest = { path = "../../crates/nfs-haven-manifest" }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "net", "signal", "sync", "time", "io-util"] }
 tokio-util = { version = "0.7", features = ["io"] }

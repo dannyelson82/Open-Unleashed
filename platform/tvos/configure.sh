@@ -1,8 +1,8 @@
 #!/bin/sh
-# Generates OpenUnleashed.xcodeproj from project.yml. OU_BUNDLE_ID / OU_TEAM_ID come from the environment.
+# Generates OpenUnleashed.xcodeproj from project.yml. NFSH_BUNDLE_ID / NFSH_TEAM_ID come from the environment.
 set -eu
 cd "$(dirname "$0")"
-: "${OU_BUNDLE_ID:=org.openunleashed.tvos}"
-: "${OU_TEAM_ID:=}"
-export OU_BUNDLE_ID OU_TEAM_ID
+: "${NFSH_BUNDLE_ID:=com.dannyelson.nfshaven}"
+: "${NFSH_TEAM_ID:=}"
+export NFSH_BUNDLE_ID NFSH_TEAM_ID
 xcodegen generate --quiet

@@ -1,6 +1,6 @@
 //! **PLATFORM GLUE (save sync, `server-plan.md` phase 2)** — the saves shared between the Apple TV and the Mac
-//! through the OpenUnleashed server (`tools/ou-server`). Off until a server is set (Extras `network`, or on tvOS the
-//! app shell's Server setting as `OU_SERVER` / `OU_TOKEN`); with no server everything is as before.
+//! through the NFS Haven server (`tools/nfs-haven-server`). Off until a server is set (Extras `network`, or on tvOS the
+//! app shell's Server setting as `NFSH_SERVER` / `NFSH_TOKEN`); with no server everything is as before.
 //!
 //! * **Pull at start**, before the engine reads any save (`run`/`build_app`), a few seconds at most: files the
 //!   other device changed come down.
@@ -53,18 +53,18 @@ fn candidates(addr: &str) -> Vec<String> {
 }
 
 /// The save sync's settings: a server set **and** sync on (tvOS: on whenever a server is set, `PROGRESS.md`
-/// decision 30; the Mac: `OU_SERVER` in the environment, or Extras › Network › Sync saves).
+/// decision 30; the Mac: `NFSH_SERVER` in the environment, or Extras › Network › Sync saves).
 fn config() -> Option<SyncConfig> {
     let n = nfs_game::extras::get().network;
-    let enabled = cfg!(target_os = "tvos") || std::env::var("OU_SERVER").is_ok_and(|v| !v.trim().is_empty()) || n.sync_saves;
+    let enabled = cfg!(target_os = "tvos") || std::env::var("NFSH_SERVER").is_ok_and(|v| !v.trim().is_empty()) || n.sync_saves;
     if !enabled || std::env::var_os("NFS_NO_SYNC").is_some() {
         return None;
     }
     server_config()
 }
 
-/// The server address and token in force: Extras › Network (`network.json`). On the Mac `OU_SERVER` /
-/// `OU_TOKEN` in the environment override it (tests, scripts); on tvOS the shell's copy was mirrored into it
+/// The server address and token in force: Extras › Network (`network.json`). On the Mac `NFSH_SERVER` /
+/// `NFSH_TOKEN` in the environment override it (tests, scripts); on tvOS the shell's copy was mirrored into it
 /// at start ([`seed_from_shell`]) and the Extras page writes back to the shell, so it is the one source.
 pub(crate) fn server_and_token() -> (String, String) {
     let n = nfs_game::extras::get().network;
@@ -72,16 +72,16 @@ pub(crate) fn server_and_token() -> (String, String) {
     if cfg!(target_os = "tvos") {
         return (n.server, n.token);
     }
-    (env("OU_SERVER").unwrap_or(n.server), env("OU_TOKEN").unwrap_or(n.token))
+    (env("NFSH_SERVER").unwrap_or(n.server), env("NFSH_TOKEN").unwrap_or(n.token))
 }
 
 /// tvOS: the app shell passes its Server setting (UserDefaults, which survives a Caches purge) as
-/// `OU_SERVER` / `OU_TOKEN`; mirror it into `network.json` before anything reads the settings.
+/// `NFSH_SERVER` / `NFSH_TOKEN`; mirror it into `network.json` before anything reads the settings.
 #[cfg(target_os = "tvos")]
 pub(crate) fn seed_from_shell() {
     let env = |k: &str| std::env::var(k).ok();
-    if let Some(server) = env("OU_SERVER") {
-        let token = env("OU_TOKEN").unwrap_or_default();
+    if let Some(server) = env("NFSH_SERVER") {
+        let token = env("NFSH_TOKEN").unwrap_or_default();
         let n = nfs_game::extras::get().network;
         if n.server != server || n.token != token {
             nfs_game::extras::update(|s| {
@@ -104,7 +104,7 @@ pub(crate) fn test_connection() -> Result<String, String> {
                 let v: serde_json::Value = r.body_mut().read_json().unwrap_or_default();
                 let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("server");
                 let ver = v.get("version").and_then(|x| x.as_str()).unwrap_or("?");
-                return Ok(format!("{name}, ou-server {ver}"));
+                return Ok(format!("{name}, nfs-haven-server {ver}"));
             }
             Ok(r) if r.status().as_u16() == 401 => return Err("the server refused the password".into()),
             Ok(r) => last = format!("{b}: HTTP {}", r.status().as_u16()),
@@ -114,7 +114,7 @@ pub(crate) fn test_connection() -> Result<String, String> {
     Err(last)
 }
 
-/// The OpenUnleashed server, if one is set (the lobby needs only this).
+/// The NFS Haven server, if one is set (the lobby needs only this).
 pub(crate) fn server_config() -> Option<SyncConfig> {
     let n = nfs_game::extras::get().network;
     let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
@@ -122,10 +122,10 @@ pub(crate) fn server_config() -> Option<SyncConfig> {
     if server.trim().is_empty() {
         return None;
     }
-    let device = env("OU_DEVICE").unwrap_or_else(|| {
+    let device = env("NFSH_DEVICE").unwrap_or_else(|| {
         if cfg!(target_os = "tvos") { "Apple TV".into() } else { std::env::var("HOST").or_else(|_| std::env::var("USER")).map(|u| format!("Mac ({u})")).unwrap_or_else(|_| "Mac".into()) }
     });
-    let profile = if n.save_profile.trim().is_empty() { "household".to_string() } else { n.save_profile.trim().to_string() };
+    let profile = if n.save_profile.trim().is_empty() { "porsche".to_string() } else { n.save_profile.trim().to_string() };
     Some(SyncConfig { bases: candidates(&server), token, device, profile })
 }
 
@@ -320,7 +320,7 @@ impl ServerConn {
     /// PUT with `If-Match` (or none for a new file). `Ok(sha)` stored, `Err(Some(server_sha))` conflict,
     /// `Err(None)` unreachable / refused.
     fn upload(&self, file: &str, bytes: &[u8], if_match: Option<&str>) -> Result<String, Option<String>> {
-        let mut req = self.agent.put(self.url("files", file)).header("Authorization", format!("Bearer {}", self.cfg.token)).header("X-OU-Device", &self.cfg.device);
+        let mut req = self.agent.put(self.url("files", file)).header("Authorization", format!("Bearer {}", self.cfg.token)).header("X-NFSH-Device", &self.cfg.device);
         if let Some(m) = if_match {
             req = req.header("If-Match", format!("\"{m}\""));
         }
