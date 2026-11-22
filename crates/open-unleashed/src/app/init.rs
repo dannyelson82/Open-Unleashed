@@ -499,6 +499,7 @@ impl App {
             net_notice: None,
             photo: Default::default(),
             extras_ui: None,
+            fe_hud: None,
             net_notice_space: false,
             net_lag_box: false,
             num_laps: launch.laps,

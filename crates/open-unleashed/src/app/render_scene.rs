@@ -671,6 +671,11 @@ impl App {
         if let Some(f) = self.fe.menu.as_mut().and_then(|m| m.font.as_mut()) {
             f.set_aspect(a);
         }
+        if let Some(h) = self.fe_hud.as_mut() {
+            for f in [&mut h.font, &mut h.font_small, &mut h.font_italic].into_iter().flatten() {
+                f.set_aspect(a);
+            }
+        }
         if let Some(w) = self.world.as_mut() {
             for a in self.world_actions.drain(..) {
                 match a {
@@ -748,6 +753,10 @@ impl App {
                 let (lw, lh) = self.hud_logical();
                 self.scene.sprites = self.fe.race_loading.as_ref().map(|l| l.sprites(lw as f32, lh as f32)).unwrap_or_default();
                 self.renderer = Some(r);
+            }
+            // PORT-DEVIATION: the Extras menu over the front end
+            if self.extras_ui.is_some() && self.fe.loading_still.is_none() && self.fe.race_loading_still.is_none() {
+                self.extras_sprites();
             }
             return;
         }

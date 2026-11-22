@@ -724,6 +724,8 @@ pub fn menu_button(b: SDL_GamepadButton, face: &[SDL_GamepadButton; 4]) -> Optio
         Left
     } else if b == SDL_GAMEPAD_BUTTON_DPAD_RIGHT {
         Right
+    } else if b == SDL_GAMEPAD_BUTTON_BACK {
+        View
     } else if b == face[0] {
         Select
     } else if b == face[1] {
@@ -1175,6 +1177,8 @@ mod tests {
         assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_WEST, &f), Some(MenuNav::Aux));
         assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, &f), None);
         assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_START, &f), None);
+        // the View / Share / Select button opens Extras from the front end (port's own)
+        assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_BACK, &f), Some(MenuNav::View));
     }
 
     /// SDL3: the port's `A B Y X` (South, East, North, West) are found by the labels SDL reports, as

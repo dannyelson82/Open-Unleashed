@@ -427,7 +427,56 @@ pub(crate) fn apply_now(s: &ExtrasSettings) {
 
 impl App {
     pub(crate) fn extras_open(&mut self) {
+        // over the front end: the HUD's fonts, loaded once (the race has its own HUD)
+        if self.vehicle.is_none()
+            && self.fe_hud.is_none()
+            && let Some(r) = self.renderer.as_mut()
+        {
+            self.fe_hud = Hud::load(r, &self.paths, None, false, false);
+        }
         self.extras_ui = Some(ExtrasUi::default());
+        self.fe_sound(9);
+    }
+
+    /// The HUD whose fonts draw the menu: the race's, else the front end's.
+    fn extras_hud(&self) -> Option<&Hud> {
+        let has_font = |h: &&Hud| h.font.is_some();
+        if self.vehicle.is_some() { self.hud.as_ref().filter(has_font) } else { self.fe_hud.as_ref().filter(has_font).or(self.hud.as_ref().filter(has_font)) }
+    }
+
+    /// Whether the front end can open Extras now (no dialog, no transition, no text field or binding row waiting).
+    fn extras_fe_ready(&self) -> bool {
+        self.vehicle.is_none() && self.fe.menu.is_some() && self.fe.dialog.is_none() && self.fe.binding_base.is_none() && !self.fe_input_swallowed() && self.fe.layout_preview.as_ref().is_none_or(|l| l.focused_input().is_none())
+    }
+
+    /// **The pad in the front end** (once a frame, before the front end reads it): View — and on tvOS the Siri
+    /// Remote's Play/Pause (its X) — opens Extras; while it is up every pad key is its.
+    pub(crate) fn extras_fe_pad(&mut self) {
+        use nfs_input::MenuNav as N;
+        if self.extras_ui.is_none() {
+            let open = self.input.pad_menu.iter().any(|k| matches!(k, N::View) || (cfg!(target_os = "tvos") && matches!(k, N::Aux)));
+            if open && self.extras_fe_ready() {
+                self.input.pad_menu.clear();
+                self.extras_open();
+            }
+            return;
+        }
+        for k in std::mem::take(&mut self.input.pad_menu) {
+            let key = match k {
+                N::Up => MenuKey::Up,
+                N::Down => MenuKey::Down,
+                N::Left => MenuKey::Left,
+                N::Right => MenuKey::Right,
+                N::Select => MenuKey::Enter,
+                N::Back | N::View => MenuKey::Back,
+                N::Aux if cfg!(target_os = "tvos") => MenuKey::Back,
+                N::Alt | N::Aux => continue,
+            };
+            self.extras_key(key);
+            if self.extras_ui.is_none() {
+                break;
+            }
+        }
     }
 
     /// A key while the Extras menu is up.
@@ -522,10 +571,21 @@ impl App {
     /// Returns whether the key was taken (every press is, so no race key acts under the menu).
     pub(crate) fn extras_keyboard(&mut self, event: &winit::event::KeyEvent) -> bool {
         use winit::keyboard::{Key, KeyCode, NamedKey, PhysicalKey};
-        if self.extras_ui.is_none() {
-            return false;
-        }
         if event.state != winit::event::ElementState::Pressed {
+            return self.extras_ui.is_some() && !matches!(event.physical_key, PhysicalKey::Code(KeyCode::F12));
+        }
+        // F12 opens and closes it in the front end (the pause menu has its own item in a race)
+        if matches!(event.physical_key, PhysicalKey::Code(KeyCode::F12)) && !event.repeat {
+            if self.extras_ui.is_some() && editing().is_none() {
+                self.extras_ui = None;
+                return true;
+            }
+            if self.extras_ui.is_none() && self.extras_fe_ready() {
+                self.extras_open();
+                return true;
+            }
+        }
+        if self.extras_ui.is_none() {
             return false;
         }
         if let Some((field, mut buf)) = editing() {
@@ -577,7 +637,7 @@ impl App {
     /// The menu over the paused race.
     pub(crate) fn extras_sprites(&mut self) {
         let Some(ui) = self.extras_ui else { return };
-        let Some(h) = self.hud.as_ref().filter(|h| h.font.is_some()) else { return };
+        let Some(h) = self.extras_hud() else { return };
         let aspect = self.hud_aspect();
         let s = extras::get();
         let pages = pages();

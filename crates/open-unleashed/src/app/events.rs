@@ -700,6 +700,8 @@ impl ApplicationHandler for App {
             // widget's `"CLICKED"` message — the one reference to that string in the whole image —
             // and `NFS5.GOTOBUTTON` overrides only slot 9 (0x4C9470), where it plays sound 5 and
             // runs the screen transition: **a button navigates on the release, not the press**.
+            // PORT-DEVIATION (Extras over the front end): the screen underneath takes no clicks while it is up
+            WindowEvent::MouseInput { .. } if self.extras_ui.is_some() => {}
             WindowEvent::MouseInput { state, button: MouseButton::Left, .. } => {
                 self.fe_left_button(event_loop, state == ElementState::Pressed);
             }
@@ -710,6 +712,8 @@ impl ApplicationHandler for App {
                 // tvOS: the on-screen keyboard's A / Y, and nothing of the pad while it is up (TVOS.md)
                 #[cfg(target_os = "tvos")]
                 crate::tvos::text_pad(self);
+                // PORT-DEVIATION (Extras from the main menu): View / Play-Pause opens it; while it is up it takes the pad
+                self.extras_fe_pad();
                 // the audio output follows the default device / route (`lifecycle.rs`)
                 self.audio_route_tick();
                 if self.gamepads.take_pad_hotplug() {
@@ -747,7 +751,7 @@ impl ApplicationHandler for App {
                             nfs_input::MenuNav::Select => MenuKey::Enter,
                             nfs_input::MenuNav::Back if text_menu => MenuKey::Back,
                             // Y and X are the race's dialog keys (PAD-END2), not the menus'
-                            nfs_input::MenuNav::Back | nfs_input::MenuNav::Alt | nfs_input::MenuNav::Aux => return None,
+                            nfs_input::MenuNav::Back | nfs_input::MenuNav::Alt | nfs_input::MenuNav::Aux | nfs_input::MenuNav::View => return None,
                         })
                     })
                     .collect();
@@ -847,7 +851,7 @@ impl ApplicationHandler for App {
                                 nfs_input::MenuNav::Select => MenuKey::Enter,
                                 // B: the question's "no" / the menu's "continue" (PAD-END2, D10)
                                 nfs_input::MenuNav::Back => MenuKey::Back,
-                                nfs_input::MenuNav::Alt | nfs_input::MenuNav::Aux => continue,
+                                nfs_input::MenuNav::Alt | nfs_input::MenuNav::Aux | nfs_input::MenuNav::View => continue,
                             };
                             self.pause_menu_key(key, event_loop);
                             if !self.paused || self.vehicle.is_none() {
