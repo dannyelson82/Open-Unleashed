@@ -444,6 +444,25 @@ impl App {
                 if self.fe_sequence(event_loop) {
                     return;
                 }
+                // **TEST GLUE** `NFS_EXTRAS_PAGE=<n>`: the still with the Extras menu open on page n (and
+                // `NFS_EXTRAS_KEYS=up,down,…` pressed in it), as View / F12 opens it from the front end
+                if let Some(page) = std::env::var("NFS_EXTRAS_PAGE").ok().and_then(|v| v.parse::<usize>().ok()) {
+                    self.extras_open();
+                    if let Some(ui) = self.extras_ui.as_mut() {
+                        ui.page = page;
+                    }
+                    for k in std::env::var("NFS_EXTRAS_KEYS").unwrap_or_default().split(',').filter(|k| !k.is_empty()) {
+                        let key = match k.trim() {
+                            "up" => MenuKey::Up,
+                            "down" => MenuKey::Down,
+                            "left" => MenuKey::Left,
+                            "right" => MenuKey::Right,
+                            "enter" => MenuKey::Enter,
+                            _ => MenuKey::Back,
+                        };
+                        self.extras_key(key);
+                    }
+                }
                 // the same scene the front end draws every frame, so a screenshot shows the 3D room too
                 self.rebuild_scene();
                 let scene = self.scene.clone();

@@ -236,6 +236,8 @@ pub enum MenuNav {
     Alt,
     /// the standard pad's X (`face[3]`): the replay bar's "save" (PAD-END2, D10)
     Aux,
+    /// the standard pad's View / Back / Share / Select / − button: opens the port's Extras menu from the front end
+    View,
 }
 
 /// Current logical input state, updated from window events and sampled once per tick.

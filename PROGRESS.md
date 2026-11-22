@@ -149,6 +149,8 @@ Choices made without asking (per your instruction); each is easy to change.
 44. **Server version 0.2.0** of its own (it had the engine's 0.1.5); first image tagged `nfs-haven-server-v0.2.0` as the plan says.
 45. **Still in the Open-Unleashed fork** for now: the plan's separate `nfs-haven` repository (launcher, ReNFS) starts after the Apple TV test, as the plan's header says.
 
+46. **Extras from the main menu: F12 (Mac keyboard), View/Back/Share/Select on a pad, and on tvOS also X / the Siri Remote's Play/Pause.** The plan names Play/Pause; SDL reports the remote's Play/Pause as its X button, so on tvOS a pad's X opens it in the menus too (X does nothing else there). The same keys close it. Not while a dialog, a transition, a text field or a binding row is active.
+
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
 |---|---|---|---|
@@ -183,7 +185,7 @@ Choices made without asking (per your instruction); each is easy to change.
 |---|---|---|---|
 | 0 Extras menu + `extras.json` (`nfs_game::extras`, `app/extras_ui.rs`) | ✅ pause menu's last item "extras"; pages/rows with value, explanation, "applies now/at next start", reset page; arrows/d-pad; saved + reloaded (tests); `extras.json` is in the tvOS save mirror | ✅ (same code; settings file read at start) | 📺 pad/remote navigation |
 | 0 Extras › Network (server, password, sync saves, test connection) | ✅ scripted run: typed address + token, Sync on, Test → "Connected: Mac test, ou-server 0.1.5" (now "nfs-haven-server 0.2.0"); wrong password → "the server refused the password"; long Tailscale name fits; settings in `network.json`, none in `extras.json`. Also fixed: in the Extras menu the Mac keyboard's left/right had moved rows instead of changing values (the pause menu's mapping), and long help lines ran past the panel (now wrapped). 🙋 **check by hand**: real typing + Cmd+V (the scripted run feeds the same buffer, not real key events) | ✅ same page without Sync saves; Test → OK; the change reached the shell's setting (app container plist = `127.0.0.1:8642` / token). 🙋 the on-screen keyboard for these rows (same prompt as the other text fields) | 📺 |
-| 0 Extras from the main menu (pad View / F12 / Siri Remote Play/Pause) | ⬜ the front end has no HUD font object yet — needs its own text path | ⬜ | 📺 |
+| 0 Extras from the main menu (pad View / F12 / Siri Remote Play/Pause) | ✅ F12 opens/closes it over any front-end screen, a pad's View button too; it takes the keyboard, the pad and the mouse while up (the screen underneath gets nothing); drawn with the HUD's fonts loaded once for the front end. Screenshot over the garage. 🙋 F12 / View by hand | ✅ same over the garage (Network page shown); the Siri Remote's Play/Pause (SDL's X on the remote) also opens it — 📺 to confirm that button mapping on the device | 📺 |
 | 2.1 Layered app icon + Top Shelf (+ Wide) from the project's own mark (`platform/tvos/make_brand_assets.py`, committed asset catalog) | — | ✅ icon on the Simulator's Home screen; 3 layers (opaque back, road, mark), App Store icon, Top Shelf images | 📺 parallax on focus, Top Shelf in the top row |
 | 2.7 No screen saver during race / replay / intro (menus can still sleep) | — | 🟡 wired (shell polls `ou_wants_no_sleep()` every 3 s) | 📺 15-minute race without screen saver |
 | 1 Controller glyphs (`nfs_input::glyphs`) | ✅ last device (key press / pad button) + pad family from SDL (Xbox / PlayStation / Nintendo / generic) + per-family button names (text in the game's font, no console artwork); photo-mode hints follow it (pad: "Menu: pause, then photo mode" + the pad's key line). ⬜ hint tokens for the career-market / race-result / replay hints, ⬜ SF Symbols atlas from the app shell, ⬜ glyphs on the controls-setup screen, ⬜ "Button icons" setting | same; tvOS starts on "pad" | 📺 check the hints with an Xbox pad and a DualSense |
@@ -229,10 +231,16 @@ Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, e
 
 Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-local; `colima start` / `colima stop`).
 
-## Next (in order, not started)
-1. Stage 9 item 0: Extras settings menu + `extras.json` (switches for the overlay, render scale, etc.).
-3. ~~Mac UI for the server address~~ ✅ Extras › Network (both platforms); LAN broadcast test Mac ↔ Apple TV (📺).
-4. Remaining enhancements 1–11, the rest of the AirPods plan (route changes, auto-pause on disconnect), LAN multiplayer test.
+## Next (in order)
+1. ✅ Extras from the main menu.
+2. HD-pack Stage 1: engine hooks + a stand-in 2× pack (generated, not real art) to prove loading.
+3. MSAA 4× (+ alpha-to-coverage) next to FXAA.
+4. Enhanced rumble (road surface, gear shifts, collisions), Xbox trigger rumble, DualSense adaptive triggers (code + Mac test with a pad 🙋).
+5. 5.1 surround mixer (N channels, VBAP) + speaker test.
+6. Split-screen (two local players).
+7. HDR output.
+8. Per-device display/graphics settings (decision 36), assists polish (braking assist, HUD indicators, presets), "Recommended for Apple TV" preset.
+9. Apple TV (📺) items once the device is here.
 
 ## Needs Apple TV
 - Stage 3: install + launch on the device; check winit/UIKit behaviour on real hardware.
