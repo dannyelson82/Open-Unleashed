@@ -113,7 +113,7 @@ async fn auth(State(st): State<Shared>, req: Request, next: Next) -> Response {
         return next.run(req).await;
     }
     if !token_ok(&st.cfg, given_token(req.headers(), req.uri().query())) {
-        return error(StatusCode::UNAUTHORIZED, "missing or wrong token (Authorization: Bearer <OU_TOKEN>)");
+        return error(StatusCode::UNAUTHORIZED, "missing or wrong password (Authorization: Bearer <OU_TOKEN>)");
     }
     // remember the device for the status page
     let device = req.headers().get("x-ou-device").and_then(|v| v.to_str().ok()).unwrap_or("").chars().take(64).collect::<String>();
@@ -190,7 +190,7 @@ async fn main() {
     tracing_subscriber::fmt().with_ansi(std::io::stdout().is_terminal()).with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into())).init();
     let cfg = Config::from_env();
     if cfg.token.is_empty() {
-        tracing::warn!("OU_TOKEN is not set: anyone on the network can use this server (set a token)");
+        tracing::warn!("OU_TOKEN is not set: anyone on the network can use this server (set a password)");
     }
     tracing::info!(game = %cfg.game_dir.display(), mods = %cfg.mods_dir.display(), hd = %cfg.hd_dir.display(), data = %cfg.data_dir.display(), port = cfg.port, "ou-server {VERSION} starting");
     if let Err(e) = std::fs::create_dir_all(&cfg.data_dir) {

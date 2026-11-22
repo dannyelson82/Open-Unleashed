@@ -6,7 +6,7 @@ keeps every profile's **saves** with version history, and runs a **lobby** so ne
 joined over Tailscale. Design: `server-plan.md`. Code: `tools/ou-server` (+ `crates/ou-manifest`, shared with
 `tools/make-manifest`).
 
-> **LAN / tailnet only — never port-forward it to the internet.** The token is a shared secret for home use.
+> **LAN / tailnet only — never port-forward it to the internet.** The password is a shared secret for home use.
 > The image contains no game file; the game data is mounted read-only and never leaves your devices/tailnet.
 
 ## Your setup
@@ -19,15 +19,15 @@ joined over Tailscale. Design: `server-plan.md`. Code: `tools/ou-server` (+ `cra
 | Data | `/mnt/user/appdata/ou-server/` (`game/`, `mods/`, `hd/`, `data/`) |
 
 In the game's **Server** setting use `tower.local` (or `192.168.50.37`) at home and
-`tower-1.tawny-taipan.ts.net` away from home, plus the token. Where to enter it:
+`tower-1.tawny-taipan.ts.net` away from home, plus the password. Where to enter it:
 
-- **In the game (both platforms):** pause a race › **extras** › page **Network**: *Server*, *Token* (Enter / A to
+- **In the game (both platforms):** pause a race › **extras** › page **Network**: *Server*, *Password* (Enter / A to
   type: the keyboard on the Mac, where Cmd+V pastes; the on-screen keyboard on Apple TV), *Sync saves* (Mac only;
   Apple TV always syncs once a server is set) and *Test connection*. Takes effect at the next start.
 - **Apple TV, before the game data is there:** the Game Data screen's *Server* button. Both places edit the same
   setting.
 
-The address and token are kept per device (`network.json` beside `extras.json`, never synced), so the Mac and the
+The address and password are kept per device (`network.json` beside `extras.json`, never synced), so the Mac and the
 Apple TV can use different names for the same server.
 
 ## Install on Unraid
@@ -35,8 +35,8 @@ Apple TV can use different names for the same server.
    (e.g. from the Mac: `rsync -a ~/Documents/OpenUnleashed/game-data/ root@tower.local:/mnt/user/appdata/ou-server/game/`).
 2. Docker › Add Container › Template: paste the template URL, or copy `packaging/unraid/ou-server.xml` to
    `/boot/config/plugins/dockerMan/templates-user/my-ou-server.xml` on the flash drive and pick it.
-3. Set **Token** to a long random string (e.g. `openssl rand -hex 24`). Leave the paths as they are.
-4. Apply, then open `http://tower.local:8642/?token=<token>` — the status page lists the data set
+3. Set **Password** to a long random string (e.g. `openssl rand -hex 24`). Leave the paths as they are.
+4. Apply, then open `http://tower.local:8642/?token=<password>` — the status page lists the data set
    (`original`, 1,593 files, 528.8 MB for the US disc) once the manifest is built (a few seconds; hashes are cached
    in `data/cache`, so restarts are instant).
 
@@ -49,7 +49,7 @@ Backups: `data/` holds the saves and their versions — the normal Unraid appdat
 ## Settings (environment)
 | Variable | Default | |
 |---|---|---|
-| `OU_TOKEN` | — | shared secret; the game sends `Authorization: Bearer <token>` (status page: `?token=`). Empty = open (warned) |
+| `OU_TOKEN` | — | the **Password** (template field): shared secret; the game sends `Authorization: Bearer <password>` (status page: `?token=<password>`). Empty = open (warned) |
 | `OU_PORT` | `8642` | |
 | `OU_NAME` | `OpenUnleashed server` | shown in the game |
 | `OU_SAVE_VERSIONS` | `20` | earlier copies per save file (+ the newest of each of the last 30 days) |

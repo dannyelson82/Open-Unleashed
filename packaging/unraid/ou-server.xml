@@ -7,7 +7,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/dannyelson82/Open-Unleashed/issues</Support>
   <Project>https://github.com/dannyelson82/Open-Unleashed/blob/tvos-port/docs/ou-server.md</Project>
-  <Overview>OpenUnleashed server: one address for the OpenUnleashed game on Apple TV and Mac. Serves your own copy of the original game data (plus optional mod sets and an HD texture pack) with resumable downloads, keeps every profile's saves with version history (shared between Apple TV and Mac), and runs a lobby so network games can be joined over Tailscale.[br][br]Put the GameData and FEData folders (and version.txt, fe.txt) of your own copy into the Game folder. Set a Token and enter the same token in the game.[br][br]LAN / Tailscale only: never port-forward this server to the internet.</Overview>
+  <Overview>OpenUnleashed server: one address for the OpenUnleashed game on Apple TV and Mac. Serves your own copy of the original game data (plus optional mod sets and an HD texture pack) with resumable downloads, keeps every profile's saves with version history (shared between Apple TV and Mac), and runs a lobby so network games can be joined over Tailscale.[br][br]Put the GameData and FEData folders (and version.txt, fe.txt) of your own copy into the Game folder. Set a Password and enter the same password in the game.[br][br]LAN / Tailscale only: never port-forward this server to the internet.</Overview>
   <Category>GameServers:</Category>
   <WebUI>http://[IP]:[PORT:8642]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/dannyelson82/Open-Unleashed/tvos-port/packaging/unraid/ou-server.xml</TemplateURL>
@@ -16,7 +16,7 @@
   <PostArgs></PostArgs>
   <Requires>Your own copy of Need for Speed: Porsche Unleashed (the GameData and FEData folders).</Requires>
   <Config Name="Port" Target="8642" Default="8642" Mode="tcp" Description="HTTP port the game and the status page use." Type="Port" Display="always" Required="true" Mask="false">8642</Config>
-  <Config Name="Token" Target="OU_TOKEN" Default="" Mode="" Description="Shared secret the game sends (Authorization: Bearer). Enter the same value in the game's Server setting. Use a long random string." Type="Variable" Display="always" Required="true" Mask="true"></Config>
+  <Config Name="Password" Target="OU_TOKEN" Default="" Mode="" Description="The password the game sends (as a Bearer token). Enter the same value as the Password in the game: Extras › Network, or the Apple TV Game Data screen. Use a long random string." Type="Variable" Display="always" Required="true" Mask="true"></Config>
   <Config Name="Server name" Target="OU_NAME" Default="OpenUnleashed server" Mode="" Description="Name shown in the game." Type="Variable" Display="always" Required="false" Mask="false">OpenUnleashed server</Config>
   <Config Name="Game" Target="/game" Default="/mnt/user/appdata/ou-server/game" Mode="ro" Description="Your own copy's GameData/, FEData/, version.txt and fe.txt (read-only)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/ou-server/game</Config>
   <Config Name="Mods" Target="/mods" Default="/mnt/user/appdata/ou-server/mods" Mode="ro" Description="One folder per mod set (GameData/, FEData/, SaveData/ inside), served overlaid on the original (read-only)." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/ou-server/mods</Config>

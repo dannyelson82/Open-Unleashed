@@ -106,7 +106,7 @@ pub(crate) fn test_connection() -> Result<String, String> {
                 let ver = v.get("version").and_then(|x| x.as_str()).unwrap_or("?");
                 return Ok(format!("{name}, ou-server {ver}"));
             }
-            Ok(r) if r.status().as_u16() == 401 => return Err("the server refused the token".into()),
+            Ok(r) if r.status().as_u16() == 401 => return Err("the server refused the password".into()),
             Ok(r) => last = format!("{b}: HTTP {}", r.status().as_u16()),
             Err(e) => last = format!("{b}: {e}"),
         }

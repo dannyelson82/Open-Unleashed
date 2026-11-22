@@ -4,7 +4,7 @@
 //! B/Esc: close). Each row shows its value, a one-line explanation and when it applies. The settings live in
 //! `nfs_game::extras` (`extras.json`; the Network page's in `network.json`, this device's own).
 //!
-//! **Network** has text rows (server address, token): Enter / A starts typing — on the Mac in place (the
+//! **Network** has text rows (server address, password): Enter / A starts typing — on the Mac in place (the
 //! keyboard, Cmd+V pastes, Enter keeps, Esc drops), on tvOS in the on-screen keyboard (`text_entry.rs`). On
 //! tvOS a change is also handed to the app shell, whose copy the Game Data screen uses.
 
@@ -24,7 +24,7 @@ impl Field {
     pub(crate) fn title(self) -> &'static str {
         match self {
             Field::Server => "OpenUnleashed server (name or IP address)",
-            Field::Token => "Server token",
+            Field::Token => "Server password",
         }
     }
 
@@ -377,8 +377,8 @@ fn pages() -> Vec<Page> {
                 set: |_, _| {},
             },
             Row {
-                label: "Token",
-                help: "The token set in the ou-server container's settings.",
+                label: "Password",
+                help: "The password set in the ou-server container's settings.",
                 applies: Applies::NextStart,
                 shown: true,
                 kind: Kind::Text(Field::Token),
@@ -399,7 +399,7 @@ fn pages() -> Vec<Page> {
             },
             Row {
                 label: "Test connection",
-                help: "Asks the server above whether it answers and takes the token.",
+                help: "Asks the server above whether it answers and accepts the password.",
                 applies: Applies::Now,
                 shown: true,
                 kind: Kind::Test,
