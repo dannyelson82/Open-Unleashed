@@ -97,8 +97,8 @@ Backups: `data/` holds the saves and their versions — the normal Unraid appdat
 | `GET /v1/lobby/games[?via=tailnet\|lan]` | open games; each game's addresses ordered for the asker (tailnet 100.x first for a tailnet requester) |
 | `GET /` | status page |
 
-Porsche's save files kept: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, `career.json`, `extras.json`,
-`settings.json`. Replays and photos stay on the device.
+Porsche's save files kept: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, `career.json`, `settings.json`
+(the server also accepts `extras.json`, but the game keeps its Extras settings per device and no longer sends it). Replays and photos stay on the device.
 
 ## Tailscale
 - **(a) recommended — Unraid itself on the tailnet** (it already is: `tower.<your-tailnet>.ts.net`): the container's

@@ -162,7 +162,7 @@ Choices made without asking (per your instruction); each is easy to change.
 34. **3.5 patch: data files only.** The patch's game executable became `nfs5.exe` (the engine only reads the movie tables from it) and the data files were applied; `gimme.dll`, the uninstaller and the SaveData HUD copies were not (Windows-only / per-profile). 3.2 originals kept in `game-data-v3.2-backup/`.
 35. **tvOS launch-time data update check.** With a verified download and a server set, the app compares its manifest with the server's (gives up after ~4 s, so an offline Apple TV starts as before). If they differ, the Game Data screen offers **Update** (only changed files) or **Play** (keep the current files; asked again next launch).
 
-36. **Server settings are per device**: Extras › Network (server, token, sync saves) lives in `network.json`, not in `extras.json`, because save sync shares `extras.json` between devices (the token shouldn't travel with the saves, and the Mac and the Apple TV may use different names). An older `extras.json` with a `network` section is read once. *Note:* the rest of `extras.json` (HUD size, graphics, assists…) **is** still shared between the Mac and the Apple TV through save sync — probably also better per device; not changed yet.
+36. **Server settings are per device**: Extras › Network (server, token, sync saves) lives in `network.json`, not in `extras.json`, because save sync shares `extras.json` between devices (the token shouldn't travel with the saves, and the Mac and the Apple TV may use different names). An older `extras.json` with a `network` section is read once. **Since 2026-11-22 all of `extras.json` is per device too** (save sync no longer sends it): HUD size, graphics, speakers and rumble differ between a Mac and a TV; the game saves, `career.json` and the profiles' settings still sync.
 37. **Extras › Network in the game on both platforms**; on tvOS it writes through to the app shell's Server setting (one setting, two places to edit it). While the Extras menu is open it takes the whole keyboard (so typing "p" or "k" in a field doesn't pause or open photo mode); text rows start with the current text (Mac: Backspace to clear, Cmd+V pastes the clipboard's first line).
 
 38. **"Token" is called "Password" everywhere you see it** (game, Apple TV screens, Unraid template, docs). Underneath it is still the same shared secret: `NFSH_TOKEN` in the container (was `OU_TOKEN`), `token` in `network.json`, a Bearer header, `?token=` on the status page — unchanged, so nothing set up already breaks.
@@ -282,7 +282,7 @@ Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-loc
 5. ✅ 5.1 surround (VBAP) + speaker test (7.1, "music in all speakers" and an LFE feed not done; decision 57).
 6. Split-screen (two local players).
 7. HDR output.
-8. Per-device display/graphics settings (decision 36), assists polish (braking assist, HUD indicators, presets), "Recommended for Apple TV" preset.
+8. ✅ Per-device settings (decision 36); assists polish (braking assist, HUD indicators, presets), "Recommended for Apple TV" preset.
 9. Apple TV (📺) items once the device is here.
 
 ## Needs Apple TV
