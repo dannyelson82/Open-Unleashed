@@ -385,6 +385,32 @@ fn pages() -> Vec<Page> {
         title: "Driving assists",
         rows: vec![
             Row {
+                label: "Preset",
+                help: "Sets every assist on this page at once. Light: soft steering, low speed sensitivity, ABS. Full: softer steering, medium, steering assist light, ABS.",
+                applies: Applies::Now,
+                shown: true,
+                kind: Kind::Choice,
+                values: &["Custom", "Off", "Light", "Full"],
+                get: |s| {
+                    let a = &s.assists;
+                    match (a.steering_response, a.speed_steering, a.countersteer, a.abs) {
+                        (0, 0, 0, false) => 1,
+                        (1, 1, 0, true) => 2,
+                        (2, 2, 1, true) => 3,
+                        _ => 0,
+                    }
+                },
+                set: |s, v| {
+                    let a = &mut s.assists;
+                    match v {
+                        1 => (a.steering_response, a.speed_steering, a.countersteer, a.abs) = (0, 0, 0, false),
+                        2 => (a.steering_response, a.speed_steering, a.countersteer, a.abs) = (1, 1, 0, true),
+                        3 => (a.steering_response, a.speed_steering, a.countersteer, a.abs) = (2, 2, 1, true),
+                        _ => {}
+                    }
+                },
+            },
+            Row {
                 label: "Steering response",
                 help: "Softer = finer control around the centre of the stick, full lock unchanged.",
                 applies: Applies::Now,

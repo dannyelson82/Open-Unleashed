@@ -42,6 +42,33 @@ fn frame_stats(dt: f32) -> (f32, f32, f32) {
     })
 }
 
+thread_local! {
+    /// PORT-DEVIATION (assist indicators): when the ABS (0) and the steering assist (1) last acted
+    static ASSIST_AT: std::cell::Cell<[Option<std::time::Instant>; 2]> = const { std::cell::Cell::new([None, None]) };
+}
+
+/// The driving assists acted this tick (`nfs_game::assists::AssistState::acted`: bit 0 ABS, bit 1 steering).
+pub(crate) fn assists_acted(acted: u8) {
+    if acted == 0 {
+        return;
+    }
+    let now = std::time::Instant::now();
+    ASSIST_AT.with(|a| {
+        let mut v = a.get();
+        for (k, slot) in v.iter_mut().enumerate() {
+            if acted & (1 << k) != 0 {
+                *slot = Some(now);
+            }
+        }
+        a.set(v);
+    });
+}
+
+/// Whether the ABS (0) or the steering assist (1) acted in the last 0.4 s (the HUD tag, the trigger effects).
+pub(crate) fn assist_recent(k: usize) -> bool {
+    ASSIST_AT.with(|a| a.get()[k].is_some_and(|t| t.elapsed().as_millis() < 400))
+}
+
 impl App {
     /// The port's own overlays, appended after the HUD's sprites (and photo mode's hint).
     pub(crate) fn port_overlays(&mut self) {
@@ -81,6 +108,19 @@ impl App {
                 out.push(h.quad(aspect, x - 4.0, y - 2.0, w + 10.0, FONT_SMALL + 6.0, [0.0, 0.0, 0.0, 0.55]));
                 text_from.push(out.len());
                 h.text(&mut out, aspect, &line, (x, y + 1.0), FONT_SMALL, [0.75, 0.85, 1.0, 1.0]);
+            }
+        }
+
+        // the driving assists at work: a small tag above the dials while one acts (not under a menu or in a replay)
+        if self.vehicle.is_some() && !self.paused && self.extras_ui.is_none() && !self.hud_hidden {
+            let tags: Vec<&str> = [(0, "ABS"), (1, "STEER ASSIST")].iter().filter(|(k, _)| assist_recent(*k)).map(|(_, t)| *t).collect();
+            if !tags.is_empty() {
+                let line = tags.join("   ");
+                let w = h.text_width(&line, FONT_SMALL);
+                let (x, y) = (right - w - 16.0, bottom - 206.0);
+                out.push(h.quad(aspect, x - 6.0, y - 3.0, w + 12.0, FONT_SMALL + 8.0, [0.0, 0.0, 0.0, 0.6]));
+                text_from.push(out.len());
+                h.text(&mut out, aspect, &line, (x, y + 1.0), FONT_SMALL, [1.0, 0.82, 0.2, 1.0]);
             }
         }
 
