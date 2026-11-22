@@ -152,6 +152,26 @@ tvOS-only: Game Data screen (download from nfs-haven-server), on-screen keyboard
 Remote Menu never leaves the app, pointer hidden, pause on background, no screen saver during races, layered icon +
 Top Shelf, save mirror in NSUserDefaults.
 
+## HD texture packs (Stage 1: engine side)
+
+`nfs_assets::hd` — an optional pack of higher-resolution copies of the game's own texture entries, made from your
+own copy and never shared. **Extras › Graphics › Textures: Original / HD** (from the next race); the frame overlay
+then also shows "HD textures in use: x / y".
+
+* **Pack** = `index.json` (`{format: 1, scale: 2|4, entries: {key: {file, category, source}}}`) + one KTX2 per entry
+  (RGBA8, or ASTC 4×4 — uploaded as blocks where the GPU samples ASTC: every Apple Silicon Mac and Apple TV; an
+  Intel Mac falls back to the original). Looked for at `NFS_HD_PATH`, else `hd/` in the data folder (Mac:
+  `~/Library/Application Support/PorscheUnleashed/hd`; tvOS: `Caches/games/porsche/hd`, the server's `porsche/hd`).
+* **Key** = the first 16 bytes (hex) of the SHA-256 of the entry's raw bytes (`Fsh::entry_bytes`), the same in
+  `tools/texture-pack` and the engine. An HD texture keeps the entry's logical size (layout unchanged), must be
+  exactly scale × it, and skips the original's 16-bit cache reduction.
+* **Routed now**: track textures and their `.env` maps, sky, `common.fsh`, `particle.fsh` (effects, lights, shadows),
+  the front-end room's textures. **Not yet**: car pages (entries blitted at pixel positions — the plan does cars
+  last; car packs bypass the store), front-end menu art.
+* `NFS_HD_DUMP=1` appends every entry uploaded through the store to `hd-used.csv` in the data folder.
+* Stand-in pack for testing: `texture-pack fake <game folder> --out DIR [--scale 2] [--match alps] [--only track,sky]
+  [--astc]` (nearest-neighbour; `--astc` uses ARM's `astcenc`, e.g. `target/tools/astcenc/bin/astcenc`).
+
 ## Apple TV settings that matter
 - **Match Frame Rate / Match Dynamic Range** (Settings › Video and Audio › Match Content): the app asks for 60 Hz SDR;
   with Match Dynamic Range on, a future HDR mode will switch the TV to HDR.

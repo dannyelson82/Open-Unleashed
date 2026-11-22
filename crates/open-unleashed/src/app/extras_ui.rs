@@ -225,6 +225,16 @@ fn pages() -> Vec<Page> {
                 set: |s, v| s.graphics.anti_aliasing = v as u8,
             },
             Row {
+                label: "Textures",
+                help: "HD: the HD texture pack's sharper copies where it has one (tracks, sky, effects), the original elsewhere. Needs a pack.",
+                applies: Applies::NextRace,
+                shown: true,
+                kind: Kind::Choice,
+                values: &["Original", "HD"],
+                get: |s| s.graphics.textures.min(1) as usize,
+                set: |s, v| s.graphics.textures = v as u8,
+            },
+            Row {
                 label: "Texture filtering",
                 help: "Sharper road and ground textures at shallow angles. Original = trilinear.",
                 applies: Applies::NextStart,
@@ -421,6 +431,8 @@ fn pages() -> Vec<Page> {
 
 /// Apply what takes effect at once (called after every change and at start-up).
 pub(crate) fn apply_now(s: &ExtrasSettings) {
+    // HD textures: from the next textures loaded (the next race / screen)
+    nfs_assets::hd::set_enabled(s.graphics.textures == 1);
     overlay::FRAME_OVERLAY.store(s.display.fps_overlay || std::env::var_os("NFS_FPS_OVERLAY").is_some_and(|v| v != "0"), std::sync::atomic::Ordering::Relaxed);
     crate::hud::set_hud_scale(s.display.hud_size.scale());
 }

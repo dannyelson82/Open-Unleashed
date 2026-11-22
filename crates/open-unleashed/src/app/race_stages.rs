@@ -1119,7 +1119,7 @@ impl App {
                 .iter()
                 .find(|t| t.name.trim() == name)
                 .or_else(|| images.iter().find(|t| t.name.trim().eq_ignore_ascii_case(name)))?;
-            let tex = renderer.upload_texture_mips(img.width, img.height, &img.cache_mips());
+            let tex = nfs_assets::hd::upload(renderer, img, true);
             let mesh = renderer.upload_mesh(quad);
             let material = renderer.create_material(nfs_renderer::MaterialDesc {
                 alpha_blend: true,
@@ -1213,7 +1213,7 @@ impl App {
                     tracing::debug!(name, "flare texture not in common.fsh");
                     continue;
                 };
-                let tex = renderer.upload_texture_mips(img.width, img.height, &img.cache_mips());
+                let tex = nfs_assets::hd::upload(renderer, img, true);
                 let mesh = renderer.upload_mesh(&quad);
                 // the flares' state object `[0x61BCB4]` is set to blend 1, additive, at 0x4514E7
                 let material = renderer.create_material(nfs_renderer::MaterialDesc {
@@ -1248,7 +1248,7 @@ impl App {
         if let Some(images) = common.as_ref()
             && let Some(img) = images.iter().find(|t| t.name.trim() == "HEAD")
         {
-            let tex = renderer.upload_texture_mips(img.width, img.height, &img.cache_mips());
+            let tex = nfs_assets::hd::upload(renderer, img, true);
             renderer.set_headlight_texture(Some(tex));
         }
         // the windscreen drops (0x4577A0 from 0x458FF5): `SPLT` (0x544C5053) of the shared bundle
@@ -1259,7 +1259,7 @@ impl App {
         if let Some(images) = common.as_ref()
             && let Some(img) = images.iter().find(|t| t.name.trim() == "SPLT")
         {
-            let tex = renderer.upload_texture_mips(img.width, img.height, &img.cache_mips());
+            let tex = nfs_assets::hd::upload(renderer, img, true);
             let material = renderer.create_material(nfs_renderer::MaterialDesc {
                 alpha_blend: true,
                 cull_back: false,
@@ -1315,7 +1315,7 @@ impl App {
                 // `GRSS`, ...) sit in the original's texture cache as 4444, `>> 4` per byte
                 // (`cache_4444_from_8888`, `thrash.md` §6d.9 — PA-SMOKE: the bytes found by a gdb search of
                 // the running original)
-                let tex = *textures.entry(name.clone()).or_insert_with(|| renderer.upload_texture_mips(img.width, img.height, &img.cache_mips()));
+                let tex = *textures.entry(name.clone()).or_insert_with(|| nfs_assets::hd::upload(renderer, img, true));
                 let mesh = renderer.upload_mesh(&quad);
                 let material = renderer.create_material(nfs_renderer::MaterialDesc {
                     alpha_blend: true,
@@ -1335,7 +1335,7 @@ impl App {
             for (k, params) in [nfs_game::weather::Params::snow(0.0), nfs_game::weather::Params::rain(0.0)].iter().enumerate() {
                 let img = params.texture_names(level).iter().find_map(|n| images.iter().find(|t| t.name.trim() == n.as_str()));
                 self.weather_draws[k] = img.map(|img| {
-                    let tex = renderer.upload_texture_mips(img.width, img.height, &img.cache_mips());
+                    let tex = nfs_assets::hd::upload(renderer, img, true);
                     let material = renderer.create_material(nfs_renderer::MaterialDesc {
                         alpha_blend: true,
                         cull_back: false,

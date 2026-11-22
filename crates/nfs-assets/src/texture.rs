@@ -11,6 +11,10 @@ pub struct TextureImage {
     pub width: u32,
     pub height: u32,
     pub mips: Vec<Vec<u8>>,
+    /// PORT-DEVIATION (HD texture packs): the entry's HD texture, when a pack has one and HD is on
+    /// (`crate::hd`). Uploaded instead of `mips` through `hd::upload` / `hd::gpu_levels`; `width` / `height`
+    /// stay the original's for layout. Code that works on the pixels (car pages) keeps using `mips`.
+    pub hd: Option<std::sync::Arc<crate::hd::HdImage>>,
     /// True when any decoded texel has alpha < 255.
     pub has_alpha: bool,
     /// The entry's pixel-format code (`0x7D` ARGB8888, `0x7E` 1555, `0x78` 565, `0x7F` 888, …) —
@@ -132,7 +136,13 @@ impl TextureImage {
 /// the track's `.env` and the cars (2 / 3), `common.fsh` (4) and the front end (5) do not, and the
 /// packs loaded whole (0x44D270) keep the default block 0x5379D0, mip `NONE`, anyway.
 pub fn decode_pack(path: &Path, data: &[u8]) -> Result<Vec<TextureImage>, AssetError> {
-    decode_pack_levels(path, data, |_, _| 1)
+    decode_pack_levels(path, data, true, |_, _| 1)
+}
+
+/// [`decode_pack`] without the HD store: a car's packs, whose entries are blitted onto texture pages at their
+/// pixel positions (`car.rs`), which an HD texture can't simply replace (`hd-texture-plan.md`: cars last).
+pub fn decode_pack_original(path: &Path, data: &[u8]) -> Result<Vec<TextureImage>, AssetError> {
+    decode_pack_levels(path, data, false, |_, _| 1)
 }
 
 /// Decode a track's `.fsh` (pack key 0) with the chain the original uploads for it: the file's
@@ -140,10 +150,10 @@ pub fn decode_pack(path: &Path, data: &[u8]) -> Result<Vec<TextureImage>, AssetE
 /// 0x6000C390, which reads the levels one after another from the converted file data — nothing
 /// is filtered or generated).
 pub fn decode_pack_mipped(path: &Path, data: &[u8]) -> Result<Vec<TextureImage>, AssetError> {
-    decode_pack_levels(path, data, |file, width| file.min(build_levels(width)))
+    decode_pack_levels(path, data, true, |file, width| file.min(build_levels(width)))
 }
 
-fn decode_pack_levels(path: &Path, data: &[u8], pick: impl Fn(u32, u32) -> u32 + Sync) -> Result<Vec<TextureImage>, AssetError> {
+fn decode_pack_levels(path: &Path, data: &[u8], hd: bool, pick: impl Fn(u32, u32) -> u32 + Sync) -> Result<Vec<TextureImage>, AssetError> {
     let fsh = Fsh::parse(data).map_err(fmt_err(path))?;
     // every entry decodes on its own: a big pack (a track's 450 textures, mips and all) is cut
     // into runs over worker threads and joined in file order
@@ -156,11 +166,13 @@ fn decode_pack_levels(path: &Path, data: &[u8], pick: impl Fn(u32, u32) -> u32 +
         let has_alpha = imgs[0].rgba.chunks_exact(4).any(|p| p[3] < 255);
         let mips: Vec<Vec<u8>> = imgs.into_iter().map(|img| img.rgba).collect();
         let b = &e.blocks[0];
+        let hd = if hd && crate::hd::wanted() { crate::hd::lookup(fsh.entry_bytes(data, i), path, &e.name, width, height, mips.len()) } else { None };
         Ok(TextureImage {
             name: e.name.clone(),
             width,
             height,
             mips,
+            hd,
             has_alpha,
             code: b.code,
             page: b.misc[0] as usize,

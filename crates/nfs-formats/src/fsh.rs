@@ -219,6 +219,18 @@ impl Fsh {
         Ok(Self { declared_size, directory_id, entries, sorted_offsets })
     }
 
+    /// **PORT-DEVIATION (HD texture packs)**: an entry's raw bytes — from its offset to the next entry's (or the
+    /// pack's end: its declared size, or the data's if shorter): image, palette and every attachment. Their
+    /// content hash is the key an HD pack's texture is filed under (`nfs_assets::hd::entry_key`), the same in the
+    /// pack tool and the engine, whatever file the pack came from.
+    pub fn entry_bytes<'a>(&self, data: &'a [u8], idx: usize) -> &'a [u8] {
+        let e = &self.entries[idx];
+        let end_of_pack = (self.declared_size as usize).min(data.len()).max(e.offset as usize);
+        let above = self.sorted_offsets.partition_point(|&o| o <= e.offset);
+        let next = self.sorted_offsets.get(above).map_or(end_of_pack, |&o| (o as usize).min(end_of_pack));
+        data.get(e.offset as usize..next).unwrap_or(&[])
+    }
+
     /// Byte length of the image block for `entry`, using the next entry's offset (or file end)
     /// when the block's own size field is 0.
     pub fn image_block_len(&self, data_len: usize, idx: usize) -> usize {

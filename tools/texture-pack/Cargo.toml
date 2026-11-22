@@ -3,10 +3,13 @@ name = "texture-pack"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "HD texture pack pipeline (hd-texture-plan.md): scan (inventory + size projection); export/import/fake to come"
+description = "HD texture pack pipeline (hd-texture-plan.md): scan (inventory + size projection), fake (a stand-in nearest-neighbour pack); export/import to come"
 
 [dependencies]
 nfs-formats.workspace = true
+nfs-assets.workspace = true
+nfs-renderer.workspace = true
+image.workspace = true
+serde_json = "1"
 nfs-haven-manifest = { path = "../../crates/nfs-haven-manifest" }
 anyhow.workspace = true
-sha2 = "0.10"

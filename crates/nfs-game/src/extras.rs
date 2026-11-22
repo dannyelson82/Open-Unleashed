@@ -134,12 +134,14 @@ pub struct Graphics {
     pub anti_aliasing: u8,
     /// field-of-view offset, bumper / driver views (same steps)
     pub fov_incar: u8,
+    /// textures: 0 the original's, 1 an HD pack's where it has one (`nfs_assets::hd`)
+    pub textures: u8,
 }
 
 impl Default for Graphics {
     /// the original: no anisotropy, its own draw distance, the FOV rows on "0°" (index 1)
     fn default() -> Self {
-        Self { filtering: 0, draw_distance: 0, fov_chase: 1, fov_incar: 1, anti_aliasing: 0 }
+        Self { filtering: 0, draw_distance: 0, fov_chase: 1, fov_incar: 1, anti_aliasing: 0, textures: 0 }
     }
 }
 

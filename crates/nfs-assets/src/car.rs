@@ -1,6 +1,6 @@
 //! Car asset bundle: model CRP, day/night texture packs, texture-page layout, simulation data.
 
-use crate::{fmt_err, read, read_pack, texture::{decode_pack, TextureImage}, AssetError, GamePaths};
+use crate::{fmt_err, read, read_pack, texture::{decode_pack_original as decode_pack, TextureImage}, AssetError, GamePaths};
 use nfs_formats::bytes::get_u32;
 use nfs_formats::{crp::Crp, fsh::Fsh, ini::Ini, refpack, sim::CarSim};
 use std::path::{Path, PathBuf};
@@ -1248,7 +1248,7 @@ pub fn damage_patches(paths: &GamePaths, model: &str, light: bool) -> Result<Vec
             y: (b.misc[3] & 0xFFF) as u32,
             // `movsx` of the word (0x447DAC): signed
             threshold: b.misc[1] as i16 as f32,
-            image: TextureImage { name: e.name.clone(), width: img.width, height: img.height, mips: vec![img.rgba], has_alpha: true, code: b.code, page: b.misc[0] as usize, x: (b.misc[2] & 0xFFF) as u32, y: (b.misc[3] & 0xFFF) as u32, place: [b.misc[0] as i16 as i32, b.misc[1] as i16 as i32], text: None },
+            image: TextureImage { name: e.name.clone(), width: img.width, height: img.height, mips: vec![img.rgba], hd: None, has_alpha: true, code: b.code, page: b.misc[0] as usize, x: (b.misc[2] & 0xFFF) as u32, y: (b.misc[3] & 0xFFF) as u32, place: [b.misc[0] as i16 as i32, b.misc[1] as i16 as i32], text: None },
         });
     }
     // 0x447E2C…0x447E61: the records are sorted by page with the VC6 `std::sort` (key `movsx` of
@@ -1397,7 +1397,7 @@ mod damage_blend_tests {
             x: 0,
             y: 0,
             threshold,
-            image: TextureImage { name: String::new(), width: 1, height: 1, mips: vec![px.to_vec()], has_alpha: true, code: 0, page: 0, x: 0, y: 0, place: [0, 0], text: None },
+            image: TextureImage { name: String::new(), width: 1, height: 1, mips: vec![px.to_vec()], hd: None, has_alpha: true, code: 0, page: 0, x: 0, y: 0, place: [0, 0], text: None },
         }
     }
 

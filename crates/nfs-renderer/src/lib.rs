@@ -73,6 +73,36 @@ pub struct MeshData {
     pub indices: Vec<u32>,
 }
 
+/// **PORT-DEVIATION (HD texture packs)**: how a texture's levels are stored. The game's own textures are always
+/// [`TexFormat::Rgba8`]; an HD pack may hand ASTC 4×4 blocks (16 bytes per 4×4 texels), uploaded as they are where
+/// the GPU samples ASTC ([`astc_supported`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TexFormat {
+    Rgba8,
+    Astc4x4,
+}
+
+impl TexFormat {
+    /// Bytes of one row of blocks and the number of block rows for a `w`×`h` level.
+    pub fn layout(self, w: u32, h: u32) -> (u32, u32) {
+        match self {
+            TexFormat::Rgba8 => (4 * w, h),
+            TexFormat::Astc4x4 => (16 * w.div_ceil(4), h.div_ceil(4)),
+        }
+    }
+}
+
+static ASTC: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Whether the device was created with ASTC sampling (every Apple GPU from A8 up; not Intel Macs).
+pub fn astc_supported() -> bool {
+    ASTC.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub(crate) fn set_astc_supported(on: bool) {
+    ASTC.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
 #[derive(Clone, Debug)]
 pub struct TextureData {
     pub width: u32,
