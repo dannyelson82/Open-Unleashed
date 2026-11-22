@@ -25,6 +25,12 @@ failures are **identical on unmodified upstream 0.1.5** with the same data (chec
 real-data tests recorded against a different install than your US disc v3.2 (fonts, string tables, car catalogue,
 golden car pages, driver camera, speech bank, and `nfs5.exe`, which this disc doesn't have). No regressions from the port.
 
+**Dial needles in the test screenshots (checked 2026-11-21):** the race stills sent overnight come from command-line
+races (`open-unleashed alps 993 --screenshot …`). That path is the original's "no front end" launch, which leaves the dial
+settings blank, so the faces and hub draw **without needles**. Upstream does this on purpose (`app/init.rs`, `hud.md`
+§3.5). A race started from the menus, a career or a mission uses the car's own dials and draws both needles (checked:
+mission 0M01, Boxster, mid-race). The tvOS app always starts races from the menus. No change made.
+
 ## Environment (this Mac)
 | Item | State |
 |---|---|
