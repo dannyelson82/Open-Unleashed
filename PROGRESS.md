@@ -41,6 +41,32 @@ Clean rename, as asked (nothing was installed anywhere yet, so no compatibility 
   full download from the new server into `Caches/games/porsche/data`, intro movie plays, save sync lands under
   `porsche` with the device name. CI smoke test covers two games, mod overlay, saves, PUID 99.
 
+## NFS Haven – Phase 0 (2026-11-22, side job; `nfs-haven-plan.md` Phase 0 only)
+- **Disc image**: `~/Documents/NFSSE.img` (iCloud) copied to `~/Documents/nfs-se-data/NFSSE.img` (outside every git
+  repo); the original was only read: SHA-256 `227586bd…57dc701` before, of the copy, and after (identical; in
+  `nfs-se-data/checksums-*.txt`). Raw 2352-byte sectors, 278,626 of them, **one MODE1 data track** (ISO volume
+  "NFSSEBBC", 278,472 sectors; the 154 after it are the track's run-out, data sectors) — **no CD-audio tracks**.
+- **Extracted**: a one-line cue (`MODE1/2352`) → `bchunk` → ISO (571 MB, scratch) → `7zz` into
+  `~/Documents/nfs-se-data/NFSSE/`: **2,224 files, 103 folders, 545 MB**. `FRONTEND/`, `GAMEDATA/`, `SIMDATA/`,
+  `NFS_DOS.EXE` (1,254,591 bytes), `NFS_WIN.EXE`, the CD's four replays (`GAMEDATA/REPLAY/*.RPL`) present.
+- **`NFS_DOS.EXE` accepted**: ReNFS hashes the *loaded, relocated* LE image (FNV-1a over 0x169a10 bytes, `exe.c`), not
+  the file (the file's own FNV-1a is 0xc1f4a0ac); ReNFS refuses to start races with a build it doesn't know, and it
+  raced and replayed — so it is one of its two builds (0x76078ed2 / 0x21ef7c33).
+- **ReNFS** cloned to `~/Documents/ReNFS` (commit `7159bb9`, "ReNFS 0.6.14b"), **built unchanged** (`git status`
+  clean): `cmake -S port -B port/build && cmake --build port/build`, 2.7 s, one linker alignment warning. SDL2 =
+  Homebrew's `sdl2-compat` 2.32.74 (SDL2 API over SDL3, Homebrew's "sdl2" today). Homebrew's `pkgconf` would not build
+  ("Command Line Tools are too outdated", as `unshield` earlier), so CMake was given a small stand-in `pkg-config`
+  script (scratch) that reads Homebrew's `sdl2.pc` — ReNFS's files untouched. Updating the Command Line Tools
+  (Software Update) would remove the need.
+- **Runs** with `-data ~/Documents/nfs-se-data/NFSSE` (settings in a scratch `-home`, sound off): `--shot` stills of
+  a City race (`--race cy1`, 640×480, in-car with dash), Alpine (`al1`), the CD's `REPLAY1.RPL` (replay bar, R&T
+  gauge) and the start (frame 4000: still the intro movies, 320×240). Each run under a second.
+- **`tools/checks.sh` not run**: it needs `build/venv` (Python + Unicorn), `build/snap/*.bin` (memory snapshots of the
+  original running in DOSBox) and the Ghidra-derived files from `tools/rebuild.sh` (about an hour, Ghidra at
+  `/opt/ghidra`) — not "without extra setup". Phase 1 needs it as the exactness baseline.
+- Plan differences (your instructions): data in `~/Documents/nfs-se-data/NFSSE/` instead of `game-data-nfsse/`, ReNFS
+  cloned on its own instead of a subtree (the subtree comes with the `nfs-haven` repository).
+
 ## Test suite (2026-11-21)
 `NFS5_GAME_PATH=game-data cargo test --release --workspace --no-fail-fast`: **1,394 passed, 13 failed, 7 ignored.** The 13
 failures are **identical on unmodified upstream 0.1.5** with the same data (checked in a separate worktree): golden /
