@@ -15,6 +15,13 @@ var callbacks = OuShellCallbacks(
         Shell.shared.textPrompt(title: title.map { String(cString: $0) } ?? "",
                                 current: current.map { String(cString: $0) } ?? "",
                                 maxLen: Int(maxLen), secure: secure)
+    },
+    server_changed: { address, token in
+        // the engine's Extras › Network page: the same setting the Game Data screen uses
+        ServerSettings.address = address.map { String(cString: $0) } ?? ""
+        ServerSettings.token = token.map { String(cString: $0) } ?? ""
+        UserDefaults.standard.synchronize()
+        NSLog("OpenUnleashed: server setting changed in Extras: %@", ServerSettings.address)
     }
 )
 exit(ou_main(&callbacks))

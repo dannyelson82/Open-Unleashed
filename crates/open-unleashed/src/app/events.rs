@@ -345,7 +345,12 @@ impl ApplicationHandler for App {
                 // PORT-DEVIATION D46: photo mode's own held keys too
                 self.photo_release_keys();
             }
+            WindowEvent::ModifiersChanged(m) => extras_ui::set_modifiers(m.state()),
             WindowEvent::KeyboardInput { event, .. } => {
+                // PORT-DEVIATION (Extras menu): while it is up it takes the keyboard (its text rows type)
+                if self.extras_keyboard(&event) {
+                    return;
+                }
                 // PORT-DEVIATION D46: F11 / K enter photo mode (pause menu, replay), and every key is its own while it is up
                 if self.photo_key_event(&event) {
                     return;

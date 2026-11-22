@@ -34,6 +34,9 @@ pub struct OuShellCallbacks {
     /// A field wants text: show the on-screen keyboard (title, current text, maximum length, secure) and
     /// answer with [`ou_text_entered`] (NULL = cancelled).
     pub text_prompt: Option<extern "C" fn(*const c_char, *const c_char, u32, bool)>,
+    /// Extras › Network changed the server address / token: keep the shell's copy (UserDefaults, which the
+    /// Game Data screen uses and which survives a Caches purge) the same.
+    pub server_changed: Option<extern "C" fn(*const c_char, *const c_char)>,
 }
 
 /// The shell's entry: runs the engine's event loop (never returns on tvOS — UIKit ends the process).
@@ -42,7 +45,7 @@ pub struct OuShellCallbacks {
 /// `callbacks` must be null or point to a valid [`OuShellCallbacks`] for the duration of the call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ou_main(callbacks: *const OuShellCallbacks) -> i32 {
-    let cb = if callbacks.is_null() { OuShellCallbacks { launched: None, engine_error: None, text_prompt: None } } else { unsafe { *callbacks } };
+    let cb = if callbacks.is_null() { OuShellCallbacks { launched: None, engine_error: None, text_prompt: None, server_changed: None } } else { unsafe { *callbacks } };
     SHELL.with(|s| s.set(Some(cb)));
     // no mouse on tvOS: the front end's pointer is parked outside the 640×480 design, so it neither shows nor
     // hovers (the same device a scripted capture uses, `NFS_FE_CURSOR`; TVOS.md)
@@ -141,7 +144,7 @@ fn open_prompt(req: &TextRequest) -> bool {
     let Some(f) = shell().text_prompt else { return false };
     let title = CString::new(req.title.replace('\0', " ")).unwrap_or_default();
     let cur = CString::new(req.current.replace('\0', " ")).unwrap_or_default();
-    let secure = req.title == "Password";
+    let secure = req.secure;
     if let Ok(mut s) = TEXT.lock() {
         s.open = Some(req.target);
     }
@@ -164,7 +167,10 @@ pub(crate) fn text_pad(app: &mut App) {
             Some(text) => {
                 app.inject_text(target, &text);
             }
-            None => tracing::info!(?target, "tvOS: on-screen keyboard cancelled"),
+            None => {
+                tracing::info!(?target, "tvOS: on-screen keyboard cancelled");
+                app.text_cancelled(target);
+            }
         }
         app.input.pad_menu.clear();
         return;
@@ -195,8 +201,16 @@ pub(crate) fn text_pad(app: &mut App) {
     }
 }
 
+/// Extras › Network: hand the new server address and token to the shell.
+pub(crate) fn server_changed(address: &str, token: &str) {
+    let Some(f) = shell().server_changed else { return };
+    let a = CString::new(address.replace('\0', "")).unwrap_or_default();
+    let t = CString::new(token.replace('\0', "")).unwrap_or_default();
+    f(a.as_ptr(), t.as_ptr());
+}
+
 fn shell() -> OuShellCallbacks {
-    SHELL.with(|s| s.get()).unwrap_or(OuShellCallbacks { launched: None, engine_error: None, text_prompt: None })
+    SHELL.with(|s| s.get()).unwrap_or(OuShellCallbacks { launched: None, engine_error: None, text_prompt: None, server_changed: None })
 }
 
 /// Stage 7.3, render resolution: the UIKit view's content scale decides how many pixels the Metal surface has

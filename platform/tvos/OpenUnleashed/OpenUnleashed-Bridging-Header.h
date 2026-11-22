@@ -10,6 +10,8 @@ typedef struct {
     void (*engine_error)(const char *message);
     /// A field wants text: show the on-screen keyboard; answer with ou_text_entered (NULL = cancelled).
     void (*text_prompt)(const char *title, const char *current, uint32_t max_len, bool secure);
+    /// Extras › Network changed the server address / token (UTF-8): store them as the shell's Server setting.
+    void (*server_changed)(const char *address, const char *token);
 } OuShellCallbacks;
 
 /// Runs the engine's event loop (winit's UIKit backend calls UIApplicationMain; never returns).

@@ -16,7 +16,7 @@ _Last updated: 2026-11-21 (session paused: usage limit)_
 - **Needs you**: the Apple TV (everything marked 📺), a pad for feel/rumble, AirPods for head-look and route tests (🙋),
   and the "Decisions to review" below.
 - **Not started / partly**: split-screen, HDR, 5.1 surround mixer, enhanced rumble + DualSense triggers, MSAA,
-  HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, Mac UI for the server
+  HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, ~~Mac UI for the server~~ (done: Extras › Network)
   address, MSAA.
 
 ## Test suite (2026-11-21)
@@ -107,12 +107,15 @@ Choices made without asking (per your instruction); each is easy to change.
 27. **Traction control "On" left out**: it's a physics flag (`vehicle.tcs`) set at race start that replays and network peers don't know about, so it would make them diverge. Needs the flag recorded in the replay/launch data first (or an input-side throttle limiter once wheel-slip units are checked).
 28. **Assists default off on both platforms** (the plan suggests a soft curve + medium speed steering on tvOS; decide with a pad on the TV).
 29. **Save-sync conflict rules**: at start, both sides changed while apart → the server's copy is active, the local one is kept as a `.bak` file beside it (plan's rule). During play, another device saved since → **this device's copy wins** (it's the game being played; replacing the save under the running game could be overwritten again anyway) and the other device's copy stays on the server as a restorable version. One server namespace `household` for all game profiles.
-30. **Sync is on by default on tvOS** once a server is set (it's the same server as the game data); **opt-in on the Mac** (no Mac UI to type the address yet — set it in `extras.json`).
+30. **Sync is on by default on tvOS** once a server is set (it's the same server as the game data); **opt-in on the Mac** (Extras › Network › Sync saves).
 31. **Lobby games join through the original's own list**: the server's games are probed unicast with the original's `'w'` probe instead of adding rows by hand — they appear with real name, version and ping, no "via server" marker, and a host found both ways shows once when its LAN address is the server's first (LAN requester); a tailnet requester may see a LAN host twice (100.x and LAN). Lobby is on whenever a server is set (independent of save sync).
 32. **FXAA as the anti-aliasing option**, default **Off** on both platforms: a small pass of its own over the 3-D image (before the flare overlay and HUD, so text stays sharp). MSAA 4× not done yet; pick a default after seeing both on the TV.
 33. **HD texture pack at 2×** as the target (≈ 378 MB as ASTC, vs ≈ 1.5 GB at 4×, most of it front-end art); world textures ASTC 6×6, the rest 4×4. Only the inventory exists so far.
 34. **3.5 patch: data files only.** The patch's game executable became `nfs5.exe` (the engine only reads the movie tables from it) and the data files were applied; `gimme.dll`, the uninstaller and the SaveData HUD copies were not (Windows-only / per-profile). 3.2 originals kept in `game-data-v3.2-backup/`.
 35. **tvOS launch-time data update check.** With a verified download and a server set, the app compares its manifest with the server's (gives up after ~4 s, so an offline Apple TV starts as before). If they differ, the Game Data screen offers **Update** (only changed files) or **Play** (keep the current files; asked again next launch).
+
+36. **Server settings are per device**: Extras › Network (server, token, sync saves) lives in `network.json`, not in `extras.json`, because save sync shares `extras.json` between devices (the token shouldn't travel with the saves, and the Mac and the Apple TV may use different names). An older `extras.json` with a `network` section is read once. *Note:* the rest of `extras.json` (HUD size, graphics, assists…) **is** still shared between the Mac and the Apple TV through save sync — probably also better per device; not changed yet.
+37. **Extras › Network in the game on both platforms**; on tvOS it writes through to the app shell's Server setting (one setting, two places to edit it). While the Extras menu is open it takes the whole keyboard (so typing "p" or "k" in a field doesn't pause or open photo mode); text rows start with the current text (Mac: Backspace to clear, Cmd+V pastes the clipboard's first line).
 
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
@@ -147,6 +150,7 @@ Choices made without asking (per your instruction); each is easy to change.
 | Item | macOS | tvOS Simulator | Apple TV |
 |---|---|---|---|
 | 0 Extras menu + `extras.json` (`nfs_game::extras`, `app/extras_ui.rs`) | ✅ pause menu's last item "extras"; pages/rows with value, explanation, "applies now/at next start", reset page; arrows/d-pad; saved + reloaded (tests); `extras.json` is in the tvOS save mirror | ✅ (same code; settings file read at start) | 📺 pad/remote navigation |
+| 0 Extras › Network (server, token, sync saves, test connection) | ✅ scripted run: typed address + token, Sync on, Test → "Connected: Mac test, ou-server 0.1.5"; wrong token → "the server refused the token"; long Tailscale name fits; settings in `network.json`, none in `extras.json`. Also fixed: in the Extras menu the Mac keyboard's left/right had moved rows instead of changing values (the pause menu's mapping), and long help lines ran past the panel (now wrapped). 🙋 **check by hand**: real typing + Cmd+V (the scripted run feeds the same buffer, not real key events) | ✅ same page without Sync saves; Test → OK; the change reached the shell's setting (app container plist = `127.0.0.1:8642` / token). 🙋 the on-screen keyboard for these rows (same prompt as the other text fields) | 📺 |
 | 0 Extras from the main menu (pad View / F12 / Siri Remote Play/Pause) | ⬜ the front end has no HUD font object yet — needs its own text path | ⬜ | 📺 |
 | 2.1 Layered app icon + Top Shelf (+ Wide) from the project's own mark (`platform/tvos/make_brand_assets.py`, committed asset catalog) | — | ✅ icon on the Simulator's Home screen; 3 layers (opaque back, road, mark), App Store icon, Top Shelf images | 📺 parallax on focus, Top Shelf in the top row |
 | 2.7 No screen saver during race / replay / intro (menus can still sleep) | — | 🟡 wired (shell polls `ou_wants_no_sleep()` every 3 s) | 📺 15-minute race without screen saver |
@@ -195,7 +199,7 @@ Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-loc
 
 ## Next (in order, not started)
 1. Stage 9 item 0: Extras settings menu + `extras.json` (switches for the overlay, render scale, etc.).
-3. Mac UI for the server address (today: `extras.json` › `network`); LAN broadcast test Mac ↔ Apple TV (📺).
+3. ~~Mac UI for the server address~~ ✅ Extras › Network (both platforms); LAN broadcast test Mac ↔ Apple TV (📺).
 4. Remaining enhancements 1–11, the rest of the AirPods plan (route changes, auto-pause on disconnect), LAN multiplayer test.
 
 ## Needs Apple TV

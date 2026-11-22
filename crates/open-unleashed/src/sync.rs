@@ -52,21 +52,73 @@ fn candidates(addr: &str) -> Vec<String> {
     v
 }
 
-/// The save sync's settings: a server set **and** sync on (tvOS: on whenever the shell passes a server).
+/// The save sync's settings: a server set **and** sync on (tvOS: on whenever a server is set, `PROGRESS.md`
+/// decision 30; the Mac: `OU_SERVER` in the environment, or Extras › Network › Sync saves).
 fn config() -> Option<SyncConfig> {
     let n = nfs_game::extras::get().network;
-    let enabled = std::env::var("OU_SERVER").is_ok_and(|v| !v.trim().is_empty()) || n.sync_saves;
+    let enabled = cfg!(target_os = "tvos") || std::env::var("OU_SERVER").is_ok_and(|v| !v.trim().is_empty()) || n.sync_saves;
     if !enabled || std::env::var_os("NFS_NO_SYNC").is_some() {
         return None;
     }
     server_config()
 }
 
+/// The server address and token in force: Extras › Network (`network.json`). On the Mac `OU_SERVER` /
+/// `OU_TOKEN` in the environment override it (tests, scripts); on tvOS the shell's copy was mirrored into it
+/// at start ([`seed_from_shell`]) and the Extras page writes back to the shell, so it is the one source.
+pub(crate) fn server_and_token() -> (String, String) {
+    let n = nfs_game::extras::get().network;
+    let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
+    if cfg!(target_os = "tvos") {
+        return (n.server, n.token);
+    }
+    (env("OU_SERVER").unwrap_or(n.server), env("OU_TOKEN").unwrap_or(n.token))
+}
+
+/// tvOS: the app shell passes its Server setting (UserDefaults, which survives a Caches purge) as
+/// `OU_SERVER` / `OU_TOKEN`; mirror it into `network.json` before anything reads the settings.
+#[cfg(target_os = "tvos")]
+pub(crate) fn seed_from_shell() {
+    let env = |k: &str| std::env::var(k).ok();
+    if let Some(server) = env("OU_SERVER") {
+        let token = env("OU_TOKEN").unwrap_or_default();
+        let n = nfs_game::extras::get().network;
+        if n.server != server || n.token != token {
+            nfs_game::extras::update(|s| {
+                s.network.server = server;
+                s.network.token = token;
+            });
+        }
+    }
+}
+
+/// Extras › Network › Test connection: ask the server set now for `/v1/info` (each candidate URL in turn) and
+/// say in a line what happened. Blocking — run it off the main thread.
+pub(crate) fn test_connection() -> Result<String, String> {
+    let Some(cfg) = server_config() else { return Err("no server set".into()) };
+    let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(4))).http_status_as_error(false).build().into();
+    let mut last = String::from("no answer");
+    for b in &cfg.bases {
+        match agent.get(format!("{b}/v1/info")).header("Authorization", format!("Bearer {}", cfg.token)).call() {
+            Ok(mut r) if r.status().is_success() => {
+                let v: serde_json::Value = r.body_mut().read_json().unwrap_or_default();
+                let name = v.get("name").and_then(|x| x.as_str()).unwrap_or("server");
+                let ver = v.get("version").and_then(|x| x.as_str()).unwrap_or("?");
+                return Ok(format!("{name}, ou-server {ver}"));
+            }
+            Ok(r) if r.status().as_u16() == 401 => return Err("the server refused the token".into()),
+            Ok(r) => last = format!("{b}: HTTP {}", r.status().as_u16()),
+            Err(e) => last = format!("{b}: {e}"),
+        }
+    }
+    Err(last)
+}
+
 /// The OpenUnleashed server, if one is set (the lobby needs only this).
 pub(crate) fn server_config() -> Option<SyncConfig> {
     let n = nfs_game::extras::get().network;
     let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
-    let server = env("OU_SERVER").unwrap_or(n.server.clone());
+    let (server, token) = server_and_token();
     if server.trim().is_empty() {
         return None;
     }
@@ -74,7 +126,7 @@ pub(crate) fn server_config() -> Option<SyncConfig> {
         if cfg!(target_os = "tvos") { "Apple TV".into() } else { std::env::var("HOST").or_else(|_| std::env::var("USER")).map(|u| format!("Mac ({u})")).unwrap_or_else(|_| "Mac".into()) }
     });
     let profile = if n.save_profile.trim().is_empty() { "household".to_string() } else { n.save_profile.trim().to_string() };
-    Some(SyncConfig { bases: candidates(&server), token: env("OU_TOKEN").unwrap_or(n.token), device, profile })
+    Some(SyncConfig { bases: candidates(&server), token, device, profile })
 }
 
 /// One file's agreed state: the SHA-256 both sides had at the last sync, and the local stamp it had then.

@@ -2,6 +2,11 @@
 //! have (`enhancements-plan.md` §0). Kept apart from the original's profile options: `extras.json` in the data
 //! folder (beside `SaveData/`), versioned, every default = the original's behaviour ("authentic first").
 //! The settings are read anywhere through [`get`]; the Extras menu changes them with [`update`], which saves.
+//!
+//! The **network** section (server address, token, save sync) is this device's own and lives in `network.json`
+//! beside it: `extras.json` is one of the files save sync shares between devices, and a Mac and an Apple TV
+//! may reach the same server by different names (and the token shouldn't travel with the saves). An older
+//! `extras.json` that still carries the section is read once as the starting point.
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -88,7 +93,8 @@ pub struct Controller {
 }
 
 /// The OpenUnleashed server (`server-plan.md`): address (name or IP, optional `:port`), token, save sync.
-/// On tvOS the app shell's Server setting (UserDefaults) is passed in as `OU_SERVER` / `OU_TOKEN` and wins.
+/// Kept per device in `network.json` (see the module note). On tvOS the app shell's Server setting
+/// (UserDefaults, the copy that survives a Caches purge) is passed in at start and mirrored here.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Network {
@@ -183,6 +189,8 @@ pub struct ExtrasSettings {
     pub controller: Controller,
     pub assists: Assists,
     pub graphics: Graphics,
+    /// read from an older `extras.json` (migration) but never written there: `network.json` holds it
+    #[serde(skip_serializing)]
     pub network: Network,
     pub audio: Audio,
 }
@@ -214,12 +222,30 @@ pub fn path() -> PathBuf {
     std::env::var_os("NFS5_EXTRAS").map(PathBuf::from).unwrap_or_else(|| nfs_assets::platform::data_dir().join("extras.json"))
 }
 
+/// `network.json`, this device's server settings, beside `extras.json`.
+pub fn network_path() -> PathBuf {
+    path().with_file_name("network.json")
+}
+
 fn cell() -> &'static Mutex<ExtrasSettings> {
     static S: OnceLock<Mutex<ExtrasSettings>> = OnceLock::new();
     S.get_or_init(|| {
-        let s = std::fs::read_to_string(path()).map(|t| ExtrasSettings::parse(&t)).unwrap_or_default();
+        let mut s = std::fs::read_to_string(path()).map(|t| ExtrasSettings::parse(&t)).unwrap_or_default();
+        // this device's own file wins; without one, an older extras.json's section is the starting point
+        if let Some(n) = std::fs::read_to_string(network_path()).ok().and_then(|t| serde_json::from_str::<Network>(&t).ok()) {
+            s.network = n;
+        }
         Mutex::new(s)
     })
+}
+
+fn write_atomic(p: &std::path::Path, text: &str) -> std::io::Result<()> {
+    if let Some(d) = p.parent() {
+        std::fs::create_dir_all(d)?;
+    }
+    let tmp = p.with_extension("json.tmp");
+    std::fs::write(&tmp, text)?;
+    std::fs::rename(tmp, p)
 }
 
 /// The current settings (loaded from `extras.json` on first use).
@@ -230,22 +256,22 @@ pub fn get() -> ExtrasSettings {
 /// Change the settings and save them (written through a temporary file; a failed write is logged, the change
 /// stays for this run).
 pub fn update(f: impl FnOnce(&mut ExtrasSettings)) -> ExtrasSettings {
-    let snapshot = {
+    let (before, snapshot) = {
         let Ok(mut s) = cell().lock() else { return ExtrasSettings::default() };
+        let before = s.network.clone();
         f(&mut s);
-        s.clone()
+        (before, s.clone())
     };
     let p = path();
-    let write = || -> std::io::Result<()> {
-        if let Some(d) = p.parent() {
-            std::fs::create_dir_all(d)?;
-        }
-        let tmp = p.with_extension("json.tmp");
-        std::fs::write(&tmp, snapshot.to_json())?;
-        std::fs::rename(tmp, &p)
-    };
-    if let Err(e) = write() {
+    if let Err(e) = write_atomic(&p, &snapshot.to_json()) {
         tracing::warn!(error = %e, path = %p.display(), "extras.json not saved");
+    }
+    if snapshot.network != before || !network_path().exists() {
+        let np = network_path();
+        let text = serde_json::to_string_pretty(&snapshot.network).unwrap_or_default() + "\n";
+        if let Err(e) = write_atomic(&np, &text) {
+            tracing::warn!(error = %e, path = %np.display(), "network.json not saved");
+        }
     }
     snapshot
 }
@@ -264,6 +290,19 @@ mod tests {
         assert_eq!(s.graphics.anisotropy(), 1);
         assert_eq!(s.graphics.draw_distance_factor(), 1.0);
         assert_eq!((s.graphics.fov_offset(true), s.graphics.fov_offset(false)), (0.0, 0.0));
+    }
+
+    #[test]
+    fn the_network_section_stays_out_of_the_shared_file() {
+        let mut s = ExtrasSettings::default();
+        s.network.server = "tower.local".into();
+        s.network.token = "secret".into();
+        let j = s.to_json();
+        assert!(!j.contains("tower.local") && !j.contains("secret") && !j.contains("network"), "{j}");
+        // an older extras.json that still has it is read (the migration's starting point)
+        let old = r#"{"network":{"server":"tower.local","token":"t","sync_saves":true}}"#;
+        let n = ExtrasSettings::parse(old).network;
+        assert_eq!((n.server.as_str(), n.token.as_str(), n.sync_saves), ("tower.local", "t", true));
     }
 
     #[test]

@@ -16,6 +16,8 @@ pub(crate) enum TextTarget {
     Dialog,
     /// a front-end input box (layout element index)
     Input(usize),
+    /// an Extras text row (PORT-DEVIATION, `extras_ui.rs`: the server address, the token)
+    Extras(extras_ui::Field),
 }
 
 /// A request for the shell's prompt.
@@ -27,20 +29,27 @@ pub(crate) struct TextRequest {
     pub(crate) max_len: usize,
     /// a chat box: always focused, so it's only prompted for on request (pad Y), never automatically
     pub(crate) chat: bool,
+    /// a secret (the keyboard hides what is typed)
+    pub(crate) secure: bool,
 }
 
 impl App {
     /// The field that takes typed text right now, if any.
     pub(crate) fn text_request(&self) -> Option<TextRequest> {
+        if self.extras_ui.is_some()
+            && let Some((field, current)) = extras_ui::editing()
+        {
+            return Some(TextRequest { target: TextTarget::Extras(field), title: field.title().into(), current, max_len: extras_ui::MAX_TEXT, chat: false, secure: field.secure() });
+        }
         if self.replay_save.up && !self.replay_save.overwrite && !self.paused {
             let current = if self.replay_save.name.is_empty() { self.default_replay_name() } else { self.replay_save.name.clone() };
-            return Some(TextRequest { target: TextTarget::ReplaySave, title: "Replay name".into(), current, max_len: 11, chat: false });
+            return Some(TextRequest { target: TextTarget::ReplaySave, title: "Replay name".into(), current, max_len: 11, chat: false, secure: false });
         }
         if let Some((d, _)) = self.fe.dialog.as_ref()
             && d.up
             && let Some(f) = d.field.as_ref()
         {
-            return Some(TextRequest { target: TextTarget::Dialog, title: d.text.clone(), current: f.text.clone(), max_len: f.max, chat: false });
+            return Some(TextRequest { target: TextTarget::Dialog, title: d.text.clone(), current: f.text.clone(), max_len: f.max, chat: false, secure: false });
         }
         if self.fe.dialog.is_none()
             && let Some(l) = self.fe.layout_preview.as_ref()
@@ -57,7 +66,8 @@ impl App {
                 None => "Text".to_string(),
             };
             let max_len = accessor.as_deref().and_then(nfs_game::layout::LayoutScreen::input_max_len).unwrap_or(63);
-            return Some(TextRequest { target: TextTarget::Input(i), title, current, max_len, chat });
+            let secure = title == "Password";
+            return Some(TextRequest { target: TextTarget::Input(i), title, current, max_len, chat, secure });
         }
         None
     }
@@ -70,6 +80,7 @@ impl App {
             return false;
         }
         match target {
+            TextTarget::Extras(field) => self.extras_commit_text(field, text),
             TextTarget::ReplaySave => {
                 self.replay_save.name.clear();
                 for c in text.chars() {
@@ -105,6 +116,13 @@ impl App {
             }
         }
         true
+    }
+
+    /// The prompt for `target` was cancelled.
+    pub(crate) fn text_cancelled(&mut self, target: TextTarget) {
+        if let TextTarget::Extras(_) = target {
+            extras_ui::cancel_edit();
+        }
     }
 
     /// Return on a focused input box (0x4CCC20's `0x0D`, or the chat / char-vector boxes' own slot 4). Returns
