@@ -644,3 +644,41 @@ fn a_dropped_stream_hands_the_mixer_back() {
     drop(slot);
     assert!(home.lock().unwrap().is_some(), "back home when the stream goes");
 }
+
+/// PORT-DEVIATION (5.1): with surround on and a six-channel device, a mono voice behind the listener plays from Ls /
+/// Rs alone, one on the right from R and Rs, and a stereo device keeps the stereo mix (surround needs the channels).
+#[test]
+fn surround_puts_a_sound_behind_you_in_the_rear_speakers() {
+    let wave: Vec<i16> = (0..8000).map(|i| (((i % 50) as i16) - 25) * 400).collect();
+    let clip = Arc::new(Clip { samples: wave, loop_range: Some((0, 8000)), fx_send: 0, ..Clip::default() });
+    let energy = |pan: u16, channels: usize| -> Vec<f32> {
+        let (tx, core) = Tx::new(48000, false);
+        let mut core = core.unwrap();
+        let out = AudioOutput::for_test(tx, 48000);
+        out.play_word(clip.clone(), 1.0, 4096, 0x40, pan, true);
+        let mut e = vec![0.0f32; channels];
+        let mut buf = vec![0.0f32; 1024 * channels];
+        for _ in 0..20 {
+            core.drain();
+            core.fill(&mut buf, channels, 48000.0);
+            for f in buf.chunks_exact(channels) {
+                for (c, x) in f.iter().enumerate() {
+                    e[c] += x * x;
+                }
+            }
+        }
+        e
+    };
+    set_surround(true);
+    // [L, R, C, LFE, Ls, Rs] in the default order
+    let behind = energy(0x8000, 6);
+    assert!(behind[0] < 1e-6 && behind[1] < 1e-6 && behind[2] < 1e-6 && behind[3] == 0.0, "{behind:?}");
+    assert!(behind[4] > 1.0 && behind[5] > 1.0 && (behind[4] / behind[5] - 1.0).abs() < 0.05, "{behind:?}");
+    let right = energy(0x4000, 6);
+    assert!(right[1] > 1.0 && right[5] > 1.0 && right[0] < 1e-6 && right[4] < 1e-6, "{right:?}");
+    // a stereo device: the original stereo mix whatever the setting
+    let stereo_on = energy(0x8000, 2);
+    set_surround(false);
+    let stereo_off = energy(0x8000, 2);
+    assert_eq!(stereo_on, stereo_off);
+}

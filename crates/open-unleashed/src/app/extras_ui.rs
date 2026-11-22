@@ -131,6 +131,8 @@ enum Kind {
     Test,
     /// Test effects: plays every rumble and trigger effect in turn (Enter / A)
     HapticsTest,
+    /// Speaker test: a tone on each speaker in turn (Enter / A)
+    SpeakerTest,
 }
 
 /// The menu's place.
@@ -348,6 +350,26 @@ fn pages() -> Vec<Page> {
     Page {
         title: "Audio",
         rows: vec![Row {
+            label: "Speakers",
+            help: "5.1: cars behind you sound behind you and tunnels surround you, when the Apple TV outputs 5.1 (Settings > Video and Audio > Audio Format). Otherwise stereo.",
+            applies: Applies::Now,
+            shown: true,
+            kind: Kind::Choice,
+            values: &["Stereo (original)", "5.1 when available"],
+            get: |s| s.audio.speakers.min(1) as usize,
+            set: |s, v| s.audio.speakers = v as u8,
+        },
+        Row {
+            label: "Speaker test",
+            help: "A tone from each speaker in turn: left, centre, right, right surround, left surround (stereo: left, right).",
+            applies: Applies::Now,
+            shown: true,
+            kind: Kind::SpeakerTest,
+            values: &[],
+            get: |_| 0,
+            set: |_, _| {},
+        },
+        Row {
             label: "Pause when headphones disconnect",
             help: "A single-player race pauses when AirPods or other headphones go away mid-race.",
             applies: Applies::Now,
@@ -501,6 +523,8 @@ impl App {
 
 /// Apply what takes effect at once (called after every change and at start-up).
 pub(crate) fn apply_now(s: &ExtrasSettings) {
+    // speakers: from the next audio callback
+    nfs_audio::mixer::set_surround(s.audio.speakers == 1);
     // HD textures: from the next textures loaded (the next race / screen)
     nfs_assets::hd::set_enabled(s.graphics.textures == 1);
     overlay::FRAME_OVERLAY.store(s.display.fps_overlay || std::env::var_os("NFS_FPS_OVERLAY").is_some_and(|v| v != "0"), std::sync::atomic::Ordering::Relaxed);
@@ -609,6 +633,8 @@ impl App {
                     // start typing: in place on the Mac, the on-screen keyboard on tvOS (`text_request`)
                     set_edit(Some((field, field.value(&extras::get()).to_string())));
                     self.fe_sound(9);
+                } else if let Some(Kind::SpeakerTest) = page.rows.get(ui.row - 1).map(|r| r.kind) {
+                    nfs_audio::mixer::speaker_test();
                 } else if let Some(Kind::HapticsTest) = page.rows.get(ui.row - 1).map(|r| r.kind) {
                     self.haptics_test = Some(std::time::Instant::now());
                     self.fe_sound(9);
@@ -773,6 +799,7 @@ impl App {
                     }
                 },
                 Kind::HapticsTest => if self.haptics_test.is_some() { "playing...".to_string() } else { String::new() },
+                Kind::SpeakerTest => String::new(),
                 Kind::Test => match test_state() {
                     Test::Idle => String::new(),
                     Test::Running => "testing...".to_string(),

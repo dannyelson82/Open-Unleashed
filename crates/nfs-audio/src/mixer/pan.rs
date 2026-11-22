@@ -151,9 +151,47 @@ pub(super) fn stereo_gains(p: u8) -> [f32; 2] {
     [plane_gains(a.wrapping_add(0xC000))[1], plane_gains(a.wrapping_add(0x4000))[0]]
 }
 
+/// **PORT-DEVIATION (Extras › Audio › Speakers: 5.1, `enhancements-plan.md` §6)**: pairwise constant-power panning
+/// of a source at the full-circle angle `a` ([`pan_angle`], 0 ahead, 0x4000 on the right, 0x8000 behind — the angle
+/// the original folds onto the front, [`pan_byte`]) across a 5.1 layout's L −30°, C 0°, R +30°, Ls −110°, Rs +110°.
+/// Answers the gains `[L, R, C, Ls, Rs]`, whose squares sum to 1.
+pub fn vbap_5_1(a: u16) -> [f32; 5] {
+    // speakers clockwise from ahead, in degrees, with their slot in the answer
+    const RING: [(f32, usize); 6] = [(0.0, 2), (30.0, 1), (110.0, 4), (250.0, 3), (330.0, 0), (360.0, 2)];
+    let deg = a as f32 * 360.0 / 65536.0;
+    let mut g = [0.0f32; 5];
+    for w in RING.windows(2) {
+        let ((a0, s0), (a1, s1)) = (w[0], w[1]);
+        if deg >= a0 && deg <= a1 {
+            let f = (deg - a0) / (a1 - a0) * std::f32::consts::FRAC_PI_2;
+            g[s0] += f.cos();
+            g[s1] += f.sin();
+            break;
+        }
+    }
+    g
+}
+
 #[cfg(test)]
 mod pan_tests {
-    use super::{atan2_1024, pan_angle, pan_byte, pan_gains, voice_pan};
+    use super::{atan2_1024, pan_angle, pan_byte, pan_gains, vbap_5_1, voice_pan};
+
+    #[test]
+    fn surround_pans_around_the_listener_at_constant_power() {
+        let near = |a: f32, b: f32| (a - b).abs() < 1e-4;
+        // [L, R, C, Ls, Rs]
+        assert_eq!(vbap_5_1(0), [0.0, 0.0, 1.0, 0.0, 0.0]);
+        let right = vbap_5_1(0x4000); // 90°: between R (30°) and Rs (110°)
+        assert!(right[1] > 0.3 && right[4] > 0.3 && right[0] == 0.0 && right[3] == 0.0);
+        let behind = vbap_5_1(0x8000); // 180°: between Rs and Ls, equally
+        assert!(near(behind[3], behind[4]) && behind[0] == 0.0 && behind[1] == 0.0 && behind[2] == 0.0);
+        let left = vbap_5_1(0xC000);
+        assert!(left[0] > 0.3 && left[3] > 0.3);
+        for a in (0..=0xFFFFu32).step_by(0x400) {
+            let g = vbap_5_1(a as u16);
+            assert!(near(g.iter().map(|x| x * x).sum::<f32>(), 1.0), "{a:#x}: {g:?}");
+        }
+    }
 
     #[test]
     fn the_angle_is_the_games_atan2_on_the_listener_axes() {

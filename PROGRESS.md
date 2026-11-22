@@ -15,7 +15,7 @@ _Last updated: 2026-11-21 (session paused: usage limit)_
   `packaging/unraid/nfs-haven-server.xml` (data under `/mnt/user/appdata/nfs-haven-server`).
 - **Needs you**: the Apple TV (everything marked 📺), a pad for feel/rumble, AirPods for head-look and route tests (🙋),
   and the "Decisions to review" below.
-- **Not started / partly**: split-screen, HDR, 5.1 surround mixer,
+- **Not started / partly**: split-screen, HDR,
   HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, ~~Mac UI for the server~~ (done: Extras › Network)
   address, MSAA.
 
@@ -164,6 +164,8 @@ Choices made without asking (per your instruction); each is easy to change.
 55. **Wheelspin = the rear wheels' slip** (every car in the game is rear- or all-wheel drive); ABS felt only with the ABS assist on and a firm pedal; a wheel locked without it stiffens the brake trigger.
 56. **DualSense adaptive triggers through Apple's GameController on the Mac too** (the plan's choice). On the Mac SDL may drive a DualSense through its own HIDAPI driver; if the triggers do nothing there, SDL's own `SDL_SendGamepadEffect` path is the fallback to try.
 
+57. **5.1 scope**: Stereo (original) / "5.1 when available" (no separate 7.1 or Auto: the app can only use what the route gives; 7.1's back pair stays silent). Defaults: tvOS 5.1-when-available, Mac stereo. Sounds given no position (the player's own car, the front end) have angle 0 and play from the **centre**; music and stereo effects stay on L / R; no LFE feed, no "music in all speakers" yet. A route change after start (a receiver switched on later) is not re-read until the next start.
+
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
 |---|---|---|---|
@@ -211,6 +213,7 @@ Choices made without asking (per your instruction); each is easy to change.
 | 11 HD texture pack — Stage 0 inventory (`tools/texture-pack scan`) | ✅ 12,683 texture entries (9,356 unique by content hash) in 664 files, 2 s. Projected pack (ASTC 4×4, mips): **2× ≈ 464 MB**, 4× ≈ 1.86 GB (1 GB of it front-end art). Alpha: 5,708 opaque, 2,549 full, 505 binary, 100 colour-key, 494 paint-label. Output in git-ignored `target/texture-pack/`. ✅ **Stage 1 engine side** (`nfs_assets::hd`): pack index + KTX2 (RGBA8 / ASTC 4×4), entry key shared with the tool, upload paths for tracks + `.env`, sky, `common.fsh`, `particle.fsh`, room; ASTC upload in the renderer (feature requested where the GPU has it); Extras › Graphics › Textures; overlay counter; `NFS_HD_DUMP=1` → `hd-used.csv` (Alps race: 311 entries). ✅ **stand-in pack** `texture-pack fake` (Alps: 186 entries, 69 MB RGBA8 / **17.6 MB ASTC** via ARM astcenc 5.7.1): race shows **169 / 206** textures HD, layout, transparency and sky intact, nearest-neighbour blockiness up close as expected. ⬜ car pages at scale, ⬜ menu art, ⬜ live (in-race) toggle, ⬜ the Game Data screen fetching `porsche/hd`, ⬜ export / import, ⬜ upscaling (your Mac, your models) | ✅ same pack (ASTC) in the Simulator: 169 / 206, ASTC sampled | 📺 look + memory on the TV |
 | 7.3 Render resolution in Extras (tvOS only) | — | ✅ row shown on tvOS only; read at window creation | 📺 |
 | 5 Xbox/PlayStation pads via SDL's GameController driver, rumble | — | — | 📺 (no pads in the Simulator) |
+| 6 5.1 surround (Extras › Audio › Speakers, Speaker test) | ✅ mixer: VBAP over L −30°, C 0°, R +30°, Ls −110°, Rs +110° from the angle the original folded away; stereo voices / music stay front, reverb wet also to the surrounds; runs only with ≥ 6 output channels; tests: a sound behind you comes only from Ls / Rs, one on the right from R + Rs, a stereo device gets the identical stereo mix; all 177 audio tests pass. Mac outputs stereo here (2 channels) | ✅ shell asks for the route's maximum channels and passes the order from the channel labels (`NFS_SPEAKER_ORDER`); the Simulator offers 2 → stereo | 📺 receiver: speaker test, AI behind you, a tunnel, route change |
 | 5 Enhanced rumble + trigger effects (`nfs_game::haptics`, Extras › Controller) | ✅ built and unit-tested (6 tests): surface texture by class (guessed table), engine in the top 15 % of the revs, limiter buzz, gear-shift thump, original jolt kept; Xbox trigger rumble (`SDL_RumbleGamepadTriggers`, rate-limited); DualSense adaptive triggers through GameController (`nfs_input::dualsense_apple`: brake resistance → ABS vibration / lock stiffness, throttle wheelspin / limiter vibration), sent only on change, released on pause / race end / exit; "Test effects" row; the overlay shows the surface class. Race runs clean with it on. 🙋 **feel it with a pad** (none connected here) | ✅ builds; runs clean (defaults on: Enhanced + Subtle) | 📺 Xbox + DualSense feel, latency over Bluetooth, surface classes named per track |
 | 6.3 Lifecycle | — | ✅ Home/other app mid-race → race pauses ("app in background"), audio stream stops; back → audio restarts, pause menu shown, no crash; saves mirrored on background | 📺 |
 
@@ -250,7 +253,7 @@ Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-loc
 2. ✅ HD-pack Stage 1 engine side + stand-in pack (cars / menu art / Game Data download of `porsche/hd` still to do).
 3. ✅ MSAA 4× next to FXAA (alpha-to-coverage left out, decision 52).
 4. ✅ Enhanced rumble, Xbox trigger rumble, DualSense adaptive triggers (code; feel to check with a pad 🙋 / 📺).
-5. 5.1 surround mixer (N channels, VBAP) + speaker test.
+5. ✅ 5.1 surround (VBAP) + speaker test (7.1, "music in all speakers" and an LFE feed not done; decision 57).
 6. Split-screen (two local players).
 7. HDR output.
 8. Per-device display/graphics settings (decision 36), assists polish (braking assist, HUD indicators, presets), "Recommended for Apple TV" preset.

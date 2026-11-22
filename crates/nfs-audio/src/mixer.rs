@@ -58,6 +58,62 @@ const _: () = {
     assert!(BEND_ROOT == 0x40 && LEVEL_MAX == 0x7F && DEFAULT_QUALITY == 3 && DEFAULT_BUDGET == 24);
 };
 
+// ---- PORT-DEVIATION (Extras › Audio › Speakers: 5.1, `enhancements-plan.md` §6) ----
+//
+// Stereo (the original) is untouched: the surround path runs only when it is wanted **and** the output device has
+// six channels or more. Then every mono voice is panned by its full-circle angle ([`vbap_5_1`]) across L, R, C,
+// Ls, Rs instead of the folded stereo pan; stereo voices, the streams (music, speech) and the player's own sounds
+// keep their stereo pan on L / R; the reverb's wet signal also goes to Ls / Rs (tunnels surround you). LFE stays
+// silent (receivers bass-manage). The output's channel order comes from `NFS_SPEAKER_ORDER` (the tvOS shell reads
+// the route's channel labels): six indices for L, R, C, LFE, Ls, Rs; default 0…5.
+
+static SURROUND: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static SPEAKER_ORDER: [std::sync::atomic::AtomicU8; 6] = [const { std::sync::atomic::AtomicU8::new(0) }; 6];
+static SPEAKER_TEST: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// Surround wanted (it runs when the device has the channels too). Reads `NFS_SPEAKER_ORDER` (game thread).
+pub fn set_surround(on: bool) {
+    let order: Vec<u8> = std::env::var("NFS_SPEAKER_ORDER").ok().map(|v| v.split(',').filter_map(|x| x.trim().parse().ok()).collect()).filter(|v: &Vec<u8>| v.len() == 6).unwrap_or_else(|| (0..6).collect());
+    for (slot, ch) in SPEAKER_ORDER.iter().zip(order) {
+        slot.store(ch, Ordering::Relaxed);
+    }
+    SURROUND.store(on, Ordering::Relaxed);
+}
+
+/// Play the speaker test: a tone on each speaker in turn (L, C, R, Rs, Ls; stereo: L, R).
+pub fn speaker_test() {
+    SPEAKER_TEST.fetch_add(1, Ordering::Relaxed);
+}
+
+/// The surround channels' frames, alongside the stereo bridge's and in lockstep with it (same pushes, same pops).
+#[derive(Default)]
+pub(super) struct SurBridge {
+    pub(super) pending: std::collections::VecDeque<[f32; 3]>,
+    t: f64,
+}
+
+impl SurBridge {
+    /// The next device frame `[C, Ls, Rs]`, at the stereo bridge's step.
+    pub(super) fn next(&mut self, step: f64) -> [f32; 3] {
+        let a = self.pending.front().copied().unwrap_or_default();
+        let b = self.pending.get(1).copied().unwrap_or(a);
+        let t = self.t as f32;
+        self.t += step;
+        while self.t >= 1.0 && self.pending.len() > 1 {
+            self.t -= 1.0;
+            self.pending.pop_front();
+        }
+        [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
+    }
+}
+
+/// The speaker test in the callback: which request, and how far it has played.
+#[derive(Default)]
+pub(super) struct SpeakerTestState {
+    seen: u32,
+    frame: Option<u64>,
+}
+
 /// A `Send + Sync` handle to the game thread's side of the mixer, without the output stream
 /// itself — see [`AudioOutput::stop_handle`].
 #[derive(Clone)]
@@ -108,6 +164,11 @@ struct Shared {
     mix_rate: Option<u32>,
     /// the mixed frames on their way to the device's rate
     bridge: Bridge,
+    /// PORT-DEVIATION (5.1): the surround path is running (wanted and the device has the channels), its frames
+    /// and the speaker test
+    sur: bool,
+    sur_bridge: SurBridge,
+    speaker_test: SpeakerTestState,
     /// the driver thread's writes ([`Pump`]) the mix is rendered in
     pump: Pump,
     /// the driver thread's `Sleep` `[0x6B48E1]` ([`pump_sleep_ms`]); `None` until the quality is
@@ -179,6 +240,9 @@ fn bury(dead: &mut Vec<Gc>, g: Gc) {
 struct Scratch {
     /// the frames [`Shared::render_into`] mixes a driver pass in
     mix: Vec<[f32; 2]>,
+    /// PORT-DEVIATION (5.1): the surround channels `[C, Ls, Rs]` of the pass, and the front before the reverb
+    sur_mix: Vec<[f32; 3]>,
+    pre_reverb: Vec<[f32; 2]>,
     stopped: Vec<VoiceId>,
     stop: Vec<VoiceId>,
     failed: Vec<usize>,
@@ -209,15 +273,25 @@ impl Shared {
     /// [`Shared::pump`] appending to `dst` (the [`Bridge`]'s queue) — no allocation once the
     /// buffers have their size.
     fn pump_to(&mut self, mix_rate: u32, dst: &mut std::collections::VecDeque<[f32; 2]>) {
+        self.pump_to_sur(mix_rate, dst, None);
+    }
+
+    /// [`Shared::pump_to`], and in surround the pass's `[C, Ls, Rs]` frames to `sur` (one for each stereo frame).
+    fn pump_to_sur(&mut self, mix_rate: u32, dst: &mut std::collections::VecDeque<[f32; 2]>, mut sur: Option<&mut std::collections::VecDeque<[f32; 3]>>) {
         let sleep = self.sleep_ms.unwrap_or(pump_sleep_ms(DEFAULT_QUALITY));
         let mut buf = std::mem::take(&mut self.scratch.mix);
+        let mut sbuf = std::mem::take(&mut self.scratch.sur_mix);
         for part in self.pump.next_write(mix_rate, sleep) {
             if part > 0 {
-                self.render_into(&mut buf, part as usize, mix_rate);
+                self.render_into_sur(&mut buf, sur.as_ref().map(|_| &mut sbuf), part as usize, mix_rate);
                 dst.extend(buf.iter().copied());
+                if let Some(s) = sur.as_deref_mut() {
+                    s.extend(sbuf.iter().copied());
+                }
             }
         }
         self.scratch.mix = buf;
+        self.scratch.sur_mix = sbuf;
     }
 
     /// The software mixer's output for `n` stereo frames at `mix_rate`, as **0x58FBC0** drives it:
@@ -242,8 +316,17 @@ impl Shared {
 
     /// [`Shared::render`] into `out`, which is cleared and sized to `n` frames.
     fn render_into(&mut self, out: &mut Vec<[f32; 2]>, n: usize, mix_rate: u32) {
+        self.render_into_sur(out, None, n, mix_rate);
+    }
+
+    /// [`Shared::render_into`], with the surround channels into `sur` when given.
+    fn render_into_sur(&mut self, out: &mut Vec<[f32; 2]>, mut sur: Option<&mut Vec<[f32; 3]>>, n: usize, mix_rate: u32) {
         out.clear();
         out.resize(n, [0.0f32; 2]);
+        if let Some(s) = sur.as_deref_mut() {
+            s.clear();
+            s.resize(n, [0.0f32; 3]);
+        }
         let mut at = 0;
         while at < n {
             if self.clock.left == 0 {
@@ -254,7 +337,7 @@ impl Shared {
                 continue;
             }
             let len = (n - at).min(self.clock.left as usize).min(BLOCK);
-            self.mix_block(&mut out[at..at + len], mix_rate);
+            self.mix_block(&mut out[at..at + len], sur.as_deref_mut().map(|s| &mut s[at..at + len]), mix_rate);
             self.clock.left -= len as u32;
             at += len;
         }
@@ -262,6 +345,13 @@ impl Shared {
         for frame in out.iter_mut() {
             for s in frame.iter_mut() {
                 *s = resample::to_i16(*s) as f32 / 32768.0;
+            }
+        }
+        if let Some(sur) = sur {
+            for frame in sur.iter_mut() {
+                for s in frame.iter_mut() {
+                    *s = resample::to_i16(*s) as f32 / 32768.0;
+                }
             }
         }
     }
@@ -373,7 +463,7 @@ impl Shared {
     /// One block of 0x598760 (≤ [`BLOCK`] frames): each voice pulls its chain once — a one-shot
     /// whose decoder has nothing left fails the pull and is freed before it mixes anything
     /// ([`Voice::pull_fails`], 0x5987DC → 0x598670 → 0x589C00) — then the streams.
-    fn mix_block(&mut self, out: &mut [[f32; 2]], mix_rate: u32) {
+    fn mix_block(&mut self, out: &mut [[f32; 2]], mut sur: Option<&mut [[f32; 3]]>, mix_rate: u32) {
         let n = out.len();
         let bus_c = self.bus_c;
         let interp = self.interp;
@@ -416,6 +506,14 @@ impl Shared {
                 v.wet = wet_gain(v.gains.vol[0], send);
             }
             let ramp = v.gains.ramp(n);
+            // PORT-DEVIATION (5.1): a mono voice panned by its full-circle angle, ramped over the block from the last
+            // block's gains
+            let sur_gains = (sur.is_some() && cc == 1).then(|| {
+                let w = vbap_5_1(v.angle);
+                let new = w.map(|x| resample::channel_gain(vol, x));
+                let old = std::mem::replace(&mut v.sur_prev, new);
+                (old, new)
+            });
             // 0x59C170's `fld dword [edi]` for the block
             if let Some(lp) = v.lowpass.as_mut() {
                 lp.begin_block();
@@ -439,7 +537,16 @@ impl Shared {
                     xs[1] = if cc > 1 { lp.run(1, xs[1]) } else { xs[0] };
                 }
                 let ramping = ramp.filter(|r| fi < r.len);
-                for (ch, o) in frame.iter_mut().enumerate() {
+                if let (Some((old, new)), Some(s)) = (sur_gains, sur.as_deref_mut()) {
+                    let t = (fi + 1) as f32 / n as f32;
+                    let g = |k: usize| old[k] + (new[k] - old[k]) * t;
+                    frame[0] = resample::mix_into(frame[0], xs[0], g(0));
+                    frame[1] = resample::mix_into(frame[1], xs[0], g(1));
+                    s[fi][0] = resample::mix_into(s[fi][0], xs[0], g(2));
+                    s[fi][1] = resample::mix_into(s[fi][1], xs[0], g(3));
+                    s[fi][2] = resample::mix_into(s[fi][2], xs[0], g(4));
+                }
+                for (ch, o) in frame.iter_mut().enumerate().filter(|_| sur_gains.is_none()) {
                     let g = match ramping {
                         Some(r) => v.gains.ramp_next(&r, ch),
                         // a channel at gain 0 is skipped (0x59881E)
@@ -476,7 +583,20 @@ impl Shared {
         self.remove_voices(|(_, v)| v.finished);
         // the reverb (0x598760 → [0x6B16B8] = 0x598AE0), after the voices and before the streams
         if let Some(rv) = self.tail.as_mut() {
-            rv.process(out);
+            match sur.as_deref_mut() {
+                None => rv.process(out),
+                // 5.1: the wet signal (what the reverb adds) also to the surrounds, its left to Ls, its right to Rs
+                Some(s) => {
+                    let pre = &mut self.scratch.pre_reverb;
+                    pre.clear();
+                    pre.extend_from_slice(out);
+                    rv.process(out);
+                    for ((o, p), f) in out.iter().zip(pre.iter()).zip(s.iter_mut()) {
+                        f[1] += 0.7 * (o[0] - p[0]);
+                        f[2] += 0.7 * (o[1] - p[1]);
+                    }
+                }
+            }
         }
         // streamed sources: a stream is a voice of the library too (0x5612A0 → 0x5898F0), so it
         // takes the same resampler, at the pitch word 4096: 0x5612A0 sets `voice+0x68` (cents)
@@ -720,8 +840,11 @@ impl Shared {
         self.streams.reserve(32);
         self.dead.reserve_exact(RT_VOICES + 32);
         self.bridge.pending.reserve(RT_FRAMES);
+        self.sur_bridge.pending.reserve(RT_FRAMES);
         let sc = &mut self.scratch;
         sc.mix.reserve(RT_FRAMES);
+        sc.sur_mix.reserve(RT_FRAMES);
+        sc.pre_reverb.reserve(RT_FRAMES);
         sc.stopped.reserve(32);
         sc.stop.reserve(RT_VOICES);
         sc.failed.reserve(RT_VOICES);
