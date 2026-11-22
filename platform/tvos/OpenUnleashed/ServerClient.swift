@@ -85,7 +85,7 @@ enum ServerError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unreachable(let a): return "Server unreachable (\(a)). Check the address, that the container runs, and (away from home) that Tailscale is on."
-        case .unauthorized: return "The server refused the token. Enter the token from the ou-server container's settings."
+        case .unauthorized: return "The server refused the password. Enter the password from the ou-server container's settings."
         case .http(let c, let m): return "Server error \(c): \(m)"
         case .badResponse: return "The server sent something unexpected (is this an OpenUnleashed server?)."
         }

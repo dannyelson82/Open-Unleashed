@@ -132,7 +132,7 @@ final class GameDataViewController: UIViewController {
     // MARK: server
 
     @objc private func editServer() {
-        let a = UIAlertController(title: "OpenUnleashed server", message: "Name or IP address (e.g. tower.local, 192.168.1.10, tower.<your-tailnet>.ts.net) and the server's token.", preferredStyle: .alert)
+        let a = UIAlertController(title: "OpenUnleashed server", message: "Name or IP address (e.g. tower.local, 192.168.1.10, tower.<your-tailnet>.ts.net) and the server's password.", preferredStyle: .alert)
         a.addTextField { t in
             t.text = ServerSettings.address
             t.placeholder = "tower.local"
@@ -142,7 +142,7 @@ final class GameDataViewController: UIViewController {
         }
         a.addTextField { t in
             t.text = ServerSettings.token
-            t.placeholder = "token"
+            t.placeholder = "password"
             t.isSecureTextEntry = true
             t.autocapitalizationType = .none
             t.autocorrectionType = .no

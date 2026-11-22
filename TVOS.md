@@ -146,7 +146,7 @@ All off / original by default; switched in **Extras** (pause menu › extras), s
 | Pause when headphones disconnect; output follows the default device | Audio | `nfs-audio` `route_check`, `app/lifecycle.rs` |
 | Head-look with AirPods (Mac) | Controller | `nfs_game::headlook`, `app/headlook.rs` |
 | Button names follow the last device (Xbox / PlayStation / …) | automatic | `nfs_input::glyphs` |
-| Save sync + lobby through ou-server | Network (server, token, test; Mac: sync saves) — kept per device in `network.json`; on tvOS also the Game Data screen's Server, the same setting (the shell's callback `server_changed`) | `sync.rs`, `server_lobby.rs`, `extras_ui.rs` |
+| Save sync + lobby through ou-server | Network (server, password, test; Mac: sync saves) — kept per device in `network.json`; on tvOS also the Game Data screen's Server, the same setting (the shell's callback `server_changed`) | `sync.rs`, `server_lobby.rs`, `extras_ui.rs` |
 
 tvOS-only: Game Data screen (download from ou-server), on-screen keyboard for text fields, B / Menu = back, Siri
 Remote Menu never leaves the app, pointer hidden, pause on background, no screen saver during races, layered icon +
