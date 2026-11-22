@@ -142,6 +142,8 @@ All off / original by default; switched in **Extras** (pause menu › extras), s
 | HUD size Original / Large / Extra large | Display & HUD | `hud/geometry.rs` (`Hud::set_scale`) |
 | Render resolution Native / 1440p / 1080p (tvOS) | Display & HUD | `tvos.rs::apply_render_scale` |
 | Anisotropic filtering, draw distance (+fog), FOV offsets | Graphics | `nfs-renderer` (`set_anisotropy`), `race_stages.rs`, `render_scene.rs` |
+| Anti-aliasing: Off / FXAA / MSAA 4× (next start) | Graphics | `nfs-renderer`: `FxaaPass`; MSAA = the 66 mesh pipelines built a second time at 4 samples, the 3-D pass drawn into multisampled targets and resolved into the frame (not for a front-end frame whose sprites test the 3-D depth; no alpha-to-coverage) |
+| HD textures: Original / HD (next race) | Graphics | `nfs_assets::hd` (see "HD texture packs") |
 | Steering curve, speed-sensitive steering, countersteer, ABS | Driving assists | `nfs_game::assists` (applied to the local packet: replays/network exact) |
 | Pause when headphones disconnect; output follows the default device | Audio | `nfs-audio` `route_check`, `app/lifecycle.rs` |
 | Head-look with AirPods (Mac) | Controller | `nfs_game::headlook`, `app/headlook.rs` |

@@ -33,6 +33,17 @@ pub fn set_anisotropy(n: u16) {
 /// before the flare overlay and the 2D/HUD pass (so text stays sharp). Off = the original. Set before the renderer
 /// is made.
 static FXAA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static MSAA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// PORT-DEVIATION (Extras › Anti-aliasing › MSAA 4×): the 3-D pass drawn 4× multisampled and resolved (read when the
+/// renderer is made: the multisampled pipelines are built then).
+pub fn set_msaa(on: bool) {
+    MSAA.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn msaa() -> bool {
+    MSAA.load(std::sync::atomic::Ordering::Relaxed)
+}
 
 pub fn set_fxaa(on: bool) {
     FXAA.store(on, std::sync::atomic::Ordering::Relaxed);

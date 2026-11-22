@@ -275,6 +275,9 @@ pub(crate) struct Core {
     lens_enabled: bool,
     /// PORT-DEVIATION (Extras › Anti-aliasing): the FXAA pass, made on first use per target format
     fxaa_pass: Option<FxaaPass>,
+    /// MSAA 4×: the multisampled pipelines (same order as `pipelines`) and the targets, made for the frame's size
+    pipelines_msaa: Option<Vec<wgpu::RenderPipeline>>,
+    msaa_targets: Option<MsaaTargets>,
     /// read-backs issued and not yet collected, oldest first
     lens_pending: Vec<LensPending>,
     /// read-backs collected, for the front to hand to the game
@@ -339,11 +342,23 @@ struct DrawState {
     /// the bound vertex / index buffer's serial (the base-vertex path)
     vb: u32,
     ib: u32,
+    /// the pass is the multisampled 3-D pass: the 4× pipelines (`Core::pipelines_msaa`)
+    msaa: bool,
 }
 
 impl DrawState {
-    const NONE: Self = Self { pipeline: usize::MAX, material: u64::MAX, sky: u32::MAX, mesh: u32::MAX, vb: u32::MAX, ib: u32::MAX };
+    const NONE: Self = Self { pipeline: usize::MAX, material: u64::MAX, sky: u32::MAX, mesh: u32::MAX, vb: u32::MAX, ib: u32::MAX, msaa: false };
 }
+
+/// PORT-DEVIATION (MSAA 4×): the multisampled colour and depth the 3-D pass draws into, resolved into the frame.
+struct MsaaTargets {
+    size: (u32, u32),
+    format: wgpu::TextureFormat,
+    color: wgpu::TextureView,
+    depth: wgpu::TextureView,
+}
+
+const MSAA_SAMPLES: u32 = 4;
 
 /// A run of consecutive items drawn as one instanced draw: same mesh, pipeline and bind groups,
 /// object indices `first..first + count`.
@@ -690,7 +705,7 @@ impl Core {
             let c = wgpu::BlendComponent { src_factor: src, dst_factor: dst, operation: wgpu::BlendOperation::Add };
             wgpu::BlendState { color: c, alpha: c }
         };
-        let make_pipeline = |blend: bool, pair: u8, cull: Option<wgpu::Face>, depth: bool, zwrite: bool, layers: bool| {
+        let make_pipeline = |blend: bool, pair: u8, cull: Option<wgpu::Face>, depth: bool, zwrite: bool, layers: bool, samples: u32| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("mesh pipeline"),
                 layout: Some(&pipeline_layout),
@@ -750,7 +765,9 @@ impl Core {
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
-                multisample: Default::default(),
+                // PORT-DEVIATION (MSAA 4×): the multisampled set, coverage from geometry only (no alpha to coverage:
+                // some opaque materials keep other data in alpha, e.g. a car page's paint labels)
+                multisample: wgpu::MultisampleState { count: samples, ..Default::default() },
                 multiview_mask: None,
                 cache: None,
             })
@@ -772,10 +789,26 @@ impl Core {
             let make_pipeline = &make_pipeline;
             let handles: Vec<_> = specs
                 .chunks(specs.len().div_ceil(workers))
-                .map(|c| sc.spawn(move || c.iter().map(|&(blend, pair, cull, depth, zwrite, layers)| make_pipeline(blend, pair, cull, depth, zwrite, layers)).collect::<Vec<_>>()))
+                .map(|c| sc.spawn(move || c.iter().map(|&(blend, pair, cull, depth, zwrite, layers)| make_pipeline(blend, pair, cull, depth, zwrite, layers, 1)).collect::<Vec<_>>()))
                 .collect();
             handles.into_iter().flat_map(|h| h.join().expect("pipeline worker")).collect()
         });
+        // MSAA 4× (Extras, applies at the next start): the same 66 pipelines multisampled, when the surface format
+        // and the depth format can be (every Apple GPU)
+        let msaa_ok = |f: wgpu::TextureFormat| adapter.get_texture_format_features(f).flags.sample_count_supported(MSAA_SAMPLES);
+        let pipelines_msaa: Option<Vec<wgpu::RenderPipeline>> = (crate::msaa() && msaa_ok(format) && msaa_ok(DEPTH_FORMAT)).then(|| {
+            std::thread::scope(|sc| {
+                let make_pipeline = &make_pipeline;
+                let handles: Vec<_> = specs
+                    .chunks(specs.len().div_ceil(workers))
+                    .map(|c| sc.spawn(move || c.iter().map(|&(blend, pair, cull, depth, zwrite, layers)| make_pipeline(blend, pair, cull, depth, zwrite, layers, MSAA_SAMPLES)).collect::<Vec<_>>()))
+                    .collect();
+                handles.into_iter().flat_map(|h| h.join().expect("pipeline worker")).collect()
+            })
+        });
+        if crate::msaa() {
+            tracing::info!(on = pipelines_msaa.is_some(), "MSAA 4x");
+        }
 
         let globals_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("globals"),
@@ -1015,6 +1048,8 @@ impl Core {
             buckets: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
             lens_enabled: false,
             fxaa_pass: None,
+            pipelines_msaa,
+            msaa_targets: None,
             lens_pending: Vec::new(),
             lens_done: Vec::new(),
             lens_staged: Vec::new(),
@@ -1915,7 +1950,8 @@ impl Core {
     /// of `r.count` consecutive objects (`first_instance` = the first object's index).
     fn draw_run(&self, pass: &mut wgpu::RenderPass<'_>, st: &mut DrawState, r: &Run) {
         if st.pipeline != r.pipeline {
-            pass.set_pipeline(&self.pipelines[r.pipeline]);
+            let set = if st.msaa { self.pipelines_msaa.as_ref().unwrap_or(&self.pipelines) } else { &self.pipelines };
+            pass.set_pipeline(&set[r.pipeline]);
             st.pipeline = r.pipeline;
         }
         let m = &self.materials[(r.material >> 1) as usize];
@@ -2116,18 +2152,47 @@ impl Core {
             drop(pass);
             self.lens_copy(&mut encoder, target, p, true);
         }
+        // PORT-DEVIATION (MSAA 4×): the 3-D pass into multisampled targets, resolved into the frame. Not for a frame whose
+        // 2D pass tests the 3-D depth (the front end's depth sprites read the single-sampled depth) — those stay as before.
+        let msaa = self.pipelines_msaa.is_some() && !scene.sprites.iter().any(|s| s.depth.is_some());
+        if msaa {
+            let size = (target.width(), target.height());
+            let format = target.format();
+            if self.msaa_targets.as_ref().is_none_or(|t| t.size != size || t.format != format) {
+                let make = |label: &str, f: wgpu::TextureFormat| {
+                    self.device
+                        .create_texture(&wgpu::TextureDescriptor {
+                            label: Some(label),
+                            size: wgpu::Extent3d { width: size.0, height: size.1, depth_or_array_layers: 1 },
+                            mip_level_count: 1,
+                            sample_count: MSAA_SAMPLES,
+                            dimension: wgpu::TextureDimension::D2,
+                            format: f,
+                            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                            view_formats: &[],
+                        })
+                        .create_view(&Default::default())
+                };
+                self.msaa_targets = Some(MsaaTargets { size, format, color: make("msaa colour", format), depth: make("msaa depth", DEPTH_FORMAT) });
+            }
+        }
         {
+            let ms = self.msaa_targets.as_ref().filter(|_| msaa);
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("main pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    resolve_target: None,
-                    ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: c[0], g: c[1], b: c[2], a: c[3] }), store: wgpu::StoreOp::Store },
+                    view: ms.map_or(view, |m| &m.color),
+                    resolve_target: ms.map(|_| view),
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color { r: c[0], g: c[1], b: c[2], a: c[3] }),
+                        // the samples themselves are not needed once resolved
+                        store: if ms.is_some() { wgpu::StoreOp::Discard } else { wgpu::StoreOp::Store },
+                    },
                     depth_slice: None,
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: depth_view,
-                    depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: if overlay { wgpu::StoreOp::Store } else { wgpu::StoreOp::Discard } }),
+                    view: ms.map_or(depth_view, |m| &m.depth),
+                    depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: if overlay && ms.is_none() { wgpu::StoreOp::Store } else { wgpu::StoreOp::Discard } }),
                     stencil_ops: None,
                 }),
                 timestamp_writes: crate::prof::rp("main pass"),
@@ -2137,6 +2202,7 @@ impl Core {
             pass.set_bind_group(0, &self.globals_bg, &[]);
             pass.set_bind_group(1, &self.object_bg, &[]);
             let mut st = DrawState::NONE;
+            st.msaa = ms.is_some();
             for bucket in &buckets[..3] {
                 self.draw_bucket(&mut pass, scene, bucket, &mut st, white);
             }
@@ -2148,7 +2214,7 @@ impl Core {
         }
         // PORT-DEVIATION (Extras › Anti-aliasing): FXAA over the finished 3-D image, before the flare elements and
         // the 2D pass; only where the frame may be copied from (the surface gets COPY_SRC while FXAA is on)
-        if crate::fxaa() && can_copy && with_sprites {
+        if crate::fxaa() && !msaa && can_copy && with_sprites {
             let format = target.format();
             if self.fxaa_pass.as_ref().is_none_or(|p| p.format != format) {
                 self.fxaa_pass = Some(FxaaPass::new(&self.device, format));
