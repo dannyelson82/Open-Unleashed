@@ -41,6 +41,32 @@ Clean rename, as asked (nothing was installed anywhere yet, so no compatibility 
   full download from the new server into `Caches/games/porsche/data`, intro movie plays, save sync lands under
   `porsche` with the device name. CI smoke test covers two games, mod overlay, saves, PUID 99.
 
+## NFS Haven – MW-0 (2026-11-22, side job; `nfs-mw-plan.md` MW-0) — ⛔ stopped: no 1.3 update in the image
+- **Image**: `~/Documents/Need For Speed Most Wanted (2005).iso` (iCloud, 2,288,615,424 bytes) copied to
+  `~/Documents/nfs-mw-data/NFSMW.iso`; the original only read: SHA-256 `c89bf1ba…3282af9` before, of the copy, and after
+  (identical; `nfs-mw-data/checksums-*.txt`). Mounted read-only (`hdiutil attach -readonly`), then detached.
+- **What's on it** (1,663 files, 2.1 GB): the original disc's installer — `0compressed.zip` (2.1 GB, 300 files of game
+  data, 2.9 GB unpacked), `1compressed.zip` (45 MB, 1,110 files: `CARS\…`, `TRACKS\…`, `FRONTEND\FRONTA.BUN`),
+  `speed.exe` (7,253,204 bytes, 31 Oct 2005, SHA-256 `c60f1d0f…6e34d35`), `00000000.256`, `00000001.TMP`,
+  `00000002.TMP`, `AutoRun*`, `DIAG.EXE`, `eauninstall.exe`, `safemode_inst.exe`, `shell_inst.exe`, `server.dll`/`.cfg`,
+  `DirectX/`, `Support/` (help, registration, uninstaller). **No 1.3 update anywhere** (no file named like a patch or
+  update, nothing in either zip; every file dated 2005) — so nothing could be copied out. The iCloud copy may be from
+  before the update was added; please check which image has it, or put `nfsmwpatch1.3.exe` into `~/Documents/nfs-mw-data/`.
+- **NFS Most Wanted Native** cloned to `~/Documents/nfs-mw-native` (commit `fa34d28`, "4.8.1", 68 MB), unchanged
+  (`git status` clean). Run from source, Setup needs a Python with capstone / numpy / Pillow (its release bundles one):
+  a separate venv in the scratch folder (capstone 5.0.9, numpy 2.0.2, Pillow 11.3.0). It refuses a work folder under
+  `/private/tmp` ("overlaps a protected folder"), so work/app go to `~/Documents/nfs-mw-data/{work,app}`.
+- **What Setup says** — `./setup.sh --check --pc NFSMW.iso --dest … --work …` (2.4 s): "Checking developer tools" ✅
+  (Xcode SDK 27.2, clang, C++/Metal test builds), "Checking the installed PC game" → **"Your discs have an earlier
+  version of the PC game than 1.3."** — fix: "Choose the PC game's official 1.3 update (nfsmwpatch1.3.exe) as well.
+  Setup applies it to its own copy of the game; the update is only read, never run." So it **recognises the disc image
+  and can read it**; the update's checksum check could not run (no update given).
+- **What comes next, from its code** (`tools/setup_kit/backend.py` `_install_discs`): with the update it decodes the
+  update's `speed.exe`; if that one is copy-protected too it stops with "The speed.exe on your discs and in the 1.3
+  update is copy-protected, so Setup can't translate its code" and asks for a compatible 1.3 `speed.exe` (`--pc-exe`) —
+  your stop condition. Not built, no race; disk used so far: the 2.3 GB copy + 68 MB clone (+ 88 KB of Setup's work).
+  Setup wants about 12 GB free while it builds (15 GB free now).
+
 ## NFS Haven – Phase 0 (2026-11-22, side job; `nfs-haven-plan.md` Phase 0 only)
 - **Disc image**: `~/Documents/NFSSE.img` (iCloud) copied to `~/Documents/nfs-se-data/NFSSE.img` (outside every git
   repo); the original was only read: SHA-256 `227586bd…57dc701` before, of the copy, and after (identical; in
