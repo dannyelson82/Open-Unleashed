@@ -15,7 +15,7 @@ _Last updated: 2026-11-21 (session paused: usage limit)_
   `packaging/unraid/ou-server.xml` (data under `/mnt/user/appdata/ou-server`).
 - **Needs you**: the Apple TV (everything marked 📺), a pad for feel/rumble, AirPods for head-look and route tests (🙋),
   and the "Decisions to review" below.
-- **Not started / partly**: split-screen, HDR, 5.1 surround mixer, enhanced rumble + DualSense triggers, FXAA/MSAA,
+- **Not started / partly**: split-screen, HDR, 5.1 surround mixer, enhanced rumble + DualSense triggers, MSAA,
   HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, Mac UI for the server
   address, MSAA.
 
@@ -81,7 +81,7 @@ Choices made without asking (per your instruction); each is easy to change.
 1. **winit**: patched 0.30 (`third_party/winit`) instead of upgrading to the 0.31 beta — smallest change, macOS untouched.
 2. **SDL3 on tvOS**: video subsystem compiled in (never initialised) because SDL's UIKit code needs it to link.
 3. **Engine split** into `lib.rs` + thin `main.rs` so tvOS links the same code as a static library.
-4. **Disc**: `Porsche.exe` (SafeDisc) not copied as `nfs5.exe` → intro movies skipped.
+4. **Disc**: `Porsche.exe` (SafeDisc) not copied as `nfs5.exe`. *Superseded by 34*: the 3.5 patch's unprotected executable is now `nfs5.exe`, so the intro movies play.
 5. **Fork name** `dannyelson82/Open-Unleashed` (public, like every fork of a public repo); Unraid template URLs point at its `tvos-port` branch.
 6. **Image tags**: `latest` + `edge` are published from pushes to `tvos-port` (and `main`), `X.Y.Z` from `ou-server-vX.Y.Z` tags, plus the short SHA — so the Unraid template's `:latest` works without a release.
 7. **Save API paths** use `/files/`, `/versions/`, `/version/{id}/`, `/restore/{id}/` segments before the file path (the plan's shorter paths clash with file paths containing `/`).
@@ -97,24 +97,22 @@ Choices made without asking (per your instruction); each is easy to change.
 17. **B / Menu = back on tvOS only**: the original's front end reads no pad; the Mac keeps that (authentic), tvOS needs a back button.
 18. **Siri Remote Menu never leaves the app** (Apple's guideline wants Menu at the top level to go Home; for a sideloaded personal build the game's own "back"/exit question is more useful). Home (TV button) still leaves.
 19. **On-screen keyboard opens by itself** when a text field becomes active (once per field); a chat box only on Y, since it is always focused.
+20. **Pause on controller loss also on the Mac** (the shared `request_pause`; the keyboard could keep racing, but a pad vanishing mid-corner is worth a pause).
 21. **Render resolution via the view's content scale** (system upscales) instead of an engine render target — default native until measured on the device.
-31. **Lobby games join through the original's own list**: the server's games are probed unicast with the original's `'w'` probe instead of adding rows by hand — they appear with real name, version and ping, no "via server" marker, and a host found both ways shows once when its LAN address is the server's first (LAN requester); a tailnet requester may see a LAN host twice (100.x and LAN). Lobby is on whenever a server is set (independent of save sync).
-29. **Save-sync conflict rules**: at start, both sides changed while apart → the server's copy is active, the local one is kept as a `.bak` file beside it (plan's rule). During play, another device saved since → **this device's copy wins** (it's the game being played; replacing the save under the running game could be overwritten again anyway) and the other device's copy stays on the server as a restorable version. One server namespace `household` for all game profiles.
-30. **Sync is on by default on tvOS** once a server is set (it's the same server as the game data); **opt-in on the Mac** (no Mac UI to type the address yet — set it in `extras.json`).
-27. **Traction control "On" left out**: it's a physics flag (`vehicle.tcs`) set at race start that replays and network peers don't know about, so it would make them diverge. Needs the flag recorded in the replay/launch data first (or an input-side throttle limiter once wheel-slip units are checked).
-28. **Assists default off on both platforms** (the plan suggests a soft curve + medium speed steering on tvOS; decide with a pad on the TV).
-26. **Head-look**: bumper/driver views only (the plan's "also in chase views" left out for now); recentre = race start, unpause, pad L3+R3 (no keyboard key bound); positive head yaw = view left — to confirm with AirPods.
+22. **Siri Remote not counted as a racing pad** (matched by name "remote").
+23. **Unsigned .ipa** for atvloadly (it signs with its own Apple ID) — nothing needs your Apple ID on the Mac.
 24. **HUD size by a smaller "virtual screen"** for the HUD's layout: every element scales, the original's anchoring rules run unchanged; default Original on both platforms for now (the plan suggests Large on tvOS — decide on the TV).
 25. **Extras opened from the pause menu first** (the race HUD's text drawing exists there); the main-menu entry follows.
-23. **Unsigned .ipa** for atvloadly (it signs with its own Apple ID) — nothing needs your Apple ID on the Mac.
-22. **Siri Remote not counted as a racing pad** (matched by name "remote").
-20. **Pause on controller loss also on the Mac** (the shared `request_pause`; the keyboard could keep racing, but a pad vanishing mid-corner is worth a pause).
-
-- **35. 3.5 patch: data files only.** The patch's `Porsche.exe` → `nfs5.exe` (tables only) and the data files were
-  applied; `gimme.dll`, the uninstaller and the SaveData HUD copies were not (Windows-only / per-profile).
-- **36. tvOS launch-time data update check.** With a verified download and a server set, the app compares its manifest
-  with the server's (gives up after ~4 s, so an offline Apple TV starts as before). If they differ, the Game Data screen
-  offers **Update** (only changed files) or **Play** (keep the current files; asked again next launch).
+26. **Head-look**: bumper/driver views only (the plan's "also in chase views" left out for now); recentre = race start, unpause, pad L3+R3 (no keyboard key bound); positive head yaw = view left — to confirm with AirPods.
+27. **Traction control "On" left out**: it's a physics flag (`vehicle.tcs`) set at race start that replays and network peers don't know about, so it would make them diverge. Needs the flag recorded in the replay/launch data first (or an input-side throttle limiter once wheel-slip units are checked).
+28. **Assists default off on both platforms** (the plan suggests a soft curve + medium speed steering on tvOS; decide with a pad on the TV).
+29. **Save-sync conflict rules**: at start, both sides changed while apart → the server's copy is active, the local one is kept as a `.bak` file beside it (plan's rule). During play, another device saved since → **this device's copy wins** (it's the game being played; replacing the save under the running game could be overwritten again anyway) and the other device's copy stays on the server as a restorable version. One server namespace `household` for all game profiles.
+30. **Sync is on by default on tvOS** once a server is set (it's the same server as the game data); **opt-in on the Mac** (no Mac UI to type the address yet — set it in `extras.json`).
+31. **Lobby games join through the original's own list**: the server's games are probed unicast with the original's `'w'` probe instead of adding rows by hand — they appear with real name, version and ping, no "via server" marker, and a host found both ways shows once when its LAN address is the server's first (LAN requester); a tailnet requester may see a LAN host twice (100.x and LAN). Lobby is on whenever a server is set (independent of save sync).
+32. **FXAA as the anti-aliasing option**, default **Off** on both platforms: a small pass of its own over the 3-D image (before the flare overlay and HUD, so text stays sharp). MSAA 4× not done yet; pick a default after seeing both on the TV.
+33. **HD texture pack at 2×** as the target (≈ 378 MB as ASTC, vs ≈ 1.5 GB at 4×, most of it front-end art); world textures ASTC 6×6, the rest 4×4. Only the inventory exists so far.
+34. **3.5 patch: data files only.** The patch's game executable became `nfs5.exe` (the engine only reads the movie tables from it) and the data files were applied; `gimme.dll`, the uninstaller and the SaveData HUD copies were not (Windows-only / per-profile). 3.2 originals kept in `game-data-v3.2-backup/`.
+35. **tvOS launch-time data update check.** With a verified download and a server set, the app compares its manifest with the server's (gives up after ~4 s, so an offline Apple TV starts as before). If they differ, the Game Data screen offers **Update** (only changed files) or **Play** (keep the current files; asked again next launch).
 
 ## Stage status
 | Stage | macOS | tvOS Simulator | Apple TV |
