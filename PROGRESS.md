@@ -422,7 +422,7 @@ Local tools installed for this: Colima + Docker CLI + buildx (Homebrew, user-loc
 
 ## Next (in order)
 1. ✅ Extras from the main menu.
-2. ✅ HD-pack Stage 1 engine side + stand-in pack (cars / menu art / Game Data download of `porsche/hd` still to do).
+2. ✅ HD-pack Stage 1 engine side + stand-in pack; ✅ Game Data screen "HD textures" button (download / update / remove the server's `porsche/hd` set into `Caches/games/porsche/hd`; builds, 🟡 not yet tried against a server with an hd set). Cars / menu art still to do.
 3. ✅ MSAA 4× next to FXAA (alpha-to-coverage left out, decision 52).
 4. ✅ Enhanced rumble, Xbox trigger rumble, DualSense adaptive triggers (code; feel to check with a pad 🙋 / 📺).
 5. ✅ 5.1 surround (VBAP) + speaker test (7.1, "music in all speakers" and an LFE feed not done; decision 57).
