@@ -8,7 +8,7 @@ shared with `tools/make-manifest`). Plan: `nfs-haven-plan.md` Phase 5 (it was `o
 no compatibility names kept, since nothing was installed yet).
 
 > **LAN / tailnet only — never port-forward it to the internet.** The password is a shared secret for home use.
-> The image contains no game file; the game data is mounted read-only and never leaves your devices/tailnet.
+> The image contains no game file; your game data never leaves your devices/tailnet.
 
 ## Your setup
 | | |
@@ -18,7 +18,7 @@ no compatibility names kept, since nothing was installed yet).
 | Image | `ghcr.io/dannyelson82/nfs-haven-server:latest` |
 | Container | `nfs-haven-server` (template `packaging/unraid/nfs-haven-server.xml`) |
 | Port | `8642` |
-| Appdata | `/mnt/user/appdata/nfs-haven-server/` (`games/`, `data/`) |
+| Appdata | `/mnt/user/appdata/nfs-haven-server/` (`games/`, `data/`, `inbox/`, `sources/`, `staging/`) |
 
 In the app's **Server** setting use `tower.local` (or `192.168.1.10`) at home and
 `tower.<your-tailnet>.ts.net` away from home, plus the password. Where to enter it:
@@ -35,7 +35,7 @@ Apple TV can use different names for the same server.
 ## The games folder
 ```
 /mnt/user/appdata/nfs-haven-server/
-  games/                      mounted read-only at /games
+  games/                      mounted at /games (imports publish here)
     porsche/                  Need for Speed: Porsche Unleashed
       original/               GameData/, FEData/, version.txt, fe.txt, nfs5.exe   → set porsche/original
       mods/<name>/            GameData/, FEData/, SaveData/ as the mod ships them   → set porsche/mod-<name>
@@ -49,9 +49,38 @@ read with its rules (only the folders and top-level files the engine uses; `docs
 folder is served whole until it gets rules of its own (`nfs_haven_manifest::kinds_for`). A mod set is the game's
 original with the mod's files on top; the original is never changed.
 
+## Imports: drop a disc image, get a game
+
+Drop your own **disc image** or an **official update** into `inbox/` (over SMB, Finder or the Unraid share). The
+server looks every few seconds; a file that hasn't changed between two looks is taken:
+
+1. **recognised by its contents**, not its name: a disc image (`.img` / `.bin` raw 2352-byte sectors, `.bin` + `.cue`,
+   `.iso`, read in place — no conversion on disk) is opened and its file system read (ISO 9660 with Joliet): a CD with
+   `NFS_DOS.EXE` is **The Need for Speed SE**, one with `GameData/` and `FEData/` is **Porsche Unleashed**; an update
+   is known by its SHA-256 (also inside the `.zip` it was downloaded in). Anything else stays in the inbox, listed as
+   "not recognised".
+2. **kept**: moved to `sources/<game>/`, made read-only, its SHA-256 recorded (`sources/<game>/sources.json`). The
+   same file again is noticed by its checksum and simply removed from the inbox.
+3. **built**: the game's recipe runs in `staging/` from all its kept sources —
+   - `nfsse`: the whole CD; `NFS_DOS.EXE` must be one of the two builds ReNFS runs (its own check, ported: the loaded
+     program's FNV-1a is `0x76078ed2` or `0x21ef7c33`);
+   - `porsche`: the files the engine reads from the disc (`GameData/`, `FEData/`, `version.txt`, `fe.txt`, …), then each
+     known update applied — the **3.5 update** ("Enhanced Version 3.5.20040310", `SETUP.EXE` or its download `.zip`) is
+     unpacked **without running it**: its files are found among the installer's compressed streams by their checksums
+     (`version.txt` 3.5, three layouts, two HUD files, `festrings.loc`, `properties.txt`) and its game executable is
+     installed as `nfs5.exe` (the engine only reads the movie tables from it).
+4. **verified** (every file's size against the disc, the update's files against their checksums, the program check)
+   with a free-space check first, then **swapped into `games/<game>/original` in one step** (a directory exchange; the
+   previous set stays until the new one is complete, then goes). The manifests rebuild at once, so the apps see an
+   update. A failed import changes nothing and leaves nothing in staging.
+
+The **status page** has an Imports section: the inbox, each game's sources (with **Re-import**, which rebuilds from the
+kept sources), and the recent jobs with their logs (`GET /v1/imports`, `POST /v1/imports/{game}/run`,
+`GET /v1/imports/logs/{id}`). Each published set carries a hidden `.nfsh-import.json` saying which sources made it.
+
 ## Install on Unraid
-1. Copy your Porsche Unleashed folder's `GameData/`, `FEData/`, `version.txt`, `fe.txt` and `nfs5.exe` to
-   `/mnt/user/appdata/nfs-haven-server/games/porsche/original/`, e.g. from the Mac:
+1. Either drop your disc images and the 3.5 update into `/mnt/user/appdata/nfs-haven-server/inbox/` once the container
+   runs (Imports, above), or copy a game's files to `games/<game>/original/` yourself, e.g. from the Mac:
    `rsync -a ~/Documents/OpenUnleashed/game-data/ root@tower.local:/mnt/user/appdata/nfs-haven-server/games/porsche/original/`
 2. Docker › Add Container › Template: paste the template URL, or copy `packaging/unraid/nfs-haven-server.xml` to
    `/boot/config/plugins/dockerMan/templates-user/my-nfs-haven-server.xml` on the flash drive and pick it.
@@ -69,7 +98,11 @@ Backups: `data/` holds the saves and their versions — the normal Unraid appdat
 | `NFSH_PORT` | `8642` | |
 | `NFSH_NAME` | `NFS Haven server` | shown in the app |
 | `NFSH_GAMES_DIR` | `/games` | one folder per game (above) |
-| `NFSH_DATA_DIR` | `/data` | saves, versions, caches |
+| `NFSH_DATA_DIR` | `/data` | saves, versions, caches, import logs |
+| `NFSH_INBOX_DIR` | `/inbox` | drop folder for disc images and updates (imports are off without it) |
+| `NFSH_SOURCES_DIR` | `/sources` | the imported files, kept read-only, one folder per game |
+| `NFSH_STAGING_DIR` | `/staging` | where an import builds a set (same file system as `/games` saves a copy) |
+| `NFSH_INBOX_POLL_SECS` | `5` | how often the inbox is looked at |
 | `NFSH_SAVE_VERSIONS` | `20` | earlier copies per save file (+ the newest of each of the last 30 days) |
 | `NFSH_LOBBY_TTL` | `15` | seconds without a heartbeat before a game leaves the lobby |
 | `NFSH_RESCAN_SECS` | `60` | how often the folders are checked for changes (manifests rebuilt on change) |
@@ -96,6 +129,9 @@ Backups: `data/` holds the saves and their versions — the normal Unraid appdat
 | `PUT /v1/lobby/games/{id}` | heartbeat every 5 s (`{players, started, track}` optional) |
 | `DELETE /v1/lobby/games/{id}` | the session closed |
 | `GET /v1/lobby/games[?via=tailnet\|lan]` | open games; each game's addresses ordered for the asker (tailnet 100.x first for a tailnet requester) |
+| `GET /v1/imports` | inbox, kept sources per game, recent import jobs |
+| `POST /v1/imports/{game}/run` | re-import a game from its kept sources |
+| `GET /v1/imports/logs/{id}` | one job's log |
 | `GET /` | status page |
 
 Porsche's save files kept: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, `career.json`, `settings.json`

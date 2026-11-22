@@ -68,6 +68,9 @@ pub async fn page(State(st): State<Shared>, RawQuery(q): RawQuery) -> Response {
     }
     h.push_str("</table>");
 
+    // imports
+    imports_section(&mut h, &st, &tq);
+
     // saves
     h.push_str("<h2>Saves</h2><p class=muted>One section per game (its save namespace).</p>");
     let profiles = st.saves.profiles();
@@ -118,4 +121,55 @@ pub async fn page(State(st): State<Shared>, RawQuery(q): RawQuery) -> Response {
     }
     h.push_str("</table></html>");
     Html(h).into_response()
+}
+
+/// The Imports section: the inbox, each game's kept sources (with Re-import), and the recent jobs with their logs.
+fn imports_section(h: &mut String, st: &Shared, tq: &str) {
+    let im = &st.imports;
+    h.push_str("<h2>Imports</h2>");
+    if !im.enabled() {
+        h.push_str(&format!("<p class=muted>Off: no inbox folder ({}).</p>", esc(&im.inbox.display().to_string())));
+        return;
+    }
+    h.push_str(&format!("<p class=muted>Drop a game's disc image (<code>.img</code>, <code>.bin</code> + <code>.cue</code>, <code>.iso</code>) or an official update into <code>{}</code>; it is recognised by its contents, kept read-only in <code>{}</code> and the game's set is rebuilt (built in <code>{}</code>, verified, then swapped in).</p>",
+        esc(&im.inbox.display().to_string()), esc(&im.sources.display().to_string()), esc(&im.staging.display().to_string())));
+    let inbox = im.inbox_items();
+    h.push_str("<h3>Inbox</h3>");
+    if inbox.is_empty() {
+        h.push_str("<p class=muted>Empty.</p>");
+    } else {
+        h.push_str("<table><tr><th>File</th><th>Size</th><th>Status</th></tr>");
+        for i in inbox {
+            h.push_str(&format!("<tr><td><code>{}</code></td><td>{}</td><td>{}</td></tr>", esc(&i.name), mb(i.size), esc(&i.status)));
+        }
+        h.push_str("</table>");
+    }
+    h.push_str("<h3>Sources</h3><table><tr><th>Game</th><th>File</th><th>Kind</th><th>Size</th><th>SHA-256</th><th>Recognised as</th><th></th></tr>");
+    let queued = im.queued();
+    for (game, list) in im.sources() {
+        for (k, s) in list.iter().enumerate() {
+            let button = if k == 0 {
+                if queued.contains(&game) { "<span class=muted>queued</span>".to_string() } else { format!("<form method=post action='/v1/imports/{}/run{tq}'><button>Re-import</button></form>", seg(&game)) }
+            } else {
+                String::new()
+            };
+            let file = match &s.data_file { Some(d) => format!("{} + {}", s.file, d), None => s.file.clone() };
+            h.push_str(&format!("<tr><td>{}</td><td><code>{}</code></td><td>{}</td><td>{}</td><td><code>{}…</code></td><td>{}</td><td>{button}</td></tr>",
+                esc(&game), esc(&file), esc(&s.kind), mb(s.size), esc(&s.sha256[..16.min(s.sha256.len())]), esc(&s.detail)));
+        }
+    }
+    h.push_str("</table>");
+    let jobs = im.jobs();
+    h.push_str("<h3>Jobs</h3>");
+    if jobs.is_empty() {
+        h.push_str("<p class=muted>None yet.</p>");
+        return;
+    }
+    h.push_str("<table><tr><th>When</th><th>Set</th><th>State</th><th>Result</th><th>From</th><th>Log</th></tr>");
+    for j in jobs.iter().rev().take(15) {
+        let took = j.finished.map(|f| format!(" in {} s", f.saturating_sub(j.started))).unwrap_or_default();
+        h.push_str(&format!("<tr><td>{}</td><td>{}/{}</td><td>{}{}</td><td>{}</td><td>{}</td><td><a href='/v1/imports/logs/{}{tq}'>log</a></td></tr>",
+            ago(j.started * 1000), esc(&j.game), esc(&j.set), esc(&j.state), took, esc(&j.message), esc(&j.sources.join(", ")), seg(&j.id)));
+    }
+    h.push_str("</table>");
 }

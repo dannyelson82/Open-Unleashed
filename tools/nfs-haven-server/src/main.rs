@@ -11,6 +11,7 @@
 
 mod bundle;
 mod data;
+pub mod import;
 mod lobby;
 mod saves;
 mod status;
@@ -42,6 +43,11 @@ pub struct Config {
     /// one folder per game (`porsche/`, …), each with `original/`, `mods/<name>/`, `hd/`
     pub games_dir: PathBuf,
     pub data_dir: PathBuf,
+    /// imports: the drop folder, the kept sources, where sets are built (`import.rs`)
+    pub inbox_dir: PathBuf,
+    pub sources_dir: PathBuf,
+    pub staging_dir: PathBuf,
+    pub inbox_poll: Duration,
     pub rescan: Duration,
     pub save_max_bytes: usize,
 }
@@ -58,6 +64,10 @@ impl Config {
             lobby_ttl: Duration::from_secs(num("NFSH_LOBBY_TTL", 15).max(5)),
             games_dir: var("NFSH_GAMES_DIR").unwrap_or_else(|| "/games".into()).into(),
             data_dir: var("NFSH_DATA_DIR").unwrap_or_else(|| "/data".into()).into(),
+            inbox_dir: var("NFSH_INBOX_DIR").unwrap_or_else(|| "/inbox".into()).into(),
+            sources_dir: var("NFSH_SOURCES_DIR").unwrap_or_else(|| "/sources".into()).into(),
+            staging_dir: var("NFSH_STAGING_DIR").unwrap_or_else(|| "/staging".into()).into(),
+            inbox_poll: Duration::from_secs(num("NFSH_INBOX_POLL_SECS", 5).max(1)),
             rescan: Duration::from_secs(num("NFSH_RESCAN_SECS", 60).max(5)),
             save_max_bytes: num("NFSH_SAVE_MAX_BYTES", 8 << 20) as usize,
         }
@@ -77,6 +87,7 @@ pub struct AppState {
     pub data: data::Data,
     pub saves: saves::Saves,
     pub lobby: lobby::Lobby,
+    pub imports: import::Imports,
     pub seen: Mutex<BTreeMap<String, Seen>>,
 }
 
@@ -137,7 +148,7 @@ async fn info(State(st): State<Shared>) -> Response {
         "server": "nfs-haven-server",
         "version": VERSION,
         "api": 1,
-        "features": ["data", "data-tar", "saves", "lobby"],
+        "features": ["data", "data-tar", "saves", "lobby", "imports"],
         "games": st.data.game_ids(),
         "data_sets": sets,
         "data_state": st.data.state_text(),
@@ -155,6 +166,7 @@ pub fn router(st: Shared) -> Router {
         .merge(data::routes())
         .merge(saves::routes(st.cfg.save_max_bytes))
         .merge(lobby::routes())
+        .merge(import::routes())
         .layer(middleware::from_fn_with_state(st.clone(), auth))
         .with_state(st)
 }
@@ -162,7 +174,8 @@ pub fn router(st: Shared) -> Router {
 pub fn new_state(cfg: Config) -> Shared {
     let saves = saves::Saves::new(cfg.data_dir.join("saves"), cfg.save_versions);
     let lobby = lobby::Lobby::new(cfg.lobby_ttl);
-    Arc::new(AppState { data: data::Data::default(), saves, lobby, seen: Mutex::new(BTreeMap::new()), cfg })
+    let imports = import::Imports::new(&cfg);
+    Arc::new(AppState { data: data::Data::default(), saves, lobby, imports, seen: Mutex::new(BTreeMap::new()), cfg })
 }
 
 /// `nfs-haven-server --healthcheck`: the container's HEALTHCHECK (no curl in the image) — GET /healthz on the local port.
@@ -198,6 +211,7 @@ async fn main() {
     }
     let st = new_state(cfg.clone());
     data::spawn_scanner(st.clone());
+    import::spawn(st.clone());
     lobby::spawn_sweeper(st.clone());
     let app = router(st);
     let addr = SocketAddr::from(([0, 0, 0, 0], cfg.port));
