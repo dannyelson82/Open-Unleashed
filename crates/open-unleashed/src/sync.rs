@@ -12,8 +12,10 @@
 //!   as a version (restorable from its status page).
 //! * **Offline**: changes wait and are retried every 5 s; the NSUserDefaults mirror (tvOS) stays the last resort.
 //!
-//! The files are those the server keeps: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, `career.json`,
-//! `extras.json`. The sync state (what was last agreed with the server) is `.ou-sync.json` in the data folder.
+//! The files are those the server keeps: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.json`, `career.json`.
+//! **Not `extras.json`**: the port's settings (HUD size, graphics, speakers, rumble…) belong to the device they were
+//! made on, as does `network.json`. The sync state (what was last agreed with the server) is `.nfsh-sync.json` in the
+//! data folder.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -142,7 +144,7 @@ struct State {
 }
 
 fn state_path() -> PathBuf {
-    nfs_assets::platform::data_dir().join(".ou-sync.json")
+    nfs_assets::platform::data_dir().join(".nfsh-sync.json")
 }
 
 fn load_state() -> State {
@@ -171,7 +173,7 @@ fn local_path(file: &str) -> PathBuf {
 /// The local save files the server keeps (server name → path).
 fn local_files() -> BTreeMap<String, PathBuf> {
     let mut out = BTreeMap::new();
-    for top in ["career.json", "extras.json"] {
+    for top in ["career.json"] {
         let p = nfs_assets::platform::data_dir().join(top);
         if p.is_file() {
             out.insert(top.to_string(), p);
@@ -341,7 +343,7 @@ fn write_local(p: &Path, bytes: &[u8]) -> std::io::Result<()> {
     if let Some(d) = p.parent() {
         std::fs::create_dir_all(d)?;
     }
-    let tmp = p.with_extension("ou-sync-tmp");
+    let tmp = p.with_extension("nfsh-sync-tmp");
     std::fs::write(&tmp, bytes)?;
     std::fs::rename(tmp, p)
 }
