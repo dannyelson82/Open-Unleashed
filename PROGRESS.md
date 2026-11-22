@@ -65,7 +65,7 @@ staging; an NFS SE CD with a wrong program refused with the old set kept; an upd
 by checksum). CI smoke: a generated Joliet ISO dropped into the running container's inbox becomes `porsche/original`
 (staging and games on different mounts: the copy-then-exchange path). **Published** `ghcr.io/dannyelson82/nfs-haven-server`
 `latest` + **`0.3.0`** (tag `nfs-haven-server-v0.3.0`). Unraid template / compose / docs: **Games is now read-write**;
-new **Inbox** (always shown), **Sources** and **Staging** (advanced) under `/mnt/user/appdata/nfs-haven-server/`.
+new **Inbox** (always shown), **Sources** and **Staging** (advanced) — since moved to the `nfs-haven` share (below).
 Not yet: Most Wanted (needs the 1.3 update + the speed.exe question), a web upload on the status page, "build inputs"
 sets for Mac builds, InstallShield / `.7z` sources (no game needs them yet).
 
@@ -159,9 +159,24 @@ Central → a race (City, cockpit, HUD, clock running). Porsche still starts fro
   background = pause. Quitting the game closes the app ("open NFS Haven again").
 - Test hook: `-nfsh.seScript "9:enter 12:down …"` (seconds after start, key) as used for the screenshots.
 
-📺 / to do: on the TV (pacing of the 70 Hz races on a 60 Hz TV, rumble, remote feel, sound); the joystick calibration
-screen on first use with a pad (Phase 6 would pre-calibrate); NFS SE saves are only in Caches (not yet mirrored or
-synced to the server: tvOS may purge them); the screen saver is off the whole time NFS SE runs; the Mac app has no
+**Mop-up (same day)**:
+- ✅ **Saves kept**: the save mirror is per game now (NFS SE's `config.dat`, `renfs.cfg`, `joystick.cfg`, `*.sav` in its
+  own 80 KB share of UserDefaults; Porsche keeps its 400 KB and its keys — a game with no files never empties its
+  mirror). **`SaveSync.swift`** syncs NFS SE's home folder (plus replays `*.rpl`) with the server's `nfsse` namespace:
+  pull before the game starts (≤ 5 s), push every 15 s on change and on background, `If-Match` like Porsche's sync,
+  a conflict keeps the server's copy as `<file>.server`. The server now accepts those names (test added; 13/13).
+  Simulator against a local server: first start pushed `joystick.cfg` + `renfs.cfg`; a `T9.SAV` put on the server
+  from "Mac" arrived before the next start; a deleted `renfs.cfg` came back from the mirror.
+- ✅ **No calibration screen**: the app writes the `joystick.cfg` ReNFS itself made for a pad's full range (the harness
+  drove ReNFS's calibration screen with a virtual pad: stick and both triggers end to end, then A); a second start
+  goes straight to the intro. Options › Controls › Calibrate still works.
+- ✅ **Analogue by default**: once, `config.dat`'s Steering / Accelerate-brake are set to Joystick if still on the keys
+  (offsets 0x5f36 / 0x5f38, ReNFS's `ctrlopt.c`); ReNFS turns them back to the keys itself without a controller. Checked
+  with the harness: kept through a session with a pad. Applies from the second start (config.dat is the game's own,
+  made on the first).
+- ✅ **Screen saver**: off while any input came in the last 10 minutes, so menus and an untouched replay let the TV sleep.
+
+📺 / to do: on the TV (pacing of the 70 Hz races on a 60 Hz TV, rumble, remote feel, sound); the Mac app has no
 launcher yet (ReNFS's own desktop build covers the Mac).
 
 ## NFS Haven – Phase 0 (2026-11-22, side job; `nfs-haven-plan.md` Phase 0 only)

@@ -166,8 +166,14 @@ async fn saves_conflicts_versions_and_restore() {
     assert_eq!(call(&app, Method::PUT, "/v1/saves/Player/files/SaveData/replay.rpl", &[], b"r".to_vec(), "10.0.0.2").await.0, StatusCode::BAD_REQUEST);
     assert_ne!(call(&app, Method::PUT, "/v1/saves/Player/files/../../x.sav", &[], b"r".to_vec(), "10.0.0.2").await.0, StatusCode::CREATED);
     assert_eq!(call(&app, Method::PUT, "/v1/saves/..bad/files/career.json", &[], b"r".to_vec(), "10.0.0.2").await.0, StatusCode::BAD_REQUEST);
+    // The Need for Speed SE's home folder files, in their own namespace
+    for f in ["config.dat", "renfs.cfg", "joystick.cfg", "T1.SAV", "REPLAY.RPL"] {
+        assert_eq!(call(&app, Method::PUT, &format!("/v1/saves/nfsse/files/{f}"), &[], b"x".to_vec(), "10.0.0.2").await.0, StatusCode::CREATED, "{f}");
+    }
+    assert_eq!(call(&app, Method::PUT, "/v1/saves/nfsse/files/NFS_DOS.EXE", &[], b"x".to_vec(), "10.0.0.2").await.0, StatusCode::BAD_REQUEST);
     let (_, _, b) = call(&app, Method::GET, "/v1/saves", &[], vec![], "10.0.0.2").await;
-    assert!(String::from_utf8(b).unwrap().contains("Player"));
+    let b = String::from_utf8(b).unwrap();
+    assert!(b.contains("Player") && b.contains("nfsse"));
 }
 
 #[test]

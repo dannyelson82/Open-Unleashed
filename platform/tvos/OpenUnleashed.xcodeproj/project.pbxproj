@@ -140,6 +140,7 @@
 		F9340C460D0A05023B216362 /* roaddraw.c in Sources */ = {isa = PBXBuildFile; fileRef = 562BD244D525E2D2F45CA9CC /* roaddraw.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		FB04D7802EB74F7261D65B4D /* Bonjour.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D42B09C075E16229EE31B8E /* Bonjour.swift */; };
 		FB3EEA14E486D4D6ADB592DA /* eacs.h in Sources */ = {isa = PBXBuildFile; fileRef = 53FD8E3037655DD940940242 /* eacs.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		FB52A9BC59738990C74141C2 /* SaveSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A51411F2872DF0F7B04D4DFD /* SaveSync.swift */; };
 		FED53F2677467DAFE7474F2D /* road.h in Sources */ = {isa = PBXBuildFile; fileRef = BA806FF89F361BA89C576D9D /* road.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 /* End PBXBuildFile section */
 
@@ -234,6 +235,7 @@
 		A267AFA0CFD493B179B3E243 /* Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell.swift; sourceTree = "<group>"; };
 		A30FAC9010B017212B66DC4A /* exe.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = exe.h; sourceTree = "<group>"; };
 		A46C41013F8D69B5ECEC9B2B /* hud.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = hud.c; sourceTree = "<group>"; };
+		A51411F2872DF0F7B04D4DFD /* SaveSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveSync.swift; sourceTree = "<group>"; };
 		A79576FFED3EC24D23058F0C /* font.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = font.c; sourceTree = "<group>"; };
 		A7F1127D2DCF2ED85B45E211 /* smooth.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = smooth.h; sourceTree = "<group>"; };
 		A84D7601B76CB78D03067234 /* view.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = view.c; sourceTree = "<group>"; };
@@ -303,6 +305,7 @@
 				F04FE3BE072267E9F1C7F103 /* NFSSEViewController.swift */,
 				7FE33CDB731467D5403E4DDE /* OpenUnleashed-Bridging-Header.h */,
 				CA1DBCFAB84757E0D21FEBDF /* SaveMirror.swift */,
+				A51411F2872DF0F7B04D4DFD /* SaveSync.swift */,
 				F00B5534C94C680C0FD17C5B /* ServerClient.swift */,
 				A267AFA0CFD493B179B3E243 /* Shell.swift */,
 			);
@@ -556,6 +559,7 @@
 				D00B312F46F2DB7657606388 /* LauncherViewController.swift in Sources */,
 				69A291B8EA17C920B5A46A3A /* NFSSEViewController.swift in Sources */,
 				9BC44F572B953763475CE038 /* SaveMirror.swift in Sources */,
+				FB52A9BC59738990C74141C2 /* SaveSync.swift in Sources */,
 				32139F157CC7801B78C841C7 /* ServerClient.swift in Sources */,
 				763D16EE45684CF2385845A0 /* Shell.swift in Sources */,
 				D533A9BC4E9FD9F9474E3F42 /* audio.c in Sources */,
