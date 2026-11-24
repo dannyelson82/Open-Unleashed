@@ -13,15 +13,15 @@ no compatibility names kept, since nothing was installed yet).
 ## Your setup
 | | |
 |---|---|
-| Unraid (LAN) | `192.168.50.37` / `tower.local` |
-| Unraid (Tailscale) | `tower-1.tawny-taipan.ts.net` |
+| Unraid (LAN) | `192.168.1.10` / `tower.local` |
+| Unraid (Tailscale) | `tower.<your-tailnet>.ts.net` |
 | Image | `ghcr.io/dannyelson82/nfs-haven-server:latest` |
 | Container | `nfs-haven-server` (template `packaging/unraid/nfs-haven-server.xml`) |
 | Port | `8642` |
 | Folders | share `nfs-haven`: `/mnt/user/nfs-haven/{games,inbox,sources,staging}`; saves `/mnt/user/appdata/nfs-haven-server/data` |
 
-In the app's **Server** setting use `tower.local` (or `192.168.50.37`) at home and
-`tower-1.tawny-taipan.ts.net` away from home, plus the password. Where to enter it:
+In the app's **Server** setting use `tower.local` (or `192.168.1.10`) at home and
+`tower.<your-tailnet>.ts.net` away from home, plus the password. Where to enter it:
 
 - **In the game (both platforms):** pause a race › **extras** › page **Network**: *Server*, *Password* (Enter / A to
   type: the keyboard on the Mac, where Cmd+V pastes; the on-screen keyboard on Apple TV), *Sync saves* (Mac only;
@@ -140,13 +140,13 @@ Porsche's save files kept: `SaveData/*.sav`, `SaveData/nfs5.trk`, `SaveData/*.js
 (the server also accepts `extras.json`, but the game keeps its Extras settings per device and no longer sends it). Replays and photos stay on the device.
 
 ## Tailscale
-- **(a) recommended — Unraid itself on the tailnet** (it already is: `tower-1.tawny-taipan.ts.net`): the container's
-  port is reachable at `http://tower-1.tawny-taipan.ts.net:8642`.
+- **(a) recommended — Unraid itself on the tailnet** (it already is: `tower.<your-tailnet>.ts.net`): the container's
+  port is reachable at `http://tower.<your-tailnet>.ts.net:8642`.
 - (b) a `tailscale/tailscale` sidecar sharing the container's network, giving it its own name `nfs-haven-server`.
 
 **HTTPS for the tailnet name (Apple TV):** App Transport Security allows plain HTTP to local-network addresses
 (`NSAllowsLocalNetworking`), but a `*.ts.net` name may not count as local. On Unraid: `tailscale serve --bg --https=443
-http://127.0.0.1:8642` gives `https://tower-1.tawny-taipan.ts.net/` a valid certificate (enable HTTPS certificates in
+http://127.0.0.1:8642` gives `https://tower.<your-tailnet>.ts.net/` a valid certificate (enable HTTPS certificates in
 the Tailscale admin console first). The app tries HTTPS first for `*.ts.net` names; a narrow ATS exception for
 `ts.net` in the app's Info.plist is the fallback.
 

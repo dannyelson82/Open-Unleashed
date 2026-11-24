@@ -29,3 +29,6 @@ FEData/
 *.cue
 *.iso
 nfs5.exe
+
+# Local notes about a specific setup (never commit)
+LOCAL_NOTES.md

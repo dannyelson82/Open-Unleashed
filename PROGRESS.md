@@ -77,7 +77,7 @@ your step (this Mac can't reach Tower's flash; see the report).
 
 ## Game data transfer speed (2026-11-22)
 Measured in the tvOS Simulator against the local nfs-haven-server (`porsche/original`, 1,594 files, 530.9 MB), fresh
-install each time, two runs each, by the server's loopback address and by the Mac's LAN address (10.0.0.186) — both
+install each time, two runs each, by the server's loopback address and by the Mac's LAN address — both
 on this Mac, so with no real network latency; the Unraid box over Wi-Fi / Ethernet will be slower (📺 measure there).
 
 | | 127.0.0.1 | LAN address | |
@@ -255,7 +255,7 @@ mission 0M01, Boxster, mid-race). The tvOS app always starts races from the menu
   container. The Apple TV app then offers the update at its next launch (see TVOS.md, "Game data updates").
 
 ## Placeholders
-Filled in: `<UNRAID_IP_OR_HOSTNAME>` = **192.168.50.37 / tower.local**, `<TAILSCALE_NAME>` = **tower-1.tawny-taipan.ts.net**
+Filled in: `<UNRAID_IP_OR_HOSTNAME>` = **the server's LAN address / tower.local**, `<TAILSCALE_NAME>` = **the server's Tailscale name**
 (used in `docs/nfs-haven-server.md`; the game's Server setting will default to `tower.local`).
 
 Left for later (as asked): `<MY_APPLE_ID_OR_TEAM>`,
@@ -408,7 +408,7 @@ Known gaps (next steps): the FE **mouse pointer is visible** on tvOS (hide it, e
 | Phase 2 — saves (`If-Match`/412, versions: last N + one per day for 30 days, restore) | ✅ server side; tested (Mac/TV conflict keeps both, restore works) |
 | Phase 2 client (`open-unleashed/src/sync.rs`, both platforms) | ✅ two fake "devices" on the Mac against the local server: A's save uploads; B (empty) pulls it at start; both changed while apart → server's copy active + local kept as `.local-<time>.bak` + server keeps the other as a version; another device saved during play → this device's copy current, the other kept as a server version. Offline: retried every 5 s. On tvOS on automatically with the Game Data server; on the Mac opt-in (`extras.json` › `network`: `server`, `token`, `sync_saves`) | 
 | Phase 3 — lobby (register/heartbeat/expiry, address order for tailnet vs LAN, `?via=`) | ✅ server side; tested |
-| Phase 3 client (`open-unleashed/src/server_lobby.rs`) | ✅ a hosted session (front end CREATE or `--net host`) registers with every local address, heartbeats every 5 s (players, racing), is removed when it ends; the games list also probes the server's games unicast, so they show up in the original's list with real name/ping and JOIN works unchanged. Test: host on port 9500 → server lists it; `--net-browse` finds it **only** with the server set ("HOSTMAC's race 10.0.0.186:9500 ping 29") | 
+| Phase 3 client (`open-unleashed/src/server_lobby.rs`) | ✅ a hosted session (front end CREATE or `--net host`) registers with every local address, heartbeats every 5 s (players, racing), is removed when it ends; the games list also probes the server's games unicast, so they show up in the original's list with real name/ping and JOIN works unchanged. Test: host on port 9500 → server lists it; `--net-browse` finds it **only** with the server set ("HOSTMAC's race 192.168.1.50:9500 ping 29") | 
 | Status page (`/?token=…`): sets, saves + versions with download/restore, games, devices | ✅ |
 | Auth (Bearer / `?token=`), PUID/PGID drop, `--healthcheck` | ✅ |
 | Tests | ✅ `cargo test -p nfs-haven-manifest -p nfs-haven-server`: 11 passed |

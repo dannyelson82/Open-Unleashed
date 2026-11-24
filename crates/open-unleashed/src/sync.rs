@@ -474,8 +474,8 @@ mod tests {
     #[test]
     fn address_candidates() {
         assert_eq!(candidates("tower.local"), vec!["http://tower.local:8642"]);
-        assert_eq!(candidates("192.168.50.37:9000"), vec!["http://192.168.50.37:9000"]);
-        assert_eq!(candidates("tower-1.tawny-taipan.ts.net"), vec!["https://tower-1.tawny-taipan.ts.net", "http://tower-1.tawny-taipan.ts.net:8642"]);
+        assert_eq!(candidates("192.168.1.10:9000"), vec!["http://192.168.1.10:9000"]);
+        assert_eq!(candidates("tower.example.ts.net"), vec!["https://tower.example.ts.net", "http://tower.example.ts.net:8642"]);
         assert_eq!(candidates("http://x:1/"), vec!["http://x:1"]);
         assert!(candidates("  ").is_empty());
     }

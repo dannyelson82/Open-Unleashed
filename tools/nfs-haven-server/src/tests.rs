@@ -129,7 +129,7 @@ async fn saves_conflicts_versions_and_restore() {
     let root = tmp("saves");
     let st = new_state(cfg(&root, ""));
     let app = router(st);
-    let url = "/v1/saves/Danny/files/SaveData/0.sav";
+    let url = "/v1/saves/Player/files/SaveData/0.sav";
     let (s, h, _) = call(&app, Method::PUT, url, &[("x-nfsh-device", "mac")], b"v1".to_vec(), "10.0.0.2").await;
     assert_eq!(s, StatusCode::CREATED);
     let e1 = h["etag"].to_str().unwrap().to_string();
@@ -147,24 +147,24 @@ async fn saves_conflicts_versions_and_restore() {
     assert_eq!((s, b.as_slice()), (StatusCode::OK, &b"v2"[..]));
     assert_eq!(h["x-nfsh-writer"], "tv");
     // versions: v1 kept
-    let (_, _, b) = call(&app, Method::GET, "/v1/saves/Danny/versions/SaveData/0.sav", &[], vec![], "10.0.0.2").await;
+    let (_, _, b) = call(&app, Method::GET, "/v1/saves/Player/versions/SaveData/0.sav", &[], vec![], "10.0.0.2").await;
     let v: serde_json::Value = serde_json::from_slice(&b).unwrap();
     let versions = v["versions"].as_array().unwrap();
     assert_eq!(versions.len(), 1);
     let id = versions[0]["id"].as_str().unwrap().to_string();
-    let (_, _, b) = call(&app, Method::GET, &format!("/v1/saves/Danny/version/{id}/SaveData/0.sav"), &[], vec![], "10.0.0.2").await;
+    let (_, _, b) = call(&app, Method::GET, &format!("/v1/saves/Player/version/{id}/SaveData/0.sav"), &[], vec![], "10.0.0.2").await;
     assert_eq!(b, b"v1");
     // restore v1: current becomes v1, v2 becomes a version
-    let (s, _, _) = call(&app, Method::POST, &format!("/v1/saves/Danny/restore/{id}/SaveData/0.sav"), &[], vec![], "10.0.0.2").await;
+    let (s, _, _) = call(&app, Method::POST, &format!("/v1/saves/Player/restore/{id}/SaveData/0.sav"), &[], vec![], "10.0.0.2").await;
     assert_eq!(s, StatusCode::OK);
     let (_, _, b) = call(&app, Method::GET, url, &[], vec![], "10.0.0.2").await;
     assert_eq!(b, b"v1");
-    let (_, _, b) = call(&app, Method::GET, "/v1/saves/Danny/versions/SaveData/0.sav", &[], vec![], "10.0.0.2").await;
+    let (_, _, b) = call(&app, Method::GET, "/v1/saves/Player/versions/SaveData/0.sav", &[], vec![], "10.0.0.2").await;
     let v: serde_json::Value = serde_json::from_slice(&b).unwrap();
     assert_eq!(v["versions"].as_array().unwrap().len(), 2);
     // only save files; no path escapes; profiles listed
-    assert_eq!(call(&app, Method::PUT, "/v1/saves/Danny/files/SaveData/replay.rpl", &[], b"r".to_vec(), "10.0.0.2").await.0, StatusCode::BAD_REQUEST);
-    assert_ne!(call(&app, Method::PUT, "/v1/saves/Danny/files/../../x.sav", &[], b"r".to_vec(), "10.0.0.2").await.0, StatusCode::CREATED);
+    assert_eq!(call(&app, Method::PUT, "/v1/saves/Player/files/SaveData/replay.rpl", &[], b"r".to_vec(), "10.0.0.2").await.0, StatusCode::BAD_REQUEST);
+    assert_ne!(call(&app, Method::PUT, "/v1/saves/Player/files/../../x.sav", &[], b"r".to_vec(), "10.0.0.2").await.0, StatusCode::CREATED);
     assert_eq!(call(&app, Method::PUT, "/v1/saves/..bad/files/career.json", &[], b"r".to_vec(), "10.0.0.2").await.0, StatusCode::BAD_REQUEST);
     // The Need for Speed SE's home folder files, in their own namespace
     for f in ["config.dat", "renfs.cfg", "joystick.cfg", "T1.SAV", "REPLAY.RPL"] {
@@ -173,7 +173,7 @@ async fn saves_conflicts_versions_and_restore() {
     assert_eq!(call(&app, Method::PUT, "/v1/saves/nfsse/files/NFS_DOS.EXE", &[], b"x".to_vec(), "10.0.0.2").await.0, StatusCode::BAD_REQUEST);
     let (_, _, b) = call(&app, Method::GET, "/v1/saves", &[], vec![], "10.0.0.2").await;
     let b = String::from_utf8(b).unwrap();
-    assert!(b.contains("Danny") && b.contains("nfsse"));
+    assert!(b.contains("Player") && b.contains("nfsse"));
 }
 
 #[test]
@@ -197,29 +197,29 @@ async fn lobby_register_order_heartbeat_expire() {
     let root = tmp("lobby");
     let st = new_state(cfg(&root, ""));
     let app = router(st.clone());
-    let body = serde_json::json!({ "name": "Danny's race", "track": "alps", "players": 1, "version": "3.2", "addresses": ["100.101.1.2", "192.168.50.20", "not-an-ip"] });
-    let (s, _, b) = call(&app, Method::POST, "/v1/lobby/games", &[("content-type", "application/json")], serde_json::to_vec(&body).unwrap(), "192.168.50.20").await;
+    let body = serde_json::json!({ "name": "Player's race", "track": "alps", "players": 1, "version": "3.2", "addresses": ["100.64.1.2", "192.168.1.20", "not-an-ip"] });
+    let (s, _, b) = call(&app, Method::POST, "/v1/lobby/games", &[("content-type", "application/json")], serde_json::to_vec(&body).unwrap(), "192.168.1.20").await;
     assert_eq!(s, StatusCode::CREATED);
     let id = serde_json::from_slice::<serde_json::Value>(&b).unwrap()["id"].as_str().unwrap().to_string();
     // LAN requester: LAN address first
-    let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games", &[], vec![], "192.168.50.30").await;
+    let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games", &[], vec![], "192.168.1.30").await;
     let g: serde_json::Value = serde_json::from_slice(&b).unwrap();
-    assert_eq!(g["games"][0]["addresses"], serde_json::json!(["192.168.50.20", "100.101.1.2"]));
+    assert_eq!(g["games"][0]["addresses"], serde_json::json!(["192.168.1.20", "100.64.1.2"]));
     // tailnet requester: tailnet address first (by peer, or by ?via=)
-    let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games", &[], vec![], "100.90.0.1").await;
-    assert_eq!(serde_json::from_slice::<serde_json::Value>(&b).unwrap()["games"][0]["addresses"][0], "100.101.1.2");
+    let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games", &[], vec![], "100.64.0.9").await;
+    assert_eq!(serde_json::from_slice::<serde_json::Value>(&b).unwrap()["games"][0]["addresses"][0], "100.64.1.2");
     let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games?via=tailnet", &[], vec![], "172.17.0.1").await;
-    assert_eq!(serde_json::from_slice::<serde_json::Value>(&b).unwrap()["games"][0]["addresses"][0], "100.101.1.2");
+    assert_eq!(serde_json::from_slice::<serde_json::Value>(&b).unwrap()["games"][0]["addresses"][0], "100.64.1.2");
     // heartbeat updates
     let hb = serde_json::to_vec(&serde_json::json!({ "players": 2, "started": true })).unwrap();
-    assert_eq!(call(&app, Method::PUT, &format!("/v1/lobby/games/{id}"), &[("content-type", "application/json")], hb, "192.168.50.20").await.0, StatusCode::NO_CONTENT);
-    let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games", &[], vec![], "192.168.50.30").await;
+    assert_eq!(call(&app, Method::PUT, &format!("/v1/lobby/games/{id}"), &[("content-type", "application/json")], hb, "192.168.1.20").await.0, StatusCode::NO_CONTENT);
+    let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games", &[], vec![], "192.168.1.30").await;
     assert_eq!(serde_json::from_slice::<serde_json::Value>(&b).unwrap()["games"][0]["players"], 2);
     // expiry without heartbeats
     tokio::time::sleep(Duration::from_millis(400)).await;
-    let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games", &[], vec![], "192.168.50.30").await;
+    let (_, _, b) = call(&app, Method::GET, "/v1/lobby/games", &[], vec![], "192.168.1.30").await;
     assert_eq!(serde_json::from_slice::<serde_json::Value>(&b).unwrap()["games"], serde_json::json!([]));
-    assert_eq!(call(&app, Method::DELETE, &format!("/v1/lobby/games/{id}"), &[], vec![], "192.168.50.20").await.0, StatusCode::NOT_FOUND);
+    assert_eq!(call(&app, Method::DELETE, &format!("/v1/lobby/games/{id}"), &[], vec![], "192.168.1.20").await.0, StatusCode::NOT_FOUND);
 }
 
 #[test]
