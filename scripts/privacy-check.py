@@ -12,9 +12,11 @@ Checks, using generic patterns only (the real values are never written here):
   ones below, and Tailscale addresses (100.64.0.0/10) outside 100.64.x.x;
 - Tailscale MagicDNS names (*.ts.net) unless they're placeholders.
 
-Allowed examples: 192.168.1.x, 10.0.0.x, 172.17.0.x (Docker), 100.64.x.x,
-RFC 5737 192.0.2.x / 198.51.100.x / 203.0.113.x, and ts.net names containing
-"example" or a <placeholder>. A line containing "privacy-check: allow" is skipped.
+Allowed: example addresses 192.168.1.x, 10.0.0.x, 172.17.0.x (Docker), 100.64.x.x;
+the range base addresses 10.0.0.0, 172.16.0.0, 192.168.0.0, 100.64.0.0; anything
+listed (one address or CIDR per line) in a .privacy-allow file at the repository
+root; ts.net names with a <placeholder>, "example", or only one label before
+.ts.net. A line containing "privacy-check: allow" is skipped.
 """
 
 import ipaddress
@@ -24,11 +26,26 @@ import sys
 
 LOCAL_EMAIL = re.compile(r"@[^@\s]+\.(local|lan|home|localdomain|internal)$", re.I)
 IPV4 = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])")
-TS_NET = re.compile(r"[A-Za-z0-9<>._-]+\.ts\.net\b")
+TS_NET = re.compile(r"(?<![<>\w.-])[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+\.ts\.net\b")
+CHECKED_NETS = [ipaddress.ip_network(n) for n in (
+    "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10",  # private + Tailscale
+)]
 ALLOWED_NETS = [ipaddress.ip_network(n) for n in (
     "192.168.1.0/24", "10.0.0.0/24", "172.17.0.0/24", "100.64.0.0/16",
+    "10.0.0.0/32", "172.16.0.0/32", "192.168.0.0/32", "100.64.0.0/32",
 )]
-TAILSCALE = ipaddress.ip_network("100.64.0.0/10")
+
+
+def load_allow_file() -> None:
+    try:
+        root = git("rev-parse", "--show-toplevel").strip()
+        with open(f"{root}/.privacy-allow", encoding="utf-8") as fh:
+            for raw in fh:
+                entry = raw.split("#", 1)[0].strip()
+                if entry:
+                    ALLOWED_NETS.append(ipaddress.ip_network(entry, strict=False))
+    except FileNotFoundError:
+        pass
 ALLOW_MARK = "privacy-check: allow"
 
 
@@ -41,19 +58,19 @@ def bad_ip(text: str) -> bool:
         ip = ipaddress.ip_address(text)
     except ValueError:
         return False
-    if any(ip in n for n in ALLOWED_NETS):
-        return False
-    return ip.is_private and not ip.is_loopback and not ip.is_link_local or ip in TAILSCALE
+    return any(ip in n for n in CHECKED_NETS) and not any(ip in n for n in ALLOWED_NETS)
 
 
 def bad_ts_name(name: str) -> bool:
-    return not ("<" in name or "example" in name.lower())
+    # A real MagicDNS name is machine.<tailnet>.ts.net; one label (ft.ts.net) is a stand-in.
+    return "example" not in name.lower()
 
 
 def main() -> int:
     if len(sys.argv) < 2:
         print(__doc__)
         return 2
+    load_allow_file()
     args = sys.argv[1:]
     exclude = [args[i + 1] for i, a in enumerate(args) if a == "--exclude" and i + 1 < len(args)]
     pos = [a for i, a in enumerate(args) if a != "--exclude" and (i == 0 or args[i - 1] != "--exclude")]
@@ -88,7 +105,7 @@ def main() -> int:
     for p in dict.fromkeys(problems):
         print(f"::error::{p}")
     if problems:
-        print(f"{len(set(problems))} privacy problem(s). See CLAUDE.md, 'Privacy'.")
+        print(f"{len(set(problems))} privacy problem(s). See the privacy rules in CLAUDE.md.")
         return 1
     print("privacy check: nothing personal found")
     return 0
