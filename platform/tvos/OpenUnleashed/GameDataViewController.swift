@@ -143,7 +143,7 @@ final class GameDataViewController: UIViewController {
     // MARK: server
 
     @objc private func editServer() {
-        let a = UIAlertController(title: "NFS Haven server", message: "Name or IP address (e.g. tower.local, 192.168.50.37, tower-1.tawny-taipan.ts.net) and the server's password.", preferredStyle: .alert)
+        let a = UIAlertController(title: "NFS Haven server", message: "Name or IP address (e.g. tower.local, 192.168.1.10, tower.<your-tailnet>.ts.net) and the server's password.", preferredStyle: .alert)
         a.addTextField { t in
             t.text = ServerSettings.address
             t.placeholder = "tower.local"
