@@ -1,0 +1,36 @@
+name: Privacy
+
+# Fails when new commits would make personal infrastructure details public:
+# a computer's local email address as commit author, home/Tailscale addresses or
+# tailnet names (scripts/privacy-check.py, CLAUDE.md "Privacy"). Commits that
+# came from the upstream project are skipped.
+
+on:
+  push:
+    branches: [main, tvos-port]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  privacy:
+    name: Privacy check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch the upstream project
+        run: git fetch --quiet --no-tags https://github.com/Second-Boot/Open-Unleashed.git main:refs/remotes/upstream/main
+      - name: Check new commits
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          base="${PR_BASE:-$PUSH_BEFORE}"
+          if [ -z "$base" ] || [ "$base" = 0000000000000000000000000000000000000000 ]; then
+            base="$(git merge-base upstream/main HEAD)"
+          fi
+          python3 -I scripts/privacy-check.py "$base" HEAD --exclude upstream/main
