@@ -30,7 +30,9 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
           base="${PR_BASE:-$PUSH_BEFORE}"
-          if [ -z "$base" ] || [ "$base" = 0000000000000000000000000000000000000000 ]; then
+          # a new branch, or a force-push whose old head is no longer in the history: check everything since upstream
+          if [ -z "$base" ] || [ "$base" = 0000000000000000000000000000000000000000 ] \
+             || ! git cat-file -e "$base^{commit}" 2>/dev/null || ! git merge-base --is-ancestor "$base" HEAD; then
             base="$(git merge-base upstream/main HEAD)"
           fi
           python3 -I scripts/privacy-check.py "$base" HEAD --exclude upstream/main
