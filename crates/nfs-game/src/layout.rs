@@ -53,6 +53,7 @@ pub mod glints;
 mod input;
 mod lists;
 mod movie;
+pub mod pad_nav;
 pub mod loading;
 pub mod nav;
 mod parts;
@@ -2442,14 +2443,29 @@ pub fn car_zone_of(spin: f32, roof: bool, x: f32, y: f32, bx: f32, by: f32, w: f
 
 impl LayoutScreen {
 
+    /// PORT-DEVIATION (tvOS): the pointer again, for over a dialog — the dialog is drawn after the screen, and
+    /// the pointer the screen drew went under it (real Apple TV, 2026-11-27). The same sprite as the screen's.
+    pub fn pointer_sprites(&self, aspect: f32) -> Vec<Sprite> {
+        let mut out = Vec::new();
+        self.cursor_sprite(&mut out, aspect, self.hovered());
+        out
+    }
+
     /// The cursor itself, drawn over everything. Nothing else in the screen may come after it.
     fn cursor_sprite(&self, out: &mut Vec<Sprite>, aspect: f32, hovered: Option<usize>) {
         // `u32::MAX` marks a screen that is somebody's background; only the screen in front draws
         if self.cursor_ms == u32::MAX {
             return;
         }
+        // tvOS: the D-pad moves the pointer hidden (`pad_nav`)
+        if pad_nav::pointer_hidden() {
+            return;
+        }
         let Some((cx, cy)) = self.pointer.unwrap_or(self.cursor) else { return };
         let shape = self.cursor_shape(hovered);
+        // PORT-DEVIATION (tvOS): the plain pointer is the arrow (shape 1) rather than the small ring (shape 0),
+        // which was too faint to find on a TV (real Apple TV, 2026-11-27)
+        let shape = if cfg!(target_os = "tvos") && shape == 0 { 1 } else { shape };
         let Some(&(first, last)) = CURSOR_SHAPES.get(shape) else { return };
         // the two stamps of 0x4E1C90, restamped here because this is the only place that knows
         // which shape won the frame's request and what the button is doing
@@ -2475,7 +2491,10 @@ impl LayoutScreen {
         // So every other shape really is drawn with its top-left corner on the pointer, and this
         // retires §4.152's last approximation. The port used to offset `x` alone.
         let o = cursor_hot_spot(shape);
-        let (pos, size) = self.place(aspect, cx + o, cy + o, w, h);
+        // PORT-DEVIATION (tvOS): the pointer is drawn 1.5 times its size, for a TV across the room (the Siri Remote is
+        // the mouse there, `RemoteInput.swift`); its hot spot stays on the pointer
+        let k = if cfg!(target_os = "tvos") { 1.5 } else { 1.0 };
+        let (pos, size) = self.place(aspect, cx + o * k, cy + o * k, w * k, h * k);
         out.push(Sprite { texture: tex, pos, size, uv_min: [0.0, 0.0], uv_max: [1.0, 1.0], color: [1.0, 1.0, 1.0, 1.0], rotation: 0.0, pivot: [0.5, 0.5], tri: None, corner_colors: None, depth: None });
     }
 
@@ -3747,10 +3766,26 @@ impl LayoutScreen {
     /// [`hovered_scan`](Self::hovered_scan)'s answer together with the panel it lies in — the
     /// key of the embedded group, `None` for a widget of this screen itself.
     fn hovered_scan_owner(&self) -> Option<(usize, Option<usize>)> {
+        let (cx, cy) = self.cursor?;
+        self.scan_owner_at(cx, cy, false)
+    }
+
+    /// The widget the window's hit test finds at a design point, as [`hovered`](Self::hovered) would with the
+    /// pointer there — without moving it (tvOS: the D-pad's targets, `pad_nav`).
+    pub fn hit_at(&self, x: f32, y: f32) -> Option<usize> {
+        let hit = self.scan_owner_at(x, y, true).map(|(i, _)| i);
+        match self.any_open_combo() {
+            Some(oc) => hit.filter(|h| *h == oc),
+            None => hit,
+        }
+    }
+
+    /// The hit test at `(cx, cy)`. `probe`: an embedded screen is asked at that point too ([`hit_at`]);
+    /// otherwise each asks its own pointer, which [`place_cursor`](Self::place_cursor) gave it.
+    fn scan_owner_at(&self, cx: f32, cy: f32, probe: bool) -> Option<(usize, Option<usize>)> {
         if self.denied {
             return None;
         }
-        let (cx, cy) = self.cursor?;
         // the bases the flattened index space gives each embedded screen, by the element the
         // panel sits at, so a sub-layout is tested exactly where the draw reaches it
         // (most screens embed nothing: then there is nothing to build, P7)
@@ -3771,8 +3806,14 @@ impl LayoutScreen {
             // a panel draws a whole screen of its own here, at the panel's own depth
             if let Some(base) = bases.get(&i) {
                 // a hidden panel takes no pointer either
+                let sub = if probe {
+                    let (gx, gy) = self.position_of(e);
+                    self.groups[&i].hit_at(cx - gx, cy - gy)
+                } else {
+                    self.groups[&i].hovered()
+                };
                 if !self.closed.contains(&i)
-                    && let Some(j) = self.groups[&i].hovered()
+                    && let Some(j) = sub
                 {
                     return Some((base + j, Some(i)));
                 }

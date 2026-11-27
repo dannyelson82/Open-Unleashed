@@ -308,6 +308,8 @@ final class NFSSEInput {
     /// When a key, button, stick or trigger last changed (the screen saver's clock).
     static var lastInput = CACurrentMediaTime()
     private var lastPad: [Int32] = []
+    private var loggedPad = false
+    private var loggedRemote = false
     private var remoteHeld: Int32 = 0         // the arrow key the remote's touch surface holds (HID usage)
     private var remoteNext: CFTimeInterval = 0
     private var observers: [NSObjectProtocol] = []
@@ -329,6 +331,9 @@ final class NFSSEInput {
     }
 
     private func wire() {
+        NSLog("NFS SE: input: %@", GCController.controllers().map { c in
+            "\(c.vendorName ?? "?") (\(c.extendedGamepad != nil ? "pad" : c.microGamepad != nil ? "remote" : "other"))"
+        }.joined(separator: ", "))
         GCKeyboard.coalesced?.keyboardInput?.keyChangedHandler = { _, _, code, pressed in
             NFSSEInput.lastInput = CACurrentMediaTime()
             renfs_host_key(Int32(code.rawValue), pressed)
@@ -367,6 +372,10 @@ final class NFSSEInput {
                 Self.lastInput = CACurrentMediaTime()
                 lastPad = st
             }
+            if b != 0 && !loggedPad {
+                loggedPad = true
+                NSLog("NFS SE: first pad buttons %08x", b)
+            }
             renfs_host_pad(true, Int16(st[0]), Int16(st[1]), Int16(st[2]), Int16(st[3]), b)
         } else {
             renfs_host_pad(false, 0, 0, 0, 0, 0)
@@ -376,12 +385,17 @@ final class NFSSEInput {
     }
 
     private func pollRemote() {
-        guard GCController.controllers().first(where: { $0.extendedGamepad != nil }) == nil,
-              let m = GCController.controllers().compactMap({ $0.microGamepad }).first else {
+        // the remote's touch surface works beside a pad too (it was ignored while a pad was connected: real Apple TV,
+        // 2026-11-27). The remote is the controller with a micro profile and no extended one.
+        guard let m = GCController.controllers().first(where: { $0.extendedGamepad == nil && $0.microGamepad != nil })?.microGamepad else {
             release()
             return
         }
         let x = m.dpad.xAxis.value, y = m.dpad.yAxis.value
+        if (x != 0 || y != 0 || m.buttonA.isPressed) && !loggedRemote {
+            loggedRemote = true
+            NSLog("NFS SE: first remote input x=%.2f y=%.2f click=%d", x, y, m.buttonA.isPressed ? 1 : 0)
+        }
         if x != 0 || y != 0 || m.buttonA.isPressed || m.buttonMenu.isPressed { Self.lastInput = CACurrentMediaTime() }
         var want: Int32 = 0
         if abs(x) > 0.5 || abs(y) > 0.5 { want = abs(x) > abs(y) ? (x > 0 ? 79 : 80) : (y > 0 ? 82 : 81) }

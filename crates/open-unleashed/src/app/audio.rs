@@ -289,6 +289,14 @@ impl App {
         }
     }
 
+    /// The player did something on the main screen that the original's event pump never saw (a pad, the
+    /// tvOS keyboard): restart its idle minute (see [`Self::fe_main_screen_music_tick`]).
+    pub(crate) fn fe_touch_idle(&mut self) {
+        if self.vehicle.is_none() && self.fe_list_is("ID_MAINSCREEN") {
+            self.fe.main_music_stamp = self.fe_timer_ticks();
+        }
+    }
+
     /// The current `AUDIOQUALITY` to the sound, as every user of it gives it (0x4A66B0's
     /// configuration). A changed setting reopens the sound (**0x4A6A00**,
     /// [`nfs_audio::AudioOutput::set_audio_quality`]): every voice and the music's stream are gone,

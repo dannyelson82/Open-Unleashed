@@ -222,6 +222,42 @@ impl Dialog {
         out
     }
 
+    /// PORT-DEVIATION (tvOS, no mouse): the pad's d-pad moves a highlight over the buttons, which are the hover
+    /// bytes a pointer would set; from none it starts on the last button (cancel), so a stray press never
+    /// answers yes. Returns the hover sound 6. Asked for on the real Apple TV, 2026-11-27.
+    pub fn pad_step(&mut self, delta: i32) -> Option<u8> {
+        let n = self.buttons.len() as i32;
+        if n == 0 {
+            return None;
+        }
+        let at = match self.buttons.iter().position(|b| b.hovered) {
+            Some(i) => (i as i32 + delta).rem_euclid(n),
+            None => n - 1,
+        };
+        for (i, b) in self.buttons.iter_mut().enumerate() {
+            b.hovered = i as i32 == at;
+        }
+        Some(6)
+    }
+
+    /// PORT-DEVIATION (tvOS): the pad's A on a dialog. The highlighted button clicks, as a release over it does;
+    /// with none highlighted the first press only highlights cancel.
+    pub fn pad_press(&mut self) -> Option<u8> {
+        if self.buttons.iter().any(|b| b.hovered) { self.release() } else { self.pad_step(0) }
+    }
+
+    /// PORT-DEVIATION (tvOS): the pad's B / the Siri Remote's Menu on a dialog clicks its last button (cancel).
+    pub fn pad_cancel(&mut self) -> Option<u8> {
+        let n = self.buttons.len();
+        if n == 0 {
+            return None;
+        }
+        for (i, b) in self.buttons.iter_mut().enumerate() {
+            b.hovered = i == n - 1;
+        }
+        self.release()
+    }
+
     /// Slot 9 on each button, 0x515130: a release over a hovered button clicks it with sound 5.
     /// Returns whether a button took the release (0x512F10 stops at the first that does).
     pub fn release(&mut self) -> Option<u8> {
@@ -238,6 +274,27 @@ impl Dialog {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_pad_steps_presses_and_cancels() {
+        let mut d = Dialog::new(DialogKind::Two, "Quit?".into(), [0, 0]);
+        d.raise(0);
+        // the first A only highlights cancel; the second presses it
+        assert_eq!(d.pad_press(), Some(6));
+        assert!(d.buttons[1].hovered && !d.buttons[0].hovered);
+        d.pad_step(-1);
+        assert!(d.buttons[0].hovered && !d.buttons[1].hovered);
+        d.pad_step(-1);
+        assert!(d.buttons[1].hovered, "the highlight wraps");
+        assert_eq!(d.pad_press(), Some(5));
+        let mut c = Dialog::new(DialogKind::Two, "Quit?".into(), [0, 0]);
+        c.raise(0);
+        c.pad_step(1);
+        c.pad_step(1);
+        assert!(c.buttons[0].hovered);
+        assert_eq!(c.pad_cancel(), Some(5));
+        assert!(c.buttons[1].hovered && !c.buttons[0].hovered, "B clicks cancel, never ok");
+    }
 
     #[test]
     fn the_input_dialog_takes_two_digits() {

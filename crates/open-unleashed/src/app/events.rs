@@ -23,6 +23,15 @@ impl App {
                 run.button(i, state == ElementState::Pressed);
             }
             WindowEvent::RedrawRequested => {
+                // PORT-DEVIATION (pads skip the start-up movies): the original skips them with a key or
+                // a mouse button only. An Apple TV has neither, so any pad button (A, B, Menu, Start, a
+                // Siri Remote click) skips, as Esc does; the pads are polled here as the front end
+                // polls them. Found on the real Apple TV (2026-11-26): the movie could not be skipped.
+                self.gamepads.poll(&mut self.input);
+                if !self.input.pad_menu.is_empty() {
+                    self.input.pad_menu.clear();
+                    run.key(true);
+                }
                 // `NFS_PLAY_INTRO` on a scripted run: hold Esc down the way an impatient player
                 // would, through the same key path (`run.key`), so the walk reaches the front end
                 // without sitting through the whole movie.
@@ -709,6 +718,14 @@ impl ApplicationHandler for App {
                 // gamepad: d-pad / left stick moves, A (cross) selects, B backs — PORT-DEVIATION D10
                 // (PORT-DEVIATIONS.md) [the FE reads no pad, event pump 0x529700]
                 self.gamepads.poll(&mut self.input);
+                // PORT-DEVIATION (a pad counts as input for the main screen's idle minute): the original
+                // restamps on a key, mouse button or pointer move (above); a pad never reached its event
+                // pump. On an Apple TV the pad is the only input, so without this the idle movie played a
+                // minute after the main screen came up however the player used the pad (real Apple TV,
+                // 2026-11-26). The tvOS keyboard being up counts too (`text_pad`).
+                if !self.input.pad_menu.is_empty() {
+                    self.fe_touch_idle();
+                }
                 // tvOS: the on-screen keyboard's A / Y, and nothing of the pad while it is up (TVOS.md)
                 #[cfg(target_os = "tvos")]
                 crate::tvos::text_pad(self);
@@ -735,10 +752,13 @@ impl ApplicationHandler for App {
                 // timers, so the `b` of 0x4D2970 comes from the keyboard only and no pad button
                 // goes back on a layout screen. (The pad's other keys are the port's own on both.)
                 let text_menu = self.fe.layout_preview.is_none();
-                // tvOS (TVOS.md, no keyboard): the pad's B / the Siri Remote's Menu is the front end's Esc, and
+                // tvOS (TVOS.md, no keyboard): the pad's B / the Siri Remote's Menu is the bottom bar's back, or its exit where there is no back, and
                 // A (Y for a chat box) on a field that takes text opens the on-screen keyboard instead
                 #[cfg(target_os = "tvos")]
                 let pad_back = !text_menu && self.input.pad_menu.contains(&nfs_input::MenuNav::Back);
+                // tvOS: the pad's X works as its B (`fe_pad_back`). Asked for on the real Apple TV, 2026-11-27
+                #[cfg(target_os = "tvos")]
+                let pad_back = pad_back || !text_menu && self.input.pad_menu.contains(&nfs_input::MenuNav::Aux);
                 let mut keys: Vec<MenuKey> = self
                     .input
                     .pad_menu
@@ -752,19 +772,42 @@ impl ApplicationHandler for App {
                             nfs_input::MenuNav::Select => MenuKey::Enter,
                             nfs_input::MenuNav::Back if text_menu => MenuKey::Back,
                             // Y and X are the race's dialog keys (PAD-END2), not the menus'
-                            nfs_input::MenuNav::Back | nfs_input::MenuNav::Alt | nfs_input::MenuNav::Aux | nfs_input::MenuNav::View => return None,
+                            nfs_input::MenuNav::Back | nfs_input::MenuNav::Alt | nfs_input::MenuNav::Aux | nfs_input::MenuNav::View | nfs_input::MenuNav::Start => return None,
                         })
                     })
                     .collect();
+                // the pad's Start: the bottom bar's RACE (`MenuNav::Start`)
+                let pad_race = self.input.pad_menu.contains(&nfs_input::MenuNav::Start);
                 self.input.end_tick();
                 // the pad's keys are the port's own; they go the way 0x4D2850 sends keys — and
                 // not while a binding row listens (0x51C4E0): the button is the row's capture
                 if self.fe_input_swallowed() || self.fe.binding_base.is_some() {
                     keys.clear();
                 }
+                // tvOS: a dialog (the quit question, …) answers the pad itself — the d-pad moves between its
+                // buttons, A presses, B cancels — and the screen under it takes none of the pad's keys
+                #[cfg(target_os = "tvos")]
+                if !self.fe_input_swallowed() && let Some((d, _)) = self.fe.dialog.as_mut().filter(|(d, _)| d.up && d.field.is_none()) {
+                    let mut sounds = Vec::new();
+                    for k in &keys {
+                        sounds.extend(match k {
+                            MenuKey::Up | MenuKey::Left => d.pad_step(-1),
+                            MenuKey::Down | MenuKey::Right => d.pad_step(1),
+                            MenuKey::Enter => d.pad_press(),
+                            _ => None,
+                        });
+                    }
+                    if pad_back {
+                        sounds.extend(d.pad_cancel());
+                    }
+                    keys.clear();
+                    for s in sounds {
+                        self.fe_sound(s as usize);
+                    }
+                }
                 #[cfg(target_os = "tvos")]
                 if pad_back && !self.fe_input_swallowed() && self.fe.binding_base.is_none() && self.fe.dialog.is_none() {
-                    self.fe_key_code(0x1B, event_loop);
+                    self.fe_pad_back(event_loop);
                     if let Some(w) = &self.window {
                         w.request_redraw();
                     }
@@ -780,6 +823,18 @@ impl ApplicationHandler for App {
                         w.request_redraw();
                     }
                 };
+                if pad_race
+                    && !self.fe_input_swallowed()
+                    && self.fe.dialog.is_none()
+                    && self.fe.binding_base.is_none()
+                    && self.extras_ui.is_none()
+                    && self.fe.layout_preview.as_ref().is_some_and(|l| l.can_play())
+                {
+                    self.fe_sound(5);
+                    self.fe_start_game(event_loop);
+                    next_frame(self);
+                    return;
+                }
                 for k in keys {
                     self.menu_key(k, event_loop);
                     if self.fe.menu.is_none() {
@@ -854,6 +909,8 @@ impl ApplicationHandler for App {
                                 nfs_input::MenuNav::Select => MenuKey::Enter,
                                 // B: the question's "no" / the menu's "continue" (PAD-END2, D10)
                                 nfs_input::MenuNav::Back => MenuKey::Back,
+                                // Start: the pause menu's "continue", as on a console
+                                nfs_input::MenuNav::Start => MenuKey::Back,
                                 nfs_input::MenuNav::Alt | nfs_input::MenuNav::Aux | nfs_input::MenuNav::View => continue,
                             };
                             self.pause_menu_key(key, event_loop);

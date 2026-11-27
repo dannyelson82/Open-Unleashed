@@ -313,16 +313,28 @@ final class GameDownloader {
         }
         try await perFile(todo, transfer: transfer, progress: progress)
 
-        // files of an earlier set that this one doesn't have (e.g. switching back from a mod set)
+        // files of an earlier set that this one doesn't have (e.g. switching back from a mod set). Paths are
+        // compared resolved: the walk can return `/private/var/…` for a root of `/var/…` (`/var` is a link), and
+        // then no file matched the list and every file was deleted (real Apple TV, 2026-11-27). A file outside
+        // the root is never touched, and if no file at all matches the list nothing is deleted.
         let wanted = Set(manifest.files.map { $0.path })
+        let rootPath = GameStore.root.resolvingSymlinksInPath().standardizedFileURL.path + "/"
+        var stale: [URL] = []
+        var matched = 0
         if let en = fm.enumerator(at: GameStore.root, includingPropertiesForKeys: [.isRegularFileKey]) {
             for case let u as URL in en {
-                let rel = u.path.replacingOccurrences(of: GameStore.root.path + "/", with: "")
+                let full = u.resolvingSymlinksInPath().standardizedFileURL.path
+                guard full.hasPrefix(rootPath) else { continue }
+                let rel = String(full.dropFirst(rootPath.count))
                 if rel.hasPrefix(".nfsh") { en.skipDescendants(); continue }
-                if (try? u.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true, !wanted.contains(rel) {
-                    try? fm.removeItem(at: u)
-                }
+                guard (try? u.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+                if wanted.contains(rel) { matched += 1 } else { stale.append(u) }
             }
+        }
+        if matched == 0 && !wanted.isEmpty {
+            NSLog("NFS Haven: no local file matched the server's list; %d other file(s) left alone", stale.count)
+        } else {
+            for u in stale { try? fm.removeItem(at: u) }
         }
         try? fm.removeItem(at: GameStore.partsDir)
         try? fm.removeItem(at: tarMarker)

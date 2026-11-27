@@ -70,7 +70,9 @@ enum DisplayMode {
     /// Ask for 60 Hz SDR so "Match Frame Rate" doesn't switch the TV to 24/50 Hz (every Apple TV 4K outputs at
     /// most 4K60). Only matters when Match Frame Rate / Dynamic Range is on in the Apple TV's settings.
     static func request60Hz(on window: UIWindow?) {
-        guard let window else { return }
+        // `avDisplayManager` is AVKit's addition to UIWindow: without AVKit loaded the window has no such method,
+        // and the call stopped the app (real Apple TV, 2026-11-27; AVKit is now linked in project.yml too)
+        guard let window, window.responds(to: NSSelectorFromString("avDisplayManager")) else { return }
         var fmt: CMVideoFormatDescription?
         CMVideoFormatDescriptionCreate(allocator: kCFAllocatorDefault, codecType: kCMVideoCodecType_H264,
                                        width: 3840, height: 2160, extensions: nil, formatDescriptionOut: &fmt)
