@@ -52,6 +52,7 @@ targets:
           - -framework CoreGraphics
           - -framework CoreVideo
           - -framework AVFoundation
+          - -framework AVKit
           - -framework AudioToolbox
           - -framework CoreAudio
           - -framework GameController

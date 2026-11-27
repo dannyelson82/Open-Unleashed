@@ -152,9 +152,35 @@ All off / original by default; switched in **Extras** (pause menu › extras), s
 | Button names follow the last device (Xbox / PlayStation / …) | automatic | `nfs_input::glyphs` |
 | Save sync + lobby through nfs-haven-server | Network (server, password, test; Mac: sync saves) — kept per device in `network.json`; on tvOS also the Game Data screen's Server, the same setting (the shell's callback `server_changed`) | `sync.rs`, `server_lobby.rs`, `extras_ui.rs` |
 
-tvOS-only: Game Data screen (download from nfs-haven-server), on-screen keyboard for text fields, B / Menu = back, Siri
-Remote Menu never leaves the app, pointer hidden, pause on background, no screen saver during races, layered icon +
-Top Shelf, save mirror in NSUserDefaults.
+tvOS-only: Game Data screen (download from nfs-haven-server), on-screen keyboard for text fields, Siri Remote Menu
+never leaves the app, pause on background, no screen saver during races, layered icon + Top Shelf, save mirror in
+NSUserDefaults.
+
+### Menu controls on Apple TV (tested on the device, 2026-11-27)
+The original's front end is mouse-driven: its lists, drop-downs and sliders take the pointer only. On tvOS the
+remote and the pad drive that pointer (`tvos.rs::remote_pump`, `RemoteInput.swift`, `nfs_game::layout::pad_nav`):
+
+| Input | On a menu screen |
+|---|---|
+| Siri Remote touch surface / pad left stick | move the pointer (it shows); kept inside the 4:3 picture |
+| Pad d-pad | jump a hidden pointer to the next button, list row or drop-down (row) in that direction; the widget under it shows its hover state. Targets come from the screen's own hit test on a 6-px grid, cached per screen state |
+| Remote click / pad A | the left mouse button |
+| Pad right stick up / down | scroll the list under the pointer (or the open drop-down), like a wheel |
+| Pad B / X / remote Menu | the bottom bar's back arrow; exit (the quit question) where there is no back, as on the main menu |
+| Pad Start (☰) | the bottom bar's RACE |
+| Pad View / remote Play-Pause | Extras |
+| Pad Y | the on-screen keyboard for the text field |
+
+On a dialog the d-pad moves between its buttons, A presses, B / X cancel; the pointer is drawn over the dialog.
+In a race and on the pause and Extras menus the pad keeps its own keys and the remote's click is A.
+
+PORT-DEVIATIONs: the pointer is the blue arrow at 1.5× (the faint ring of shape 0 can't be found on a TV); the
+d-pad reaches lists and drop-downs, which no key does in the original (`controls.md` §4.171.8).
+
+SDL 3.4.18's Apple trigger rumble reports failure on every start (`rumbleLeftTrigger:andRightTrigger:` begins
+from `result = false`), so SDL never recorded the triggers as running and dropped every stop: the triggers kept
+rumbling after a race and under the pause menu. `nfs_input::sdl_apple_fix` swaps in the corrected method at start;
+remove it once SDL's own is fixed.
 
 ## HD texture packs (Stage 1: engine side)
 

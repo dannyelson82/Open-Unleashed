@@ -48,6 +48,7 @@
 		4320D9C1171BBE3B4751581C /* showcase.h in Sources */ = {isa = PBXBuildFile; fileRef = AD673F913285513872A3BD0C /* showcase.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		43DEC7688E0546DCED88E5BF /* cardraw.h in Sources */ = {isa = PBXBuildFile; fileRef = D06952B35BE1A7A2006B3C1D /* cardraw.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		446F97092463C10C9E4EEECD /* ff.c in Sources */ = {isa = PBXBuildFile; fileRef = 45C32ADBF823280FE0C6BCCB /* ff.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		47D2B2F65BD1649EF9758800 /* RemoteInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2582502056A514C5AA9068D /* RemoteInput.swift */; };
 		489382467A28F51383C42EA3 /* hud.c in Sources */ = {isa = PBXBuildFile; fileRef = A46C41013F8D69B5ECEC9B2B /* hud.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		4A0B014AEB4AD69BBA18AC71 /* joystick.c in Sources */ = {isa = PBXBuildFile; fileRef = 90CE79E990C5A71F85EB4742 /* joystick.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		50B31E4CC3C2A5D125420112 /* menu.h in Sources */ = {isa = PBXBuildFile; fileRef = 1904546FECF6CA5F424FFBD1 /* menu.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
@@ -68,6 +69,7 @@
 		763D16EE45684CF2385845A0 /* Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = A267AFA0CFD493B179B3E243 /* Shell.swift */; };
 		76EE36A33F3C63D0D49D332D /* model.c in Sources */ = {isa = PBXBuildFile; fileRef = 1B5BDA5D7CAFFD0F6F518D28 /* model.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		7704474F55D44313CC5E462A /* racekeys.h in Sources */ = {isa = PBXBuildFile; fileRef = F038CB5ED6D4605D8B2C3533 /* racekeys.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
+		7A0EA1F889877FDC03898CEC /* TextEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673583B24131ADB881ABF051 /* TextEntry.swift */; };
 		7A8AAD9FF40DC3B0BB498259 /* joystick.h in Sources */ = {isa = PBXBuildFile; fileRef = C556DA65DB999A995E4FED8C /* joystick.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		7AD9BAB09F4DBB7BF68E4795 /* race.c in Sources */ = {isa = PBXBuildFile; fileRef = AD6A7E35F738D5BBA481FBFD /* race.c */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
 		7B149D47DFC1EF918261B3A8 /* crash.h in Sources */ = {isa = PBXBuildFile; fileRef = 4E4557FB9A9AAE232215C889 /* crash.h */; settings = {COMPILER_FLAGS = "-Dmain=renfs_main -fwrapv -w"; }; };
@@ -199,6 +201,7 @@
 		5C9B0886CB4352C32CE6D39F /* menu.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = menu.c; sourceTree = "<group>"; };
 		611BEEDD8A09F45D36C94455 /* movie.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = movie.c; sourceTree = "<group>"; };
 		643D51667BB86289B707C831 /* timing.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = timing.h; sourceTree = "<group>"; };
+		673583B24131ADB881ABF051 /* TextEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextEntry.swift; sourceTree = "<group>"; };
 		677F3948B0173B66709DC815 /* mainmenu.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mainmenu.c; sourceTree = "<group>"; };
 		6887E0F576ABC82B115C8A6C /* racepal.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = racepal.c; sourceTree = "<group>"; };
 		68B2646AED1B94BC57712B3B /* crash.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = crash.c; sourceTree = "<group>"; };
@@ -280,6 +283,7 @@
 		F038CB5ED6D4605D8B2C3533 /* racekeys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = racekeys.h; sourceTree = "<group>"; };
 		F04FE3BE072267E9F1C7F103 /* NFSSEViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFSSEViewController.swift; sourceTree = "<group>"; };
 		F1BC61A55F8EF8590FF208EE /* renfs_version.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = renfs_version.h; sourceTree = "<group>"; };
+		F2582502056A514C5AA9068D /* RemoteInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteInput.swift; sourceTree = "<group>"; };
 		F5B0A50E853349432043EADF /* tgv.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tgv.h; sourceTree = "<group>"; };
 		F6CA0F1D58C3A61816FA9C75 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		F73DCA593B06C9D3E75260C8 /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
@@ -304,10 +308,12 @@
 				122F654BC474259CF43A70D0 /* main.swift */,
 				F04FE3BE072267E9F1C7F103 /* NFSSEViewController.swift */,
 				7FE33CDB731467D5403E4DDE /* OpenUnleashed-Bridging-Header.h */,
+				F2582502056A514C5AA9068D /* RemoteInput.swift */,
 				CA1DBCFAB84757E0D21FEBDF /* SaveMirror.swift */,
 				A51411F2872DF0F7B04D4DFD /* SaveSync.swift */,
 				F00B5534C94C680C0FD17C5B /* ServerClient.swift */,
 				A267AFA0CFD493B179B3E243 /* Shell.swift */,
+				673583B24131ADB881ABF051 /* TextEntry.swift */,
 			);
 			path = OpenUnleashed;
 			sourceTree = "<group>";
@@ -511,7 +517,7 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					F18BF161FB17164304BF3754 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = ZHH3AM5HU7;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -558,10 +564,12 @@
 				5318F2E7B7FB3B6B57DC267E /* Games.swift in Sources */,
 				D00B312F46F2DB7657606388 /* LauncherViewController.swift in Sources */,
 				69A291B8EA17C920B5A46A3A /* NFSSEViewController.swift in Sources */,
+				47D2B2F65BD1649EF9758800 /* RemoteInput.swift in Sources */,
 				9BC44F572B953763475CE038 /* SaveMirror.swift in Sources */,
 				FB52A9BC59738990C74141C2 /* SaveSync.swift in Sources */,
 				32139F157CC7801B78C841C7 /* ServerClient.swift in Sources */,
 				763D16EE45684CF2385845A0 /* Shell.swift in Sources */,
+				7A0EA1F889877FDC03898CEC /* TextEntry.swift in Sources */,
 				D533A9BC4E9FD9F9474E3F42 /* audio.c in Sources */,
 				2FB9A91FFBDA047402CBA5EC /* audio.h in Sources */,
 				20FCFDAB7DF9140E91EBE067 /* audioopt.c in Sources */,
@@ -728,7 +736,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ZHH3AM5HU7;
 				ENABLE_BITCODE = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -749,7 +757,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dannyelson.nfshaven;
+				PRODUCT_BUNDLE_IDENTIFIER = app.gamehaven.porsche;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -788,6 +796,7 @@
 					"-framework CoreGraphics",
 					"-framework CoreVideo",
 					"-framework AVFoundation",
+					"-framework AVKit",
 					"-framework AudioToolbox",
 					"-framework CoreAudio",
 					"-framework GameController",
@@ -832,6 +841,7 @@
 					"-framework CoreGraphics",
 					"-framework CoreVideo",
 					"-framework AVFoundation",
+					"-framework AVKit",
 					"-framework AudioToolbox",
 					"-framework CoreAudio",
 					"-framework GameController",
@@ -884,7 +894,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ZHH3AM5HU7;
 				ENABLE_BITCODE = NO;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -898,7 +908,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dannyelson.nfshaven;
+				PRODUCT_BUNDLE_IDENTIFIER = app.gamehaven.porsche;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;
 				SWIFT_COMPILATION_MODE = wholemodule;

@@ -77,6 +77,13 @@ pub struct Gamepads {
     devices: Option<Devices>,
     /// the left stick's X / Y past [`MENU_STICK`] at the last motion event (the front end's keys)
     stick_latch: [bool; 2],
+    /// the left stick also moves the front end's highlight (off where it drives a pointer instead, tvOS)
+    stick_menu: bool,
+    /// A pushes the front end's Select (off while A is the pointer's left button, tvOS)
+    a_select: bool,
+    /// the d-pad pushes the front end's arrows (off where it moves the pointer, tvOS)
+    dpad_menu: bool,
+
     rumbler: crate::ff::Rumbler,
     rumble_test: Option<RumbleTest>,
     /// the pads' records of the frame, reused (`poll` runs every frame)
@@ -156,9 +163,16 @@ impl Devices {
             // winit, so tell SDL the process is ready (as SDL_MAIN_HANDLED programs do)
             #[cfg(target_os = "tvos")]
             sdl3_sys::main::SDL_SetMainReady();
+            // tvOS: the Siri Remote is the app shell's mouse (`RemoteInput.swift`), not a joystick: as a joystick
+            // its touch surface also moved the pad's highlight while it moved the pointer
+            #[cfg(target_os = "tvos")]
+            SDL_SetHint(SDL_HINT_TV_REMOTE_AS_JOYSTICK, c"0".as_ptr());
             if !SDL_Init(SUBSYSTEMS) {
                 return Err(sdl_error());
             }
+            // SDL 3.4.18's Apple driver reports every trigger rumble as failed, so a stop never reached the pad
+            #[cfg(any(target_os = "macos", target_os = "tvos"))]
+            crate::sdl_apple_fix::install();
             let haptic = SDL_InitSubSystem(SDL_INIT_HAPTIC);
             if !haptic {
                 tracing::warn!(error = %sdl_error(), "SDL haptic subsystem unavailable (no wheel force feedback)");
@@ -463,7 +477,7 @@ impl Gamepads {
                 None
             }
         };
-        Self { devices, stick_latch: [false; 2], rumbler: Default::default(), rumble_test: None, records_buf: Vec::new(), haptic_armed: false, ff_hotplug: false, pad_hotplug: false, trig_sent: None }
+        Self { devices, stick_latch: [false; 2], stick_menu: true, a_select: true, dpad_menu: true, rumbler: Default::default(), rumble_test: None, records_buf: Vec::new(), haptic_armed: false, ff_hotplug: false, pad_hotplug: false, trig_sent: None }
     }
 
     /// Whether a device that can rumble or has SDL haptic effects was connected since the last call
@@ -513,10 +527,11 @@ impl Gamepads {
         if !due {
             return;
         }
-        // held a second; renewed every half second while it lasts
-        if d.rumble_triggers(l, r, if l == 0 && r == 0 { 0 } else { 1000 }) || (l == 0 && r == 0) {
-            self.trig_sent = if l == 0 && r == 0 { None } else { Some((l, r, now)) };
-        }
+        // held a second; renewed every half second while it lasts. The send counts whatever SDL answers: on an
+        // Apple TV (SDL's MFi / CoreHaptics driver) a start could report failure and still run the motors, and then
+        // the stop below was never sent: the triggers kept rumbling after the race (real Apple TV, 2026-11-26).
+        d.rumble_triggers(l, r, if l == 0 && r == 0 { 0 } else { 1000 });
+        self.trig_sent = if l == 0 && r == 0 { None } else { Some((l, r, now)) };
     }
 
     /// PORT-DEVIATION (Extras › Controller › Trigger effects): a DualSense's adaptive triggers (Apple platforms; a no-op
@@ -528,12 +543,11 @@ impl Gamepads {
 
     /// Every trigger effect off: trigger motors stopped, adaptive triggers released.
     pub fn triggers_off(&mut self) {
-        if self.trig_sent.is_some() {
-            if let Some(d) = self.devices.as_mut() {
-                d.rumble_triggers(0, 0, 0);
-            }
-            self.trig_sent = None;
+        // always sent, whatever we think was running (see `trigger_rumble`)
+        if let Some(d) = self.devices.as_mut() {
+            d.rumble_triggers(0, 0, 0);
         }
+        self.trig_sent = None;
         #[cfg(any(target_os = "macos", target_os = "tvos"))]
         crate::dualsense_apple::reset();
     }
@@ -601,6 +615,24 @@ impl Gamepads {
         }
     }
 
+    /// tvOS: whether the left stick also moves the front end's highlight (off on a screen where it drives the
+    /// pointer, `tvos.rs`). On by default.
+    pub fn set_stick_menu(&mut self, on: bool) {
+        self.stick_menu = on;
+    }
+
+    /// tvOS: whether A pushes the front end's Select (off while it is the pointer's left button, `tvos.rs`). On by
+    /// default.
+    pub fn set_a_select(&mut self, on: bool) {
+        self.a_select = on;
+    }
+
+    /// tvOS: whether the d-pad pushes the front end's arrows (off on a screen where it moves the pointer, `tvos.rs`).
+    /// On by default.
+    pub fn set_dpad_menu(&mut self, on: bool) {
+        self.dpad_menu = on;
+    }
+
     /// The first standard pad's state in SDL's units (sticks, triggers, d-pad, the port's 15
     /// buttons), `None` without one — for code that reads a pad directly rather than through the
     /// bindings.
@@ -648,6 +680,7 @@ impl Gamepads {
         // SAFETY: SDL_PollEvent fills `ev`; each arm reads the union member its type names
         while unsafe { SDL_PollEvent(&mut ev) } {
             let ty = SDL_EventType(unsafe { ev.r#type });
+
             if ty == SDL_EVENT_JOYSTICK_ADDED {
                 let which = unsafe { ev.jdevice.which };
                 d.open(which);
@@ -673,6 +706,8 @@ impl Gamepads {
                 }
                 if let Some(i) = d.pad_index(b.which)
                     && let Some(k) = menu_button(SDL_GamepadButton(i32::from(b.button)), &d.list[i].face)
+                    && (self.a_select || k != crate::MenuNav::Select)
+                    && (self.dpad_menu || !matches!(k, crate::MenuNav::Up | crate::MenuNav::Down | crate::MenuNav::Left | crate::MenuNav::Right))
                 {
                     input.pad_menu.push(k);
                 }
@@ -691,7 +726,7 @@ impl Gamepads {
                 };
                 let v = unit(a.value);
                 let now = v.abs() > MENU_STICK;
-                if now && !self.stick_latch[i] {
+                if now && !self.stick_latch[i] && self.stick_menu {
                     input.pad_menu.push(if v < 0.0 { neg } else { pos });
                 }
                 self.stick_latch[i] = now;
@@ -787,6 +822,8 @@ pub fn menu_button(b: SDL_GamepadButton, face: &[SDL_GamepadButton; 4]) -> Optio
         Right
     } else if b == SDL_GAMEPAD_BUTTON_BACK {
         View
+    } else if b == SDL_GAMEPAD_BUTTON_START {
+        Start
     } else if b == face[0] {
         Select
     } else if b == face[1] {
@@ -1237,7 +1274,8 @@ mod tests {
         assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_NORTH, &f), Some(MenuNav::Alt));
         assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_WEST, &f), Some(MenuNav::Aux));
         assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, &f), None);
-        assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_START, &f), None);
+        // Start: the bottom bar's RACE on a menu, the pause menu's continue in a race (real Apple TV, 2026-11-26)
+        assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_START, &f), Some(MenuNav::Start));
         // the View / Share / Select button opens Extras from the front end (port's own)
         assert_eq!(menu_button(SDL_GAMEPAD_BUTTON_BACK, &f), Some(MenuNav::View));
     }

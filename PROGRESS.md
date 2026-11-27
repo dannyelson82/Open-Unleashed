@@ -19,6 +19,21 @@ _Last updated: 2026-11-21 (session paused: usage limit)_
   HD-pack engine hooks, mod sets (no mods to test with), full hint tokens + SF Symbols glyphs, ~~Mac UI for the server~~ (done: Extras › Network)
   address, MSAA.
 
+## On the real Apple TV (2026-11-26 / 27, Apple TV 4K 3rd gen, tvOS 27.3, Xbox pad + Siri Remote)
+✅ Porsche Unleashed runs at 60 fps from the server's data; Factory Driver 1m01 passed; Danny tested the controls.
+- ✅ Pad: the intro skips; the idle movie no longer plays during name entry; Start = RACE; the on-screen keyboard
+  opens from a field (Y anywhere) and no longer freezes the menus when its presentation fails.
+- ✅ Siri Remote as a mouse on the menus (the pointer was parked off-screen by `NFS_FE_CURSOR`, which also froze
+  live moves); no snap-back on lift (UIKit's pan instead of the remote's smoothed d-pad values).
+- ✅ Pad as a mouse on the menus: left stick, A = click, d-pad jumps between targets (lists and drop-downs too),
+  right stick scrolls; B / X = back or exit; dialogs answer the pad. See TVOS.md "Menu controls on Apple TV".
+- ✅ Trigger rumble stops at pause and race end: SDL 3.4.18 bug, repaired at run time (`nfs_input::sdl_apple_fix`).
+- ✅ Shell: a server update deleted all local game files (`/var` vs `/private/var` in the clean-up's path match);
+  fixed, with a "nothing matched → delete nothing" guard. Crash on `UIWindow.avDisplayManager` (AVKit not
+  linked): linked and guarded.
+- 🟡 NFS SE runs on the device (downloaded from the server); its pad / remote controls are still to be fixed.
+- Known: no restart in Evolution races (as in the original).
+
 ## NFS Haven rename (2026-11-22)
 Clean rename, as asked (nothing was installed anywhere yet, so no compatibility names are kept):
 - **Server**: `ou-server` → **`nfs-haven-server`** (crate/binary `tools/nfs-haven-server`, version 0.2.0; shared

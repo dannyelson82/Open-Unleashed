@@ -16,6 +16,14 @@ impl App {
     }
 
     /// Navigate the previewed front-end screen: the buttons carry the name of the screen they lead to.
+    /// The layout element the pad's highlight is on (`layout_sel` over the screen's controls).
+    #[cfg_attr(not(target_os = "tvos"), allow(dead_code))]
+    pub(crate) fn fe_pad_highlight(&self) -> Option<usize> {
+        let l = self.fe.layout_preview.as_ref()?;
+        let controls = l.controls();
+        (!controls.is_empty()).then(|| controls[self.fe.layout_sel.min(controls.len() - 1)].index)
+    }
+
     pub(crate) fn layout_key(&mut self, key: MenuKey, event_loop: &ActiveEventLoop) {
         let Some(l) = self.fe.layout_preview.as_ref() else {
             return;
@@ -674,6 +682,16 @@ impl App {
         let room_busy = self.fe.room_obj.is_some()
             && (self.fe.dealer_row.is_some_and(|r| r.busy) || self.fe.track_room.as_ref().is_some_and(|t| t.busy));
         l.in_transition() || room_busy
+    }
+
+    /// tvOS: the pad's B and X (and the Siri Remote's Menu) on a menu screen. The bottom bar's back arrow
+    /// (the keyboard's `b`) where it can go back; where it can't, as on the main menu, its exit (Esc: the quit
+    /// question). Asked for on the real Apple TV, 2026-11-27.
+    #[cfg(target_os = "tvos")]
+    pub(crate) fn fe_pad_back(&mut self, event_loop: &ActiveEventLoop) {
+        if !self.fe_callback_key(0x62) && !self.fe_manager_key(0x62, event_loop) {
+            self.fe_key_code(0x1B, event_loop);
+        }
     }
 
     fn fe_manager_key(&mut self, code: u8, event_loop: &ActiveEventLoop) -> bool {

@@ -10,6 +10,8 @@
 pub mod bindings;
 #[cfg(any(target_os = "macos", target_os = "tvos"))]
 pub mod dualsense_apple;
+#[cfg(any(target_os = "macos", target_os = "tvos"))]
+mod sdl_apple_fix;
 pub mod ff;
 pub mod gamepad;
 pub mod glyphs;
@@ -240,6 +242,10 @@ pub enum MenuNav {
     Aux,
     /// the standard pad's View / Back / Share / Select / − button: opens the port's Extras menu from the front end
     View,
+    /// the standard pad's Menu / Start / Options / + button: the bottom bar's RACE (`PLAYGAME`) on a screen that
+    /// can start a game. PORT-DEVIATION: the bar is a separate screen the pad's up / down never reached, so
+    /// without a mouse (Apple TV) no race could start (real Apple TV, 2026-11-26).
+    Start,
 }
 
 /// Current logical input state, updated from window events and sampled once per tick.

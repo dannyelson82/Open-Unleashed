@@ -592,11 +592,13 @@ impl App {
     }
 
     /// **The pad in the front end** (once a frame, before the front end reads it): View — and on tvOS the Siri
-    /// Remote's Play/Pause (its X) — opens Extras; while it is up every pad key is its.
+    /// Remote's Play/Pause, which the shell sends as View (`ou_remote_button`) — opens Extras; while it is up every
+    /// pad key is its. (The pad's X is the bottom bar's back arrow on tvOS, events.rs; it was Extras while the
+    /// remote was an SDL joystick and its Play/Pause came in as X.)
     pub(crate) fn extras_fe_pad(&mut self) {
         use nfs_input::MenuNav as N;
         if self.extras_ui.is_none() {
-            let open = self.input.pad_menu.iter().any(|k| matches!(k, N::View) || (cfg!(target_os = "tvos") && matches!(k, N::Aux)));
+            let open = self.input.pad_menu.iter().any(|k| matches!(k, N::View));
             if open && self.extras_fe_ready() {
                 self.input.pad_menu.clear();
                 self.extras_open();
@@ -612,7 +614,7 @@ impl App {
                 N::Select => MenuKey::Enter,
                 N::Back | N::View => MenuKey::Back,
                 N::Aux if cfg!(target_os = "tvos") => MenuKey::Back,
-                N::Alt | N::Aux => continue,
+                N::Alt | N::Aux | N::Start => continue,
             };
             self.extras_key(key);
             if self.extras_ui.is_none() {

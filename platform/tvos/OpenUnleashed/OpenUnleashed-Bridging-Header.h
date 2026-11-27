@@ -34,3 +34,8 @@ void ou_request_quit(void);
 
 // The Need for Speed SE: ReNFS run by the app (platform/renfs-host).
 #include "../../renfs-host/renfs_host.h"
+
+// The Siri Remote as a mouse (RemoteInput.swift → tvos.rs)
+void ou_remote_touch(float dx, float dy);
+void ou_remote_click(bool down);
+void ou_remote_button(uint32_t kind);

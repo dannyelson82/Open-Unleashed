@@ -57,6 +57,7 @@ final class Shell {
     /// UIKit is up and the scene is connected (the engine's first `resumed`): the launcher, or straight into the
     /// game named with the launch argument `-nfsh.game porsche|nfsse` (development, tests).
     func launched() {
+        RemoteInput.start()
         for g in GameID.allCases { SaveMirror.restoreMissing(g) }
         if let id = UserDefaults.standard.string(forKey: "nfsh.game"), let g = GameID(rawValue: id) {
             start(g)
@@ -77,6 +78,7 @@ final class Shell {
     /// Run `g` in this process (once: the next game needs the app opened again).
     func start(_ g: GameID) {
         Shell.game = g
+        RemoteInput.live = true
         UserDefaults.standard.set(g.rawValue, forKey: GameID.lastKey)
         SaveMirror.startWatching(g)
         NSLog("OpenUnleashed: starting %@ (data %@)", g.rawValue, Shell.gameDir.path)
@@ -177,24 +179,34 @@ final class Shell {
 
     /// The engine wants text (profile name, address, replay name…): the tvOS keyboard in a prompt over the game.
     func textPrompt(title: String, current: String, maxLen: Int, secure: Bool) {
-        guard let host = SceneDelegate.scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController
-                ?? SceneDelegate.scene?.windows.first?.rootViewController else {
+        presentText(TextEntryViewController(title: title, current: current, maxLen: maxLen, secure: secure) { text in
+            if let text { text.withCString { ou_text_entered($0) } } else { ou_text_entered(nil) }
+        }, tries: 0)
+    }
+
+    /// Show the keyboard on top of whatever is up. While an earlier one is still going away UIKit refuses a new
+    /// presentation (silently), and the engine, waiting for an answer, ignored the pad: it looked frozen (real
+    /// Apple TV, 2026-11-26). So: wait for the dismissal, and if it still isn't on screen, answer "cancelled".
+    private func presentText(_ vc: TextEntryViewController, tries: Int) {
+        let window = SceneDelegate.scene?.windows.first(where: { $0.isKeyWindow }) ?? SceneDelegate.scene?.windows.first
+        guard var top = window?.rootViewController else {
             ou_text_entered(nil)
             return
         }
-        let a = UIAlertController(title: title, message: maxLen > 0 ? "Up to \(maxLen) characters." : nil, preferredStyle: .alert)
-        a.addTextField { t in
-            t.text = current
-            t.isSecureTextEntry = secure
-            t.autocapitalizationType = .none
-            t.autocorrectionType = .no
+        while let p = top.presentedViewController, !p.isBeingDismissed { top = p }
+        if top.presentedViewController?.isBeingDismissed == true || top.isBeingDismissed || top.isBeingPresented {
+            guard tries < 20 else { ou_text_entered(nil); return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.presentText(vc, tries: tries + 1) }
+            return
         }
-        a.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-            let text = String((a.textFields?.first?.text ?? "").prefix(maxLen > 0 ? maxLen : 256))
-            text.withCString { ou_text_entered($0) }
-        })
-        a.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in ou_text_entered(nil) })
-        host.present(a, animated: true)
+        top.present(vc, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if vc.presentingViewController == nil && !vc.isFinished {
+                NSLog("OpenUnleashed: the keyboard didn't come up; telling the engine it was cancelled")
+                vc.markFinished()
+                ou_text_entered(nil)
+            }
+        }
     }
 
     private func showGameData(error: String?, update: (files: Int, bytes: Int64, removed: Int)? = nil, onReady: (() -> Void)? = nil) {
